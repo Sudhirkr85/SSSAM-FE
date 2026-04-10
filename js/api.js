@@ -136,7 +136,11 @@ const API_ENDPOINTS = {
 // Generic GET request
 async function get(url, params = {}) {
     try {
-        const response = await api.get(url, { params });
+        // Filter out empty/null/undefined values to prevent validation errors
+        const filteredParams = Object.fromEntries(
+            Object.entries(params).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
+        );
+        const response = await api.get(url, { params: filteredParams });
         return response.data;
     } catch (error) {
         throw error;
