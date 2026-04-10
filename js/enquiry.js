@@ -192,6 +192,20 @@ function populateCourseDropdowns(courseList) {
         courseList.forEach(course => {
             enquiryCourse.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
         });
+        enquiryCourse.innerHTML += '<option value="other">Other</option>';
+
+        // Show/hide custom course input
+        enquiryCourse.addEventListener('change', () => {
+            const otherInput = document.getElementById('enquiryCourseOther');
+            if (enquiryCourse.value === 'other') {
+                otherInput.classList.remove('hidden');
+                otherInput.required = true;
+            } else {
+                otherInput.classList.add('hidden');
+                otherInput.required = false;
+                otherInput.value = '';
+            }
+        });
     }
 
     if (courseFilter) {
@@ -304,7 +318,9 @@ async function handleCreateEnquiry(e) {
             name: document.getElementById('enquiryName').value,
             mobile: document.getElementById('enquiryMobile').value,
             email: document.getElementById('enquiryEmail').value,
-            course: document.getElementById('enquiryCourse').value,
+            course: document.getElementById('enquiryCourse').value === 'other'
+                ? document.getElementById('enquiryCourseOther').value
+                : document.getElementById('enquiryCourse').value,
             source: document.getElementById('enquirySource').value,
             notes: document.getElementById('enquiryNotes').value,
         };
