@@ -234,11 +234,12 @@ async function loadEnquiries() {
         const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
         
         enquiriesData = response.data || [];
-        currentPage = response.currentPage || 1;
-        totalPages = response.totalPages || 1;
-        
+        const pagination = response.pagination || {};
+        currentPage = pagination.page || 1;
+        totalPages = pagination.totalPages || 1;
+
         renderEnquiries();
-        updatePagination(response.total || 0);
+        updatePagination(pagination.totalCount || 0);
     } catch (error) {
         enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-red-500">Failed to load enquiries. Please try again.</td></tr>';
     }
