@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enquiry Details - Institute Enquiry Management System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body class="bg-gray-100">
+    <div class="flex h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="w-64 bg-gray-800 text-white flex flex-col transition-all duration-300">
+            <div class="p-6 border-b border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                        </svg>
+                    </div>
+                    <span class="font-semibold text-lg">IEMS</span>
+                </div>
+            </div>
+
+            <nav class="flex-1 py-4">
+                <a href="dashboard.html" class="flex items-center space-x-3 px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"/>
+                    </svg>
+                    <span>Dashboard</span>
+                </a>
+                <a href="enquiries.html" class="flex items-center space-x-3 px-6 py-3 bg-blue-600 text-white">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z"/>
+                    </svg>
+                    <span>Enquiries</span>
+                </a>
+                <a href="admissions.html" class="flex items-center space-x-3 px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Admissions</span>
+                </a>
+                <a href="payments.html" class="flex items-center space-x-3 px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    <span>Payments</span>
+                </a>
+                <a href="reports.html" id="reportsMenu" class="hidden flex items-center space-x-3 px-6 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    <span>Reports</span>
+                </a>
+            </nav>
+
+            <div class="p-4 border-t border-gray-700">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-gray-600 rounded-full flex items-center justify-center">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p id="userName" class="text-sm font-medium truncate">Loading...</p>
+                        <p id="userRole" class="text-xs text-gray-400">Loading...</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <div class="flex-1 flex flex-col overflow-hidden">
+            <!-- Top Navbar -->
+            <header class="bg-white shadow-sm z-10">
+                <div class="flex items-center justify-between px-6 py-4">
+                    <div class="flex items-center space-x-4">
+                        <a href="enquiries.html" class="text-gray-500 hover:text-gray-700">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"/>
+                            </svg>
+                        </a>
+                        <div>
+                            <h1 id="enquiryTitle" class="text-xl font-semibold text-gray-800">Enquiry Details</h1>
+                            <p id="enquirySubtitle" class="text-sm text-gray-500">Loading...</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span id="lockedBadge" class="hidden px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">
+                            Locked
+                        </span>
+                        <button id="logoutBtn" class="flex items-center space-x-2 text-gray-600 hover:text-red-600 transition-colors">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                            </svg>
+                            <span>Logout</span>
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Detail Content -->
+            <main class="flex-1 overflow-y-auto p-6">
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Left Column - Details & Actions -->
+                    <div class="lg:col-span-2 space-y-6">
+                        <!-- Enquiry Info Card -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Enquiry Information</h2>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-sm text-gray-500">Name</p>
+                                    <p id="infoName" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Mobile</p>
+                                    <p id="infoMobile" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Email</p>
+                                    <p id="infoEmail" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Course</p>
+                                    <p id="infoCourse" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Source</p>
+                                    <p id="infoSource" class="font-medium text-gray-800">-</p>
+                                </div>
+                                <div>
+                                    <p class="text-sm text-gray-500">Created Date</p>
+                                    <p id="infoCreated" class="font-medium text-gray-800">-</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Status Management -->
+                        <div class="bg-white rounded-xl shadow-sm p-6" id="statusSection">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Status Management</h2>
+                            <div class="flex flex-wrap gap-2" id="statusButtons">
+                                <button data-status="Attempted" class="status-btn px-4 py-2 rounded-lg text-sm font-medium border transition-all">
+                                    Attempted
+                                </button>
+                                <button data-status="Connected" class="status-btn px-4 py-2 rounded-lg text-sm font-medium border transition-all">
+                                    Connected
+                                </button>
+                                <button data-status="Interested" class="status-btn px-4 py-2 rounded-lg text-sm font-medium border transition-all">
+                                    Interested
+                                </button>
+                                <button data-status="Follow-up" class="status-btn px-4 py-2 rounded-lg text-sm font-medium border transition-all">
+                                    Follow-up
+                                </button>
+                                <button data-status="Converted" class="status-btn px-4 py-2 rounded-lg text-sm font-medium border transition-all">
+                                    Converted
+                                </button>
+                                <button data-status="Lost" class="status-btn px-4 py-2 rounded-lg text-sm font-medium border transition-all">
+                                    Lost
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Notes Section -->
+                        <div class="bg-white rounded-xl shadow-sm p-6" id="notesSection">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Notes</h2>
+                            <div class="mb-4">
+                                <textarea 
+                                    id="newNote" 
+                                    rows="3" 
+                                    class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none resize-none"
+                                    placeholder="Add a note..."
+                                ></textarea>
+                                <div class="flex justify-end mt-2">
+                                    <button id="addNoteBtn" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                        Add Note
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="notesList" class="space-y-3 max-h-64 overflow-y-auto">
+                                <!-- Notes will be loaded here -->
+                            </div>
+                        </div>
+
+                        <!-- Timeline -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Timeline</h2>
+                            <div id="timelineList" class="space-y-4">
+                                <!-- Timeline items will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column - Actions & Info -->
+                    <div class="space-y-6">
+                        <!-- Current Status -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Current Status</h2>
+                            <div id="currentStatus" class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium">
+                                -
+                            </div>
+                        </div>
+
+                        <!-- Assigned To -->
+                        <div class="bg-white rounded-xl shadow-sm p-6">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Assigned To</h2>
+                            <div id="assignedInfo" class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-gray-200 rounded-full flex items-center justify-center">
+                                    <svg class="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p id="assignedName" class="font-medium text-gray-800">Unassigned</p>
+                                    <p id="assignedRole" class="text-sm text-gray-500">-</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Follow-up Date -->
+                        <div class="bg-white rounded-xl shadow-sm p-6" id="followUpSection">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Follow-up Date</h2>
+                            <input 
+                                type="datetime-local" 
+                                id="followUpDate" 
+                                class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                            >
+                            <button id="updateFollowUp" class="w-full mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
+                                Update Follow-up
+                            </button>
+                        </div>
+
+                        <!-- Convert to Admission -->
+                        <div id="convertSection" class="hidden bg-white rounded-xl shadow-sm p-6">
+                            <h2 class="text-lg font-semibold text-gray-800 mb-4">Convert to Admission</h2>
+                            <p class="text-sm text-gray-600 mb-4">This enquiry is ready for conversion. Create an admission record to proceed with enrollment.</p>
+                            <button id="convertBtn" class="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <span>Convert Now</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed top-4 right-4 transform translate-x-full transition-transform duration-300 z-50">
+        <div class="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-80">
+            <div id="toastIcon" class="flex-shrink-0"></div>
+            <div>
+                <p id="toastTitle" class="font-semibold text-sm"></p>
+                <p id="toastMessage" class="text-sm text-gray-600"></p>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/enquiry.js"></script>
+</body>
+</html>

@@ -1,0 +1,43 @@
+<!-- Common Modals Component -->
+
+<!-- Toast Notification -->
+<div id="toast" class="fixed top-4 right-4 transform translate-x-full transition-transform duration-300 z-50">
+    <div class="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-80 border-l-4">
+        <div id="toastIcon" class="flex-shrink-0"></div>
+        <div>
+            <p id="toastTitle" class="font-semibold text-sm"></p>
+            <p id="toastMessage" class="text-sm text-gray-600"></p>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Modal -->
+<div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 transform transition-all">
+        <div class="px-6 py-4 border-b border-gray-200">
+            <h3 id="confirmTitle" class="text-lg font-semibold text-gray-800">Confirm Action</h3>
+        </div>
+        <div class="p-6">
+            <p id="confirmMessage" class="text-gray-600"></p>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button id="confirmCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button id="confirmOk" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
+                    Confirm
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Overlay -->
+<div id="loadingOverlay" class="fixed inset-0 bg-black bg-opacity-30 z-50 hidden flex items-center justify-center">
+    <div class="bg-white rounded-lg p-6 shadow-xl flex items-center space-x-4">
+        <svg class="w-8 h-8 animate-spin text-blue-600" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+        </svg>
+        <span class="text-gray-700 font-medium">Loading...</span>
+    </div>
+</div>
