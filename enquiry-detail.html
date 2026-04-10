@@ -248,6 +248,155 @@
         </div>
     </div>
 
+    <!-- Payment Selection Modal (for Converted status) -->
+    <div id="paymentSelectionModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center overflow-y-auto">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 my-8 transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Create Admission - Payment Setup</h3>
+                    <p class="text-sm text-gray-500 mt-1">Configure payment plan before creating admission</p>
+                </div>
+                <button id="closePaymentSelectionModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6 space-y-6">
+                <!-- Payment Type Selection -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-3">Payment Type *</label>
+                    <div class="grid grid-cols-2 gap-4">
+                        <label class="relative flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors">
+                            <input type="radio" name="paymentType" value="ONE_TIME" id="paymentTypeOneTime" class="sr-only" onchange="handlePaymentTypeSelection()">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 border-2 border-gray-300 rounded-full mr-3 flex items-center justify-center radio-indicator">
+                                    <div class="w-2.5 h-2.5 bg-blue-600 rounded-full hidden radio-dot"></div>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">One Time</p>
+                                    <p class="text-xs text-gray-500">Full payment upfront</p>
+                                </div>
+                            </div>
+                        </label>
+                        <label class="relative flex items-center p-4 border-2 border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 transition-colors">
+                            <input type="radio" name="paymentType" value="INSTALLMENT" id="paymentTypeInstallment" class="sr-only" onchange="handlePaymentTypeSelection()">
+                            <div class="flex items-center">
+                                <div class="w-5 h-5 border-2 border-gray-300 rounded-full mr-3 flex items-center justify-center radio-indicator">
+                                    <div class="w-2.5 h-2.5 bg-blue-600 rounded-full hidden radio-dot"></div>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-800">Installment</p>
+                                    <p class="text-xs text-gray-500">Multiple payments over time</p>
+                                </div>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Total Fees Display -->
+                <div class="bg-gray-50 rounded-lg p-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-600">Total Course Fees</span>
+                        <span id="modalTotalFees" class="text-xl font-bold text-gray-800">₹0</span>
+                    </div>
+                </div>
+
+                <!-- One Time View -->
+                <div id="oneTimeSection" class="hidden space-y-4">
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                        <div class="flex items-start">
+                            <svg class="w-5 h-5 text-blue-600 mt-0.5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            <div>
+                                <p class="font-medium text-blue-800">One Time Payment</p>
+                                <p class="text-sm text-blue-600">Student will pay the full amount in a single payment.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Installment View -->
+                <div id="installmentSetupSection" class="hidden space-y-4">
+                    <div class="flex items-center justify-between">
+                        <label class="block text-sm font-medium text-gray-700">Installments</label>
+                        <button type="button" id="addInstallmentBtn" onclick="addModalInstallment()" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors flex items-center space-x-1">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                            </svg>
+                            <span>Add Installment</span>
+                        </button>
+                    </div>
+                    
+                    <!-- Installment List -->
+                    <div id="modalInstallmentList" class="space-y-2 max-h-48 overflow-y-auto">
+                        <!-- Installments rendered here -->
+                    </div>
+                    
+                    <!-- Installment Summary -->
+                    <div id="installmentSummary" class="bg-gray-50 rounded-lg p-3 hidden">
+                        <div class="flex justify-between text-sm">
+                            <span class="text-gray-600">Total Installments:</span>
+                            <span id="modalTotalInstallments" class="font-medium">₹0</span>
+                        </div>
+                        <div id="installmentValidationMessage" class="hidden mt-2 text-sm"></div>
+                    </div>
+                </div>
+
+                <!-- Validation Error -->
+                <div id="modalValidationError" class="hidden bg-red-50 border border-red-200 rounded-lg p-3">
+                    <p class="text-sm text-red-700"></p>
+                </div>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-200 flex justify-end space-x-3">
+                <button type="button" id="cancelPaymentSelection" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                    Cancel
+                </button>
+                <button type="button" id="createAdmissionBtn" onclick="submitAdmissionWithPayment()" disabled class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+                    <span>Create Admission</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Installment Sub-Modal -->
+    <div id="addInstallmentSubModal" class="fixed inset-0 bg-black bg-opacity-50 z-[60] hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h4 class="text-lg font-semibold text-gray-800">Add Installment</h4>
+                <button id="closeAddInstallmentSubModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="addInstallmentSubForm" class="p-6 space-y-4" onsubmit="handleAddModalInstallment(event)">
+                <div>
+                    <label for="modalInstallmentAmount" class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                    <input type="number" id="modalInstallmentAmount" required min="1" step="0.01"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Enter installment amount">
+                </div>
+                <div>
+                    <label for="modalInstallmentDueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+                    <input type="date" id="modalInstallmentDueDate" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div id="modalInstallmentError" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg"></div>
+                <div class="flex justify-end space-x-3 pt-2">
+                    <button type="button" onclick="closeAddInstallmentSubModal()" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        Add
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Toast Notification -->
     <div id="toast" class="fixed top-4 right-4 transform translate-x-full transition-transform duration-300 z-50">
         <div class="bg-white rounded-lg shadow-lg p-4 flex items-center space-x-3 min-w-80">

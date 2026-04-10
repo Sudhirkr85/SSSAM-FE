@@ -370,6 +370,73 @@ function setFormDisabled(container, disable = true) {
     }
 }
 
+/**
+ * Setup phone input with +91 prefix and 10-digit limit
+ * @param {string} inputId - ID of the phone input element
+ */
+function setupPhoneInput(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+
+    const prefix = '+91 ';
+
+    // Set initial value with prefix
+    input.value = prefix;
+
+    input.addEventListener('focus', function() {
+        if (!this.value.startsWith(prefix)) {
+            this.value = prefix;
+        }
+    });
+
+    input.addEventListener('input', function(e) {
+        let value = this.value;
+
+        // Ensure prefix is always present
+        if (!value.startsWith(prefix)) {
+            // If user deleted the prefix, restore it
+            value = prefix + value.replace(/\D/g, '');
+        }
+
+        // Extract digits only (excluding the country code)
+        const digitsOnly = value.slice(prefix.length).replace(/\D/g, '');
+
+        // Limit to 10 digits
+        const limitedDigits = digitsOnly.slice(0, 10);
+
+        // Reconstruct the value
+        this.value = prefix + limitedDigits;
+    });
+
+    input.addEventListener('keydown', function(e) {
+        // Prevent cursor from moving before the prefix
+        if (this.selectionStart < prefix.length) {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Tab' && !e.ctrlKey && !e.metaKey) {
+                e.preventDefault();
+                // Move cursor to after prefix
+                this.setSelectionRange(prefix.length, prefix.length);
+            }
+        }
+    });
+
+    input.addEventListener('paste', function(e) {
+        e.preventDefault();
+        const pastedData = (e.clipboardData || window.clipboardData).getData('text');
+        const digitsOnly = pastedData.replace(/\D/g, '').slice(0, 10);
+        this.value = prefix + digitsOnly;
+    });
+}
+
+/**
+ * Get clean phone number without +91 prefix
+ * @param {string} phoneValue - Phone input value
+ * @returns {string} Clean phone number (10 digits)
+ */
+function getCleanPhoneNumber(phoneValue) {
+    if (!phoneValue) return '';
+    return phoneValue.replace('+91 ', '').replace(/\D/g, '');
+}
+
 // Export UI utilities
 window.showToast = showToast;
 window.hideToast = hideToast;
@@ -388,3 +455,5 @@ window.showConfirm = showConfirm;
 window.setFieldValue = setFieldValue;
 window.getFieldValue = getFieldValue;
 window.setFormDisabled = setFormDisabled;
+window.setupPhoneInput = setupPhoneInput;
+window.getCleanPhoneNumber = getCleanPhoneNumber;

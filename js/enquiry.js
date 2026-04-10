@@ -29,11 +29,14 @@ let bulkUploadBtn, bulkUploadModal, closeBulkModal, cancelBulkBtn, uploadBulkBtn
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('enquiriesTable')) return;
-    
+
     initializeElements();
     setupEventListeners();
     loadCourses();
     loadEnquiries();
+
+    // Setup phone input with +91 prefix and 10-digit limit
+    setupPhoneInput('enquiryMobile');
 });
 
 function initializeElements() {
@@ -331,7 +334,7 @@ async function handleCreateEnquiry(e) {
     try {
         const data = {
             name: document.getElementById('enquiryName').value,
-            mobile: document.getElementById('enquiryMobile').value,
+            mobile: getCleanPhoneNumber(document.getElementById('enquiryMobile').value),
             email: document.getElementById('enquiryEmail').value,
             course: document.getElementById('enquiryCourse').value === 'other'
                 ? document.getElementById('enquiryCourseOther').value
@@ -394,6 +397,12 @@ function closeModal(modal) {
     if (modal) {
         modal.classList.add('hidden');
         document.body.style.overflow = '';
+
+        // Reset phone input with +91 prefix if enquiryMobile exists
+        const mobileInput = document.getElementById('enquiryMobile');
+        if (mobileInput) {
+            mobileInput.value = '+91 ';
+        }
     }
 }
 
@@ -401,6 +410,12 @@ function closeModal(modal) {
 
 let currentEnquiry = null;
 let isAssignedToCurrentUser = false;
+
+// Payment Selection Modal State
+let modalEnquiryId = null;
+let modalSelectedPaymentType = '';
+let modalInstallments = [];
+let modalTotalFees = 0;
 
 // Initialize detail page
 document.addEventListener('DOMContentLoaded', () => {
@@ -485,10 +500,33 @@ function renderEnquiryDetail(enquiry) {
         followUpInput.value = date.toISOString().slice(0, 16);
     }
     
-    // Show convert section if interested/follow-up
+    // Show convert section if interested/follow-up/converted (but not yet admitted)
     const convertSection = document.getElementById('convertSection');
-    if (enquiry.status === 'Interested' || enquiry.status === 'Follow-up') {
+    if (enquiry.status === 'Interested' || enquiry.status === 'Follow-up' || 
+        (enquiry.status === 'Converted' && !enquiry.admissionId)) {
         convertSection.classList.remove('hidden');
+    } else {
+        convertSection.classList.add('hidden');
+    }
+    
+    // Update convert button text based on status
+    const convertBtn = document.getElementById('convertBtn');
+    if (convertBtn) {
+        if (enquiry.status === 'Converted') {
+            convertBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                </svg>
+                <span>Complete Admission Setup</span>
+            `;
+        } else {
+            convertBtn.innerHTML = `
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                </svg>
+                <span>Convert Now</span>
+            `;
+        }
     }
     
     // Locked badge
@@ -571,13 +609,35 @@ function setupDetailPageListeners(enquiryId) {
                 return;
             }
             try {
-                await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status });
-                showToast('success', 'Success', `Status updated to ${status}`);
+                const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status });
+                
+                // Check if payment setup is required (for Converted status)
+                if (status === 'Converted' && response.data?.requiresPaymentSetup) {
+                    showToast('success', 'Success', 'Status updated to Converted. Please configure payment plan.');
+                    // Open payment selection modal
+                    openPaymentSelectionModal(enquiryId, response.data?.enquiry);
+                } else {
+                    showToast('success', 'Success', `Status updated to ${status}`);
+                }
+                
                 loadEnquiryDetail(enquiryId);
             } catch (error) {
                 showToast('error', 'Error', 'Failed to update status');
             }
         });
+    });
+    
+    // Payment Selection Modal Listeners
+    document.getElementById('closePaymentSelectionModal')?.addEventListener('click', closePaymentSelectionModal);
+    document.getElementById('cancelPaymentSelection')?.addEventListener('click', closePaymentSelectionModal);
+    document.getElementById('paymentSelectionModal')?.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closePaymentSelectionModal();
+    });
+    
+    // Add Installment Sub-Modal Listeners
+    document.getElementById('closeAddInstallmentSubModal')?.addEventListener('click', closeAddInstallmentSubModal);
+    document.getElementById('addInstallmentSubModal')?.addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) closeAddInstallmentSubModal();
     });
     
     // Add note
@@ -619,19 +679,25 @@ function setupDetailPageListeners(enquiryId) {
         }
     });
     
-    // Convert to admission
+    // Convert to admission - now opens payment selection modal
     document.getElementById('convertBtn')?.addEventListener('click', async () => {
         if (!isAssignedToCurrentUser && !isAdmin()) return;
         
+        // First update status to Converted, then check if payment setup is required
         try {
-            // Create admission from enquiry
-            const admission = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, { 
-                enquiryId: enquiryId,
-                admissionDate: new Date().toISOString(),
-            });
+            const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status: 'Converted' });
             
-            showToast('success', 'Success', 'Enquiry converted to admission!');
-            window.location.href = `admissions.html?id=${admission._id || admission.id}`;
+            if (response.data?.requiresPaymentSetup) {
+                showToast('success', 'Success', 'Status updated. Please configure payment plan.');
+                openPaymentSelectionModal(enquiryId, response.data?.enquiry);
+                loadEnquiryDetail(enquiryId);
+            } else {
+                // If no payment setup required, redirect to admission
+                showToast('success', 'Success', 'Enquiry converted to admission!');
+                if (response.data?.admission?._id) {
+                    window.location.href = `admissions.html?id=${response.data.admission._id}`;
+                }
+            }
         } catch (error) {
             const message = error.response?.data?.message || 'Failed to convert enquiry';
             showToast('error', 'Error', message);
@@ -639,9 +705,259 @@ function setupDetailPageListeners(enquiryId) {
     });
 }
 
+// ==================== PAYMENT SELECTION MODAL FUNCTIONS ====================
+
+function openPaymentSelectionModal(enquiryId, enquiryData) {
+    modalEnquiryId = enquiryId;
+    modalSelectedPaymentType = '';
+    modalInstallments = [];
+    
+    // Get course fees from enquiry data
+    const course = STATIC_COURSES.find(c => c._id === enquiryData?.course || c.id === enquiryData?.course);
+    modalTotalFees = course?.fees || 0;
+    
+    // Reset form
+    document.querySelectorAll('input[name="paymentType"]').forEach(radio => {
+        radio.checked = false;
+    });
+    document.getElementById('oneTimeSection')?.classList.add('hidden');
+    document.getElementById('installmentSetupSection')?.classList.add('hidden');
+    document.getElementById('modalValidationError')?.classList.add('hidden');
+    document.getElementById('createAdmissionBtn').disabled = true;
+    
+    // Display total fees
+    document.getElementById('modalTotalFees').textContent = formatCurrency(modalTotalFees);
+    
+    // Show modal
+    const modal = document.getElementById('paymentSelectionModal');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closePaymentSelectionModal() {
+    const modal = document.getElementById('paymentSelectionModal');
+    modal.classList.add('hidden');
+    document.body.style.overflow = '';
+    
+    // Reset state
+    modalEnquiryId = null;
+    modalSelectedPaymentType = '';
+    modalInstallments = [];
+}
+
+function handlePaymentTypeSelection() {
+    const selected = document.querySelector('input[name="paymentType"]:checked');
+    if (!selected) return;
+    
+    modalSelectedPaymentType = selected.value;
+    
+    // Update radio visual state
+    document.querySelectorAll('input[name="paymentType"]').forEach(radio => {
+        const label = radio.closest('label');
+        const dot = label?.querySelector('.radio-dot');
+        if (radio.checked) {
+            label?.classList.add('border-blue-500', 'bg-blue-50');
+            dot?.classList.remove('hidden');
+        } else {
+            label?.classList.remove('border-blue-500', 'bg-blue-50');
+            dot?.classList.add('hidden');
+        }
+    });
+    
+    // Show/hide sections
+    if (modalSelectedPaymentType === 'ONE_TIME') {
+        document.getElementById('oneTimeSection')?.classList.remove('hidden');
+        document.getElementById('installmentSetupSection')?.classList.add('hidden');
+        document.getElementById('createAdmissionBtn').disabled = false;
+    } else if (modalSelectedPaymentType === 'INSTALLMENT') {
+        document.getElementById('oneTimeSection')?.classList.add('hidden');
+        document.getElementById('installmentSetupSection')?.classList.remove('hidden');
+        renderModalInstallments();
+        validateModalInstallments();
+    }
+    
+    document.getElementById('modalValidationError')?.classList.add('hidden');
+}
+
+function renderModalInstallments() {
+    const container = document.getElementById('modalInstallmentList');
+    const summary = document.getElementById('installmentSummary');
+    
+    if (!modalInstallments.length) {
+        container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No installments added. Click "Add Installment" to create one.</p>';
+        summary?.classList.add('hidden');
+        return;
+    }
+    
+    container.innerHTML = modalInstallments.map((inst, index) => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
+            <div class="flex items-center space-x-3">
+                <span class="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-medium">${index + 1}</span>
+                <div>
+                    <p class="font-medium text-gray-800">${formatCurrency(inst.amount)}</p>
+                    <p class="text-xs text-gray-500">Due: ${formatDate(inst.dueDate)}</p>
+                </div>
+            </div>
+            <button type="button" onclick="removeModalInstallment(${index})" class="text-red-500 hover:text-red-700 p-1">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                </svg>
+            </button>
+        </div>
+    `).join('');
+    
+    // Show summary
+    summary?.classList.remove('hidden');
+    const total = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+    document.getElementById('modalTotalInstallments').textContent = formatCurrency(total);
+    
+    validateModalInstallments();
+}
+
+function validateModalInstallments() {
+    const createBtn = document.getElementById('createAdmissionBtn');
+    const validationMsg = document.getElementById('installmentValidationMessage');
+    
+    if (modalSelectedPaymentType !== 'INSTALLMENT') {
+        createBtn.disabled = false;
+        return;
+    }
+    
+    if (!modalInstallments.length) {
+        createBtn.disabled = true;
+        validationMsg?.classList.add('hidden');
+        return;
+    }
+    
+    const total = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+    const difference = modalTotalFees - total;
+    
+    if (Math.abs(difference) < 0.01) {
+        createBtn.disabled = false;
+        if (validationMsg) {
+            validationMsg.innerHTML = '<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Total matches course fees</span>';
+            validationMsg.classList.remove('hidden');
+        }
+    } else {
+        createBtn.disabled = true;
+        if (validationMsg) {
+            const msg = difference > 0 
+                ? `Short by ${formatCurrency(difference)}` 
+                : `Exceeds by ${formatCurrency(Math.abs(difference))}`;
+            validationMsg.innerHTML = `<span class="text-red-600">${msg}</span>`;
+            validationMsg.classList.remove('hidden');
+        }
+    }
+}
+
+function addModalInstallment() {
+    // Set default due date to next month
+    const nextMonth = new Date();
+    nextMonth.setMonth(nextMonth.getMonth() + 1);
+    document.getElementById('modalInstallmentDueDate').value = nextMonth.toISOString().split('T')[0];
+    document.getElementById('modalInstallmentAmount').value = '';
+    document.getElementById('modalInstallmentError')?.classList.add('hidden');
+    
+    const subModal = document.getElementById('addInstallmentSubModal');
+    subModal.classList.remove('hidden');
+}
+
+function closeAddInstallmentSubModal() {
+    document.getElementById('addInstallmentSubModal').classList.add('hidden');
+}
+
+function handleAddModalInstallment(e) {
+    e.preventDefault();
+    
+    const amount = parseFloat(document.getElementById('modalInstallmentAmount').value);
+    const dueDate = document.getElementById('modalInstallmentDueDate').value;
+    const errorDiv = document.getElementById('modalInstallmentError');
+    
+    // Validation
+    if (!amount || amount <= 0) {
+        errorDiv.textContent = 'Amount must be greater than 0';
+        errorDiv?.classList.remove('hidden');
+        return;
+    }
+    
+    if (!dueDate) {
+        errorDiv.textContent = 'Due date is required';
+        errorDiv?.classList.remove('hidden');
+        return;
+    }
+    
+    // Check if total would exceed fees
+    const currentTotal = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
+    if (currentTotal + amount > modalTotalFees * 1.5) {
+        errorDiv.textContent = 'Installment amounts seem too high. Please verify the total.';
+        errorDiv?.classList.remove('hidden');
+        return;
+    }
+    
+    modalInstallments.push({
+        amount: amount,
+        dueDate: dueDate,
+        status: 'Pending',
+        paidAmount: 0
+    });
+    
+    closeAddInstallmentSubModal();
+    renderModalInstallments();
+}
+
+function removeModalInstallment(index) {
+    modalInstallments.splice(index, 1);
+    renderModalInstallments();
+}
+
+async function submitAdmissionWithPayment() {
+    if (!modalEnquiryId || !modalSelectedPaymentType) return;
+    
+    const createBtn = document.getElementById('createAdmissionBtn');
+    createBtn.disabled = true;
+    createBtn.innerHTML = '<span class="spinner"></span> Creating...';
+    
+    try {
+        const payload = {
+            paymentType: modalSelectedPaymentType,
+            installments: modalSelectedPaymentType === 'INSTALLMENT' ? modalInstallments : []
+        };
+        
+        const response = await apiPost(API_ENDPOINTS.ADMISSIONS.FROM_ENQUIRY(modalEnquiryId), payload);
+        
+        showToast('success', 'Success', 'Admission created successfully!');
+        closePaymentSelectionModal();
+        
+        // Redirect to admission detail page
+        const admissionId = response.data?.admission?._id || response.data?._id;
+        if (admissionId) {
+            window.location.href = `admissions.html?id=${admissionId}`;
+        }
+    } catch (error) {
+        const message = error.response?.data?.message || 'Failed to create admission';
+        const errorDiv = document.getElementById('modalValidationError');
+        if (errorDiv) {
+            errorDiv.querySelector('p').textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        showToast('error', 'Error', message);
+    } finally {
+        createBtn.disabled = false;
+        createBtn.innerHTML = '<span>Create Admission</span>';
+    }
+}
+
 // Export for global access
 window.goToPage = goToPage;
 window.loadEnquiryDetail = loadEnquiryDetail;
+window.openPaymentSelectionModal = openPaymentSelectionModal;
+window.closePaymentSelectionModal = closePaymentSelectionModal;
+window.handlePaymentTypeSelection = handlePaymentTypeSelection;
+window.addModalInstallment = addModalInstallment;
+window.closeAddInstallmentSubModal = closeAddInstallmentSubModal;
+window.handleAddModalInstallment = handleAddModalInstallment;
+window.removeModalInstallment = removeModalInstallment;
+window.submitAdmissionWithPayment = submitAdmissionWithPayment;
 
 // Delete enquiry (admin only)
 async function deleteEnquiry(id) {

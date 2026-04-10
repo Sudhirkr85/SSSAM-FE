@@ -89,6 +89,7 @@ const API_ENDPOINTS = {
         LIST: '/admissions',
         DETAIL: (id) => `/admissions/${id}`,
         BY_ENQUIRY: (enquiryId) => `/admissions/by-enquiry/${enquiryId}`,
+        FROM_ENQUIRY: (enquiryId) => `/admissions/from-enquiry/${enquiryId}`,
         CREATE: '/admissions',
         UPDATE: (id) => `/admissions/${id}`,
         UPDATE_FEES: (id) => `/admissions/${id}/fees`,
