@@ -502,11 +502,22 @@ function renderEnquiryDetail(enquiry) {
     
     // Show convert section if interested/follow-up/converted (but not yet admitted)
     const convertSection = document.getElementById('convertSection');
-    if (enquiry.status === 'Interested' || enquiry.status === 'Follow-up' || 
-        (enquiry.status === 'Converted' && !enquiry.admissionId)) {
-        convertSection.classList.remove('hidden');
+    const hasAdmission = enquiry.hasAdmission || enquiry.admissionId;
+
+    if ((enquiry.status === 'Interested' || enquiry.status === 'Follow-up' ||
+        enquiry.status === 'Converted') && !hasAdmission) {
+        convertSection?.classList.remove('hidden');
+        // Remove admission badge if it exists (in case state changed)
+        const admissionBadge = document.getElementById('admissionCreatedBadge');
+        if (admissionBadge) {
+            admissionBadge.remove();
+        }
     } else {
-        convertSection.classList.add('hidden');
+        convertSection?.classList.add('hidden');
+        // Show admission UI if admission exists
+        if (hasAdmission) {
+            updateEnquiryUIForAdmission(enquiry.admissionId);
+        }
     }
     
     // Update convert button text based on status
@@ -541,7 +552,19 @@ function checkPermissions() {
         setFormDisabled(document.getElementById('statusSection'), true);
         setFormDisabled(document.getElementById('notesSection'), true);
         setFormDisabled(document.getElementById('followUpSection'), true);
-        document.getElementById('convertBtn').disabled = true;
+        const convertBtn = document.getElementById('convertBtn');
+        if (convertBtn) convertBtn.disabled = true;
+    }
+
+    // Also disable Converted status button if admission already exists
+    const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
+    if (hasAdmission) {
+        const convertedBtn = document.querySelector('.status-btn[data-status="Converted"]');
+        if (convertedBtn) {
+            convertedBtn.disabled = true;
+            convertedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            convertedBtn.title = 'Admission already created';
+        }
     }
 }
 
@@ -605,11 +628,20 @@ function setupDetailPageListeners(enquiryId) {
             if (!isAssignedToCurrentUser && !isAdmin()) return;
 
             const status = btn.dataset.status;
-            
-            // If clicking Converted and already Converted, just open payment modal
-            if (status === 'Converted' && currentEnquiry?.status === 'Converted') {
-                openPaymentSelectionModal(enquiryId, currentEnquiry);
-                return;
+
+            // If clicking Converted, check if admission already exists
+            if (status === 'Converted') {
+                const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
+                if (hasAdmission) {
+                    showToast('info', 'Info', 'Admission already exists for this enquiry');
+                    updateEnquiryUIForAdmission(currentEnquiry.admissionId);
+                    return;
+                }
+                // If already Converted status but no admission, open payment modal
+                if (currentEnquiry?.status === 'Converted') {
+                    openPaymentSelectionModal(enquiryId, currentEnquiry);
+                    return;
+                }
             }
             
             if (!confirm(`Are you sure you want to change status to "${status}"?`)) {
@@ -618,23 +650,28 @@ function setupDetailPageListeners(enquiryId) {
             
             try {
                 const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status });
-                
+
                 // Check if payment setup is required (for Converted status)
                 if (status === 'Converted') {
-                    if (response.data?.requiresPaymentSetup) {
+                    if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
+                        // Admission already exists - update UI
+                        const admissionId = response.data?.admission?._id || response.data?.enquiry?.admissionId;
+                        if (currentEnquiry) {
+                            currentEnquiry.hasAdmission = true;
+                            currentEnquiry.admissionId = admissionId;
+                        }
+                        updateEnquiryUIForAdmission(admissionId);
+                        showToast('info', 'Info', 'Admission already exists for this enquiry');
+                    } else if (response.data?.requiresPaymentSetup) {
                         showToast('success', 'Success', 'Status updated to Converted. Please configure payment plan.');
                         openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
-                    } else if (response.data?.admission?._id) {
-                        showToast('success', 'Success', 'Enquiry converted to admission!');
-                        window.location.href = `admissions.html?id=${response.data.admission._id}`;
-                        return;
                     } else {
                         showToast('success', 'Success', 'Status updated to Converted');
                     }
                 } else {
                     showToast('success', 'Success', `Status updated to ${status}`);
                 }
-                
+
                 loadEnquiryDetail(enquiryId);
             } catch (error) {
                 showToast('error', 'Error', 'Failed to update status');
@@ -704,29 +741,41 @@ function setupDetailPageListeners(enquiryId) {
     // Convert to admission - now opens payment selection modal
     document.getElementById('convertBtn')?.addEventListener('click', async () => {
         if (!isAssignedToCurrentUser && !isAdmin()) return;
-        
+
+        // Check if admission already exists
+        const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
+        if (hasAdmission) {
+            showToast('info', 'Info', 'Admission already exists for this enquiry');
+            updateEnquiryUIForAdmission(currentEnquiry.admissionId);
+            return;
+        }
+
         // If already Converted, directly open payment selection modal
         if (currentEnquiry?.status === 'Converted') {
             openPaymentSelectionModal(enquiryId, currentEnquiry);
             return;
         }
-        
+
         // First update status to Converted, then check if payment setup is required
         try {
             const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status: 'Converted' });
-            
-            if (response.data?.requiresPaymentSetup) {
+
+            if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
+                // Admission already exists - update UI
+                const admissionId = response.data?.admission?._id || response.data?.enquiry?.admissionId;
+                if (currentEnquiry) {
+                    currentEnquiry.hasAdmission = true;
+                    currentEnquiry.admissionId = admissionId;
+                }
+                updateEnquiryUIForAdmission(admissionId);
+                showToast('info', 'Info', 'Admission already exists for this enquiry');
+            } else if (response.data?.requiresPaymentSetup) {
                 showToast('success', 'Success', 'Status updated. Please configure payment plan.');
                 openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
-                loadEnquiryDetail(enquiryId);
-            } else if (response.data?.admission?._id) {
-                // If admission was created directly, redirect to it
-                showToast('success', 'Success', 'Enquiry converted to admission!');
-                window.location.href = `admissions.html?id=${response.data.admission._id}`;
             } else {
                 showToast('success', 'Success', 'Status updated to Converted');
-                loadEnquiryDetail(enquiryId);
             }
+            loadEnquiryDetail(enquiryId);
         } catch (error) {
             const message = error.response?.data?.message || 'Failed to convert enquiry';
             showToast('error', 'Error', message);
@@ -943,15 +992,15 @@ function removeModalInstallment(index) {
 
 async function submitAdmissionWithPayment() {
     if (!modalEnquiryId || !modalSelectedPaymentType) return;
-    
+
     const createBtn = document.getElementById('createAdmissionBtn');
     createBtn.disabled = true;
     createBtn.innerHTML = '<span class="spinner"></span> Creating...';
-    
+
     try {
         const totalFeesInput = document.getElementById('modalTotalFeesInput');
         const totalFees = parseInt(totalFeesInput?.value) || 0;
-        
+
         if (!totalFees || totalFees <= 0) {
             const errorDiv = document.getElementById('modalValidationError');
             if (errorDiv) {
@@ -962,34 +1011,158 @@ async function submitAdmissionWithPayment() {
             createBtn.innerHTML = '<span>Create Admission</span>';
             return;
         }
-        
+
         const payload = {
             paymentType: modalSelectedPaymentType,
             totalFees: totalFees,
-            installments: modalSelectedPaymentType === 'INSTALLMENT' ? modalInstallments : []
+            installments: modalSelectedPaymentType === 'INSTALLMENT'
+                ? modalInstallments.map(i => ({
+                    amount: parseInt(i.amount),
+                    dueDate: new Date(i.dueDate).toISOString()
+                }))
+                : []
         };
-        
+
         const response = await apiPost(API_ENDPOINTS.ADMISSIONS.FROM_ENQUIRY(modalEnquiryId), payload);
-        
-        showToast('success', 'Success', 'Admission created successfully!');
-        closePaymentSelectionModal();
-        
-        // Redirect to admission detail page
-        const admissionId = response.data?.admission?._id || response.data?._id;
-        if (admissionId) {
-            window.location.href = `admissions.html?id=${admissionId}`;
+
+        // Handle idempotent response (alreadyExists)
+        const admissionId = response.data?.admission?._id;
+        const alreadyExists = response.data?.alreadyExists;
+
+        // Update enquiry state
+        if (currentEnquiry) {
+            currentEnquiry.hasAdmission = true;
+            currentEnquiry.admissionId = admissionId;
         }
+
+        closePaymentSelectionModal();
+
+        if (alreadyExists) {
+            showToast('info', 'Info', 'Admission already exists for this enquiry');
+        } else {
+            showToast('success', 'Success', 'Admission Created Successfully');
+        }
+
+        // Update UI to reflect admission created state
+        updateEnquiryUIForAdmission(admissionId);
+
+        // Refresh enquiry data to get latest state
+        await loadEnquiryDetail(modalEnquiryId);
+
     } catch (error) {
         const message = error.response?.data?.message || 'Failed to create admission';
+        const errors = error.response?.data?.errors;
+
+        // Build detailed error message
+        let displayMessage = message;
+        if (errors && errors.length > 0) {
+            displayMessage += ': ' + errors.map(e => `${e.field} - ${e.message}`).join(', ');
+        }
+
         const errorDiv = document.getElementById('modalValidationError');
         if (errorDiv) {
-            errorDiv.querySelector('p').textContent = message;
+            errorDiv.querySelector('p').textContent = displayMessage;
             errorDiv.classList.remove('hidden');
         }
-        showToast('error', 'Error', message);
-    } finally {
+        showToast('error', 'Error', displayMessage);
+
+        // Keep modal open on error
         createBtn.disabled = false;
         createBtn.innerHTML = '<span>Create Admission</span>';
+    }
+}
+
+/**
+ * Update enquiry UI after admission is created
+ * - Add "Admission Created" badge
+ * - Disable "Converted" button
+ * - Add "View Admission" button
+ */
+function updateEnquiryUIForAdmission(admissionId) {
+    const convertSection = document.getElementById('convertSection');
+    const convertBtn = document.getElementById('convertBtn');
+
+    if (!convertSection) return;
+
+    // Hide the convert button section
+    convertSection.classList.add('hidden');
+
+    // Check if admission badge already exists
+    let admissionBadge = document.getElementById('admissionCreatedBadge');
+    if (!admissionBadge) {
+        // Create admission created badge
+        admissionBadge = document.createElement('div');
+        admissionBadge.id = 'admissionCreatedBadge';
+        admissionBadge.className = 'bg-white rounded-xl shadow-sm p-6';
+        admissionBadge.innerHTML = `
+            <h2 class="text-lg font-semibold text-gray-800 mb-4">Admission Status</h2>
+            <div class="space-y-4">
+                <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
+                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Admission Created
+                </div>
+                <button id="viewAdmissionBtn" onclick="viewAdmissionFromEnquiry('${admissionId}')" 
+                    class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    <span>View Admission</span>
+                </button>
+            </div>
+        `;
+
+        // Insert after the followUpSection or at the end of the right column
+        const rightColumn = convertSection.parentElement;
+        const followUpSection = document.getElementById('followUpSection');
+        if (followUpSection && followUpSection.nextSibling) {
+            rightColumn.insertBefore(admissionBadge, followUpSection.nextSibling);
+        } else {
+            rightColumn.appendChild(admissionBadge);
+        }
+    }
+
+    // Disable Converted status button
+    const convertedBtn = document.querySelector('.status-btn[data-status="Converted"]');
+    if (convertedBtn) {
+        convertedBtn.disabled = true;
+        convertedBtn.classList.add('opacity-50', 'cursor-not-allowed');
+        convertedBtn.title = 'Admission already created';
+    }
+}
+
+/**
+ * Navigate to view admission from enquiry detail page
+ */
+function viewAdmissionFromEnquiry(admissionId) {
+    if (admissionId) {
+        window.open(`admissions.html?id=${admissionId}`, '_blank');
+    }
+}
+
+// Check if admission exists and update UI accordingly
+async function checkAndRedirectToAdmission(enquiryId) {
+    try {
+        const response = await apiGet(API_ENDPOINTS.ADMISSIONS.BY_ENQUIRY(enquiryId));
+
+        if (response.data?.admission?._id) {
+            // Admission exists - update UI to reflect this
+            const admissionId = response.data.admission._id;
+            if (currentEnquiry) {
+                currentEnquiry.hasAdmission = true;
+                currentEnquiry.admissionId = admissionId;
+            }
+            updateEnquiryUIForAdmission(admissionId);
+            showToast('info', 'Info', 'Admission already exists for this enquiry');
+        } else {
+            // No admission yet, open payment modal
+            openPaymentSelectionModal(enquiryId, currentEnquiry);
+        }
+    } catch (error) {
+        // No admission found, open payment modal
+        openPaymentSelectionModal(enquiryId, currentEnquiry);
     }
 }
 
@@ -1004,6 +1177,8 @@ window.closeAddInstallmentSubModal = closeAddInstallmentSubModal;
 window.handleAddModalInstallment = handleAddModalInstallment;
 window.removeModalInstallment = removeModalInstallment;
 window.submitAdmissionWithPayment = submitAdmissionWithPayment;
+window.updateEnquiryUIForAdmission = updateEnquiryUIForAdmission;
+window.viewAdmissionFromEnquiry = viewAdmissionFromEnquiry;
 
 // Delete enquiry (admin only)
 async function deleteEnquiry(id) {
