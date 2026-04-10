@@ -80,27 +80,42 @@ function setupEventListeners() {
 async function loadCourses() {
     try {
         const courses = await apiGet(API_ENDPOINTS.COURSES.LIST);
-        const courseFilter = document.getElementById('courseFilter');
-        if (courseFilter && courses) {
-            courseFilter.innerHTML = '<option value="">All Courses</option>';
-            courses.forEach(course => {
-                courseFilter.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
-            });
-        }
+        populateAdmissionCourseDropdown(courses);
     } catch (error) {
-        console.error('Failed to load courses:', error);
+        console.error('Failed to load courses from API, using static courses:', error);
+        populateAdmissionCourseDropdown(STATIC_COURSES);
+    }
+}
+
+function populateAdmissionCourseDropdown(courses) {
+    const courseFilter = document.getElementById('courseFilter');
+    if (courseFilter) {
+        courseFilter.innerHTML = '<option value="">All Courses</option>';
+        courses.forEach(course => {
+            courseFilter.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
+        });
     }
 }
 
 async function loadStats() {
     try {
-        const stats = await apiGet(API_ENDPOINTS.REPORTS.DASHBOARD);
-        
-        document.getElementById('totalAdmissions').textContent = stats.totalAdmissions || 0;
-        document.getElementById('totalRevenue').textContent = formatCurrency(stats.totalRevenue || 0);
-        document.getElementById('totalPending').textContent = formatCurrency(stats.totalPendingFees || 0);
+        // Use available endpoints instead of non-existent /reports/dashboard
+        const admissionsResponse = await apiGet(API_ENDPOINTS.ADMISSIONS.LIST, { limit: 1 });
+        const totalAdmissions = admissionsResponse.pagination?.totalCount || 0;
+
+        const feesResponse = await apiGet(API_ENDPOINTS.REPORTS.FEES, { range: 'monthly' }).catch(() => ({ data: { summary: {} } }));
+        const summary = feesResponse.data?.summary || {};
+        const totalRevenue = summary.totalRevenueCollected || 0;
+        const totalPending = summary.totalPending || 0;
+
+        document.getElementById('totalAdmissions').textContent = totalAdmissions;
+        document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+        document.getElementById('totalPending').textContent = formatCurrency(totalPending);
     } catch (error) {
         console.error('Failed to load stats:', error);
+        document.getElementById('totalAdmissions').textContent = '0';
+        document.getElementById('totalRevenue').textContent = formatCurrency(0);
+        document.getElementById('totalPending').textContent = formatCurrency(0);
     }
 }
 

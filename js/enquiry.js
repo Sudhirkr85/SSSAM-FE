@@ -178,23 +178,28 @@ async function loadCourses() {
         const courses = await apiGet(API_ENDPOINTS.COURSES.LIST);
         populateCourseDropdowns(courses);
     } catch (error) {
-        console.error('Failed to load courses:', error);
+        console.error('Failed to load courses from API, using static courses:', error);
+        populateCourseDropdowns(null); // Will use STATIC_COURSES
     }
 }
 
 function populateCourseDropdowns(courses) {
     const enquiryCourse = document.getElementById('enquiryCourse');
-    
-    if (enquiryCourse && courses) {
+    const courseFilter = document.getElementById('courseFilter');
+
+    // Use API courses if available, otherwise use static courses
+    const courseList = (courses && courses.length > 0) ? courses : STATIC_COURSES;
+
+    if (enquiryCourse) {
         enquiryCourse.innerHTML = '<option value="">Select Course</option>';
-        courses.forEach(course => {
+        courseList.forEach(course => {
             enquiryCourse.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
         });
     }
-    
-    if (courseFilter && courses) {
+
+    if (courseFilter) {
         courseFilter.innerHTML = '<option value="">All Courses</option>';
-        courses.forEach(course => {
+        courseList.forEach(course => {
             courseFilter.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
         });
     }

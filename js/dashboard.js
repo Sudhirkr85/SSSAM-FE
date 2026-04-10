@@ -13,15 +13,37 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadDashboardStats() {
     try {
-        const stats = await apiGet(API_ENDPOINTS.REPORTS.DASHBOARD);
-        
+        // Use /enquiries endpoint instead of non-existent /reports/dashboard
+        const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { limit: 1000 });
+        const enquiries = response.data || [];
+        const pagination = response.pagination || {};
+
+        // Calculate stats from enquiries data
+        const totalEnquiries = pagination.totalCount || enquiries.length;
+        const today = new Date().toISOString().split('T')[0];
+        const newToday = enquiries.filter(e => {
+            const created = new Date(e.createdAt).toISOString().split('T')[0];
+            return created === today;
+        }).length;
+        const overdue = enquiries.filter(e => {
+            if (!e.followUpDate) return false;
+            const followUp = new Date(e.followUpDate);
+            return followUp < new Date() && e.status !== 'Converted' && e.status !== 'Lost';
+        }).length;
+        const converted = enquiries.filter(e => e.status === 'Converted').length;
+
         // Update stat cards
-        animateValue('totalEnquiries', 0, stats.totalEnquiries || 0, 1000);
-        animateValue('newEnquiries', 0, stats.newToday || 0, 1000);
-        animateValue('overdueEnquiries', 0, stats.overdue || 0, 1000);
-        animateValue('convertedEnquiries', 0, stats.converted || 0, 1000);
+        animateValue('totalEnquiries', 0, totalEnquiries, 1000);
+        animateValue('newEnquiries', 0, newToday, 1000);
+        animateValue('overdueEnquiries', 0, overdue, 1000);
+        animateValue('convertedEnquiries', 0, converted, 1000);
     } catch (error) {
         console.error('Failed to load dashboard stats:', error);
+        // Set defaults on error
+        animateValue('totalEnquiries', 0, 0, 1000);
+        animateValue('newEnquiries', 0, 0, 1000);
+        animateValue('overdueEnquiries', 0, 0, 1000);
+        animateValue('convertedEnquiries', 0, 0, 1000);
     }
 }
 
@@ -29,14 +51,14 @@ async function loadRecentEnquiries() {
     try {
         const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { limit: 5 });
         const enquiries = response.data || [];
-        
+
         const table = document.getElementById('recentEnquiriesTable');
-        
+
         if (!enquiries.length) {
             table.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-gray-500">No recent enquiries</td></tr>';
             return;
         }
-        
+
         table.innerHTML = enquiries.map(enquiry => `
             <tr class="hover:bg-gray-50 transition-colors">
                 <td class="px-6 py-4">

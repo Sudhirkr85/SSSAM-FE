@@ -108,12 +108,9 @@ const API_ENDPOINTS = {
     
     // Reports
     REPORTS: {
-        DASHBOARD: '/reports/dashboard',
-        ENQUIRIES: '/reports/enquiries',
         ADMISSIONS: '/reports/admissions',
-        REVENUE: '/reports/revenue',
-        COUNSELOR: '/reports/counselor',
-        COURSE: '/reports/course',
+        FEES: '/reports/fees',
+        INSTALLMENTS: '/reports/installments/alerts',
     },
     
     // Bulk Upload
@@ -203,6 +200,32 @@ async function uploadFile(url, file, fieldName = 'file') {
     }
 }
 
+// Static courses list (used when API is unavailable)
+const STATIC_COURSES = [
+    { _id: 'bcc', name: 'Basic Computer Course (BCC)' },
+    { _id: 'dit', name: 'Diploma in Information Technology (DIT)' },
+    { _id: 'adca', name: 'Advanced Diploma in Computer Applications (ADCA)' },
+    { _id: 'ms-office', name: 'Computer Fundamentals & MS Office' },
+    { _id: 'tally-gst', name: 'Tally with GST' },
+    { _id: 'web-design', name: 'Web Designing (HTML, CSS, JavaScript)' },
+    { _id: 'fullstack', name: 'Full Stack Web Development' },
+    { _id: 'python', name: 'Python Programming' },
+    { _id: 'java', name: 'Java Programming' },
+    { _id: 'c-cpp', name: 'C & C++ Programming' },
+    { _id: 'data-science', name: 'Data Science & Analytics' },
+    { _id: 'ai-ml', name: 'Artificial Intelligence & Machine Learning' },
+    { _id: 'cyber-security', name: 'Cyber Security & Ethical Hacking' },
+    { _id: 'cloud', name: 'Cloud Computing (AWS/Azure)' },
+    { _id: 'networking', name: 'Networking & Hardware (CCNA)' },
+    { _id: 'database', name: 'Database Management (SQL)' },
+    { _id: 'mobile-dev', name: 'Mobile App Development (Android/iOS)' },
+    { _id: 'graphic-design', name: 'Graphic Designing (Photoshop, CorelDRAW)' },
+    { _id: 'ui-ux', name: 'UI/UX Design' },
+    { _id: 'digital-marketing', name: 'Digital Marketing' },
+    { _id: 'video-editing', name: 'Video Editing & Animation' },
+    { _id: 'devops', name: 'DevOps Engineering' }
+];
+
 /**
  * Export API utilities
  */
@@ -214,3 +237,4 @@ window.apiPut = put;
 window.apiPatch = patch;
 window.apiDelete = del;
 window.apiUploadFile = uploadFile;
+window.STATIC_COURSES = STATIC_COURSES;
