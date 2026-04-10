@@ -269,9 +269,16 @@ function renderEnquiries() {
                     }
                 </td>
                 <td class="px-6 py-4">
-                    <a href="enquiry-detail.html?id=${enquiry._id || enquiry.id}" class="text-blue-600 hover:text-blue-800 font-medium">
-                        View Details
-                    </a>
+                    <div class="flex items-center space-x-3">
+                        <a href="enquiry-detail.html?id=${enquiry._id || enquiry.id}" class="text-blue-600 hover:text-blue-800 font-medium">
+                            View Details
+                        </a>
+                        ${isAdmin() ? `
+                            <button onclick="deleteEnquiry('${enquiry._id || enquiry.id}')" class="text-red-600 hover:text-red-800 font-medium">
+                                Delete
+                            </button>
+                        ` : ''}
+                    </div>
                 </td>
             </tr>
         `;
@@ -627,3 +634,22 @@ function setupDetailPageListeners(enquiryId) {
 // Export for global access
 window.goToPage = goToPage;
 window.loadEnquiryDetail = loadEnquiryDetail;
+
+// Delete enquiry (admin only)
+async function deleteEnquiry(id) {
+    if (!isAdmin()) {
+        showToast('error', 'Error', 'Only admin can delete enquiries');
+        return;
+    }
+    if (!confirm('Are you sure you want to delete this enquiry? This action cannot be undone.')) {
+        return;
+    }
+    try {
+        await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(id));
+        showToast('success', 'Success', 'Enquiry deleted successfully');
+        loadEnquiries();
+    } catch (error) {
+        showToast('error', 'Error', 'Failed to delete enquiry');
+    }
+}
+window.deleteEnquiry = deleteEnquiry;
