@@ -101,7 +101,25 @@ function setupEventListeners() {
             loadEnquiries();
         });
     }
-    
+
+    // Course dropdown - show/hide Other text input
+    const enquiryCourse = document.getElementById('enquiryCourse');
+    if (enquiryCourse) {
+        enquiryCourse.addEventListener('change', () => {
+            const otherInput = document.getElementById('enquiryCourseOther');
+            if (otherInput) {
+                if (enquiryCourse.value === 'other') {
+                    otherInput.classList.remove('hidden');
+                    otherInput.required = true;
+                } else {
+                    otherInput.classList.add('hidden');
+                    otherInput.required = false;
+                    otherInput.value = '';
+                }
+            }
+        });
+    }
+
     // Pagination
     if (prevPageBtn) {
         prevPageBtn.addEventListener('click', () => {
@@ -193,19 +211,6 @@ function populateCourseDropdowns(courseList) {
             enquiryCourse.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
         });
         enquiryCourse.innerHTML += '<option value="other">Other</option>';
-
-        // Show/hide custom course input
-        enquiryCourse.addEventListener('change', () => {
-            const otherInput = document.getElementById('enquiryCourseOther');
-            if (enquiryCourse.value === 'other') {
-                otherInput.classList.remove('hidden');
-                otherInput.required = true;
-            } else {
-                otherInput.classList.add('hidden');
-                otherInput.required = false;
-                otherInput.value = '';
-            }
-        });
     }
 
     if (courseFilter) {
