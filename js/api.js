@@ -117,12 +117,7 @@ const API_ENDPOINTS = {
     BULK: {
         UPLOAD: '/bulk-upload/enquiries',
     },
-    
-    // Courses (for dropdowns)
-    COURSES: {
-        LIST: '/courses',
-    },
-    
+
     // Counselors
     COUNSELORS: {
         LIST: '/counselors',

@@ -173,22 +173,13 @@ function setupEventListeners() {
     });
 }
 
-async function loadCourses() {
-    try {
-        const courses = await apiGet(API_ENDPOINTS.COURSES.LIST);
-        populateCourseDropdowns(courses);
-    } catch (error) {
-        console.error('Failed to load courses from API, using static courses:', error);
-        populateCourseDropdowns(null); // Will use STATIC_COURSES
-    }
+function loadCourses() {
+    populateCourseDropdowns(STATIC_COURSES);
 }
 
-function populateCourseDropdowns(courses) {
+function populateCourseDropdowns(courseList) {
     const enquiryCourse = document.getElementById('enquiryCourse');
     const courseFilter = document.getElementById('courseFilter');
-
-    // Use API courses if available, otherwise use static courses
-    const courseList = (courses && courses.length > 0) ? courses : STATIC_COURSES;
 
     if (enquiryCourse) {
         enquiryCourse.innerHTML = '<option value="">Select Course</option>';

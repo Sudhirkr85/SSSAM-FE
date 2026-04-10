@@ -77,14 +77,8 @@ function setupEventListeners() {
     // Any additional event listeners
 }
 
-async function loadCourses() {
-    try {
-        const courses = await apiGet(API_ENDPOINTS.COURSES.LIST);
-        populateAdmissionCourseDropdown(courses);
-    } catch (error) {
-        console.error('Failed to load courses from API, using static courses:', error);
-        populateAdmissionCourseDropdown(STATIC_COURSES);
-    }
+function loadCourses() {
+    populateAdmissionCourseDropdown(STATIC_COURSES);
 }
 
 function populateAdmissionCourseDropdown(courses) {
