@@ -218,9 +218,11 @@ async function loadAdmissionsForPayment() {
 function handleAdmissionChange(e) {
     const admissionId = e.target.value;
     const summary = document.getElementById('paymentSummary');
+    const installmentSection = document.getElementById('installmentSection');
     
     if (!admissionId) {
         summary.classList.add('hidden');
+        installmentSection.classList.add('hidden');
         return;
     }
     
@@ -229,9 +231,25 @@ function handleAdmissionChange(e) {
     if (selectedAdmission) {
         const pending = selectedAdmission.pendingAmount || ((selectedAdmission.totalFees || 0) - (selectedAdmission.paidAmount || 0));
         document.getElementById('summaryTotal').textContent = formatCurrency(selectedAdmission.totalFees);
-        document.getElementById('summaryPaid').textContent = formatCurrency(selectedAdmission.paidAmount);
+        document.getElementById('summaryPaid').textContent = formatCurrency(selectedAdmission.paidAmount || 0);
         document.getElementById('summaryPending').textContent = formatCurrency(pending);
+        
+        // Payment type badge
+        const paymentType = selectedAdmission.paymentType || 'ONE_TIME';
+        const badgeHtml = paymentType === 'ONE_TIME' 
+            ? '<span class="inline-flex items-center px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-medium">One Time Payment</span>'
+            : '<span class="inline-flex items-center px-2 py-1 bg-purple-100 text-purple-700 rounded text-xs font-medium">Installment Plan</span>';
+        document.getElementById('paymentTypeBadge').innerHTML = badgeHtml;
+        
         summary.classList.remove('hidden');
+        
+        // Handle installment display
+        if (paymentType === 'INSTALLMENT' && selectedAdmission.installments && selectedAdmission.installments.length > 0) {
+            renderInstallmentList(selectedAdmission.installments);
+            installmentSection.classList.remove('hidden');
+        } else {
+            installmentSection.classList.add('hidden');
+        }
         
         // Set max amount for validation
         const amountInput = document.getElementById('paymentAmount');
@@ -241,10 +259,99 @@ function handleAdmissionChange(e) {
     }
 }
 
+function renderInstallmentList(installments) {
+    const listContainer = document.getElementById('installmentList');
+    const nextDueAlert = document.getElementById('nextDueAlert');
+    const overdueAlert = document.getElementById('overdueAlert');
+    const nextDueDetails = document.getElementById('nextDueDetails');
+    const overdueDetails = document.getElementById('overdueDetails');
+    
+    const now = new Date();
+    const pendingInstallments = installments.filter(inst => inst.status !== 'Paid');
+    const overdueInstallments = pendingInstallments.filter(inst => new Date(inst.dueDate) < now);
+    
+    // Sort by due date
+    const sortedPending = pendingInstallments.sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
+    const nextDue = sortedPending[0];
+    
+    // Show alerts
+    if (nextDue) {
+        nextDueAlert.classList.remove('hidden');
+        nextDueDetails.textContent = `Installment of ${formatCurrency(nextDue.amount)} due on ${formatDate(nextDue.dueDate)}`;
+    } else {
+        nextDueAlert.classList.add('hidden');
+    }
+    
+    if (overdueInstallments.length > 0) {
+        overdueAlert.classList.remove('hidden');
+        const totalOverdue = overdueInstallments.reduce((sum, inst) => sum + (inst.amount - (inst.paidAmount || 0)), 0);
+        overdueDetails.textContent = `${overdueInstallments.length} installment(s) overdue. Total overdue: ${formatCurrency(totalOverdue)}`;
+    } else {
+        overdueAlert.classList.add('hidden');
+    }
+    
+    // Render all installments
+    listContainer.innerHTML = installments.map((inst, index) => {
+        const isPaid = inst.status === 'Paid';
+        const isOverdue = !isPaid && new Date(inst.dueDate) < now;
+        const isNextDue = nextDue && inst._id === nextDue._id;
+        const remainingAmount = inst.amount - (inst.paidAmount || 0);
+        
+        let statusClass = 'bg-gray-50 border-gray-200';
+        let statusBadge = '';
+        
+        if (isPaid) {
+            statusClass = 'bg-green-50 border-green-200';
+            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 bg-green-100 text-green-700 rounded text-xs">Paid</span>';
+        } else if (isOverdue) {
+            statusClass = 'bg-red-50 border-red-200';
+            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 bg-red-100 text-red-700 rounded text-xs">Overdue</span>';
+        } else if (isNextDue) {
+            statusClass = 'bg-yellow-50 border-yellow-200';
+            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded text-xs">Next Due</span>';
+        } else {
+            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 bg-gray-100 text-gray-600 rounded text-xs">Pending</span>';
+        }
+        
+        return `
+            <div class="flex items-center justify-between p-3 border rounded-lg ${statusClass} ${!isPaid ? 'cursor-pointer hover:bg-opacity-80' : ''}"
+                 ${!isPaid ? `onclick="selectInstallment(${index}, ${remainingAmount})"` : ''}>
+                <div class="flex items-center space-x-3">
+                    <input type="radio" name="selectedInstallment" value="${index}" ${isPaid ? 'disabled' : ''} 
+                        class="w-4 h-4 text-blue-600 focus:ring-blue-500 ${isPaid ? 'opacity-50' : ''}">
+                    <div>
+                        <p class="text-sm font-medium">Installment #${index + 1}</p>
+                        <p class="text-xs text-gray-500">Due: ${formatDate(inst.dueDate)}</p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-medium">${formatCurrency(inst.amount)}</p>
+                    ${inst.paidAmount > 0 ? `<p class="text-xs text-green-600">Paid: ${formatCurrency(inst.paidAmount)}</p>` : ''}
+                    <div class="mt-1">${statusBadge}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function selectInstallment(index, amount) {
+    const radio = document.querySelector(`input[name="selectedInstallment"][value="${index}"]`);
+    if (radio) {
+        radio.checked = true;
+    }
+    
+    // Auto-fill payment amount with the installment amount
+    const amountInput = document.getElementById('paymentAmount');
+    if (amountInput && amount > 0) {
+        amountInput.value = amount;
+    }
+}
+
 function openPaymentModal() {
     const modal = document.getElementById('paymentModal');
     document.getElementById('paymentForm').reset();
     document.getElementById('paymentSummary').classList.add('hidden');
+    document.getElementById('installmentSection').classList.add('hidden');
     document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
     selectedAdmission = null;
     modal.classList.remove('hidden');
@@ -270,6 +377,12 @@ async function handleAddPayment(e) {
             nextInstallmentDate: document.getElementById('nextInstallmentDate').value || null,
             notes: document.getElementById('paymentNotes').value,
         };
+        
+        // Include installment index if an installment is selected
+        const selectedInstallment = document.querySelector('input[name="selectedInstallment"]:checked');
+        if (selectedInstallment && selectedAdmission?.paymentType === 'INSTALLMENT') {
+            data.installmentIndex = parseInt(selectedInstallment.value);
+        }
         
         await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, data);
         
@@ -376,3 +489,5 @@ function goToPaymentPage(page) {
 window.goToPaymentPage = goToPaymentPage;
 window.viewReceipt = viewReceipt;
 window.printReceipt = printReceipt;
+window.renderInstallmentList = renderInstallmentList;
+window.selectInstallment = selectInstallment;

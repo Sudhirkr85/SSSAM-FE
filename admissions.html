@@ -200,10 +200,10 @@
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Student</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Course</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Admission Date</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Payment Type</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Fees</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Paid</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Pending</th>
-                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
                                     <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                                 </tr>
                             </thead>
@@ -237,8 +237,8 @@
 
     <!-- Admission Detail Modal -->
     <div id="admissionModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center overflow-y-auto">
-        <div class="bg-white rounded-xl shadow-xl w-full max-w-4xl mx-4 my-8 transform transition-all">
-            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-5xl mx-4 my-8 transform transition-all max-h-[90vh] overflow-y-auto">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between sticky top-0 bg-white z-10">
                 <h3 class="text-lg font-semibold text-gray-800">Admission Details</h3>
                 <button id="closeAdmissionModal" class="text-gray-400 hover:text-gray-600">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -249,6 +249,95 @@
             <div id="admissionModalContent" class="p-6">
                 <!-- Content will be loaded dynamically -->
             </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Installment Modal -->
+    <div id="installmentModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 id="installmentModalTitle" class="text-lg font-semibold text-gray-800">Add Installment</h3>
+                <button id="closeInstallmentModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="installmentForm" class="p-6 space-y-4">
+                <input type="hidden" id="installmentIndex" value="">
+                <div>
+                    <label for="installmentAmount" class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
+                    <input type="number" id="installmentAmount" required min="1" step="0.01"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Enter installment amount">
+                </div>
+                <div>
+                    <label for="installmentDueDate" class="block text-sm font-medium text-gray-700 mb-1">Due Date *</label>
+                    <input type="date" id="installmentDueDate" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                </div>
+                <div id="installmentValidationError" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded-lg"></div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelInstallment" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="saveInstallment" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        Save Installment
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Pay Full Amount Modal -->
+    <div id="payFullModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 transform transition-all">
+            <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
+                <h3 class="text-lg font-semibold text-gray-800">Pay Full Amount</h3>
+                <button id="closePayFullModal" class="text-gray-400 hover:text-gray-600">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <form id="payFullForm" class="p-6 space-y-4">
+                <div class="bg-gray-50 rounded-lg p-4 space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-600">Total Fees:</span>
+                        <span id="payFullTotal" class="font-medium"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-sm text-gray-600">Pending Amount:</span>
+                        <span id="payFullPending" class="font-medium text-red-600"></span>
+                    </div>
+                </div>
+                <div>
+                    <label for="payFullPaymentMode" class="block text-sm font-medium text-gray-700 mb-1">Payment Mode *</label>
+                    <select id="payFullPaymentMode" required
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none">
+                        <option value="">Select Mode</option>
+                        <option value="Cash">Cash</option>
+                        <option value="Card">Card</option>
+                        <option value="UPI">UPI</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cheque">Cheque</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="payFullNotes" class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                    <textarea id="payFullNotes" rows="2"
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                        placeholder="Add notes..."></textarea>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" id="cancelPayFull" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
+                        Cancel
+                    </button>
+                    <button type="submit" id="confirmPayFull" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors">
+                        Confirm Payment
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

@@ -94,6 +94,7 @@ const API_ENDPOINTS = {
         UPDATE_FEES: (id) => `/admissions/${id}/fees`,
         DELETE: (id) => `/admissions/${id}`,
         LOCK: (id) => `/admissions/${id}/lock`,
+        PAYMENT_PLAN: (id) => `/admissions/${id}/payment-plan`,
     },
     
     // Payments

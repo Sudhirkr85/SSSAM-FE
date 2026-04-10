@@ -257,6 +257,39 @@
                         <span class="text-sm text-gray-600">Pending:</span>
                         <span id="summaryPending" class="font-medium text-red-600">₹0</span>
                     </div>
+                    <div id="paymentTypeBadge" class="pt-2"></div>
+                </div>
+
+                <!-- Installment Selection (shown for installment plans) -->
+                <div id="installmentSection" class="hidden space-y-3">
+                    <div class="border-t pt-3">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Installment</label>
+                        <div id="installmentList" class="space-y-2 max-h-48 overflow-y-auto">
+                            <!-- Installments rendered here -->
+                        </div>
+                        <div id="nextDueAlert" class="hidden mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-yellow-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-yellow-800">Next Due Installment</p>
+                                    <p id="nextDueDetails" class="text-sm text-yellow-700"></p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="overdueAlert" class="hidden mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                            <div class="flex items-start">
+                                <svg class="w-5 h-5 text-red-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
+                                </svg>
+                                <div>
+                                    <p class="text-sm font-medium text-red-800">Overdue Installments</p>
+                                    <p id="overdueDetails" class="text-sm text-red-700"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div>
                     <label for="paymentAmount" class="block text-sm font-medium text-gray-700 mb-1">Amount *</label>
