@@ -312,6 +312,9 @@ async function viewAdmission(id) {
 }
 
 async function lockAdmission(id) {
+    if (!confirm('Are you sure you want to lock this admission? Locked admissions cannot be edited by counselors.')) {
+        return;
+    }
     try {
         await apiPost(API_ENDPOINTS.ADMISSIONS.LOCK(id));
         showToast('success', 'Success', 'Admission locked successfully');
@@ -323,6 +326,9 @@ async function lockAdmission(id) {
 }
 
 async function unlockAdmission(id) {
+    if (!confirm('Are you sure you want to unlock this admission?')) {
+        return;
+    }
     try {
         await apiPost(API_ENDPOINTS.ADMISSIONS.UNLOCK(id));
         showToast('success', 'Success', 'Admission unlocked successfully');

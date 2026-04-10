@@ -545,8 +545,11 @@ function setupDetailPageListeners(enquiryId) {
     document.querySelectorAll('.status-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
             if (!isAssignedToCurrentUser && !isAdmin()) return;
-            
+
             const status = btn.dataset.status;
+            if (!confirm(`Are you sure you want to change status to "${status}"?`)) {
+                return;
+            }
             try {
                 await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status });
                 showToast('success', 'Success', `Status updated to ${status}`);
