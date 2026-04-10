@@ -649,6 +649,13 @@ function setupDetailPageListeners(enquiryId) {
         if (e.target === e.currentTarget) closePaymentSelectionModal();
     });
     
+    // Total fees input listener to re-validate installments
+    document.getElementById('modalTotalFeesInput')?.addEventListener('input', () => {
+        if (modalSelectedPaymentType === 'INSTALLMENT') {
+            validateModalInstallments();
+        }
+    });
+    
     // Add Installment Sub-Modal Listeners
     document.getElementById('closeAddInstallmentSubModal')?.addEventListener('click', closeAddInstallmentSubModal);
     document.getElementById('addInstallmentSubModal')?.addEventListener('click', (e) => {
@@ -747,8 +754,8 @@ function openPaymentSelectionModal(enquiryId, enquiryData) {
     document.getElementById('modalValidationError')?.classList.add('hidden');
     document.getElementById('createAdmissionBtn').disabled = true;
     
-    // Display total fees
-    document.getElementById('modalTotalFees').textContent = formatCurrency(modalTotalFees);
+    // Set total fees input with default from course
+    document.getElementById('modalTotalFeesInput').value = modalTotalFees || '';
     
     // Show modal
     const modal = document.getElementById('paymentSelectionModal');
@@ -852,7 +859,8 @@ function validateModalInstallments() {
     }
     
     const total = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-    const difference = modalTotalFees - total;
+    const inputTotalFees = parseInt(document.getElementById('modalTotalFeesInput')?.value) || 0;
+    const difference = inputTotalFees - total;
     
     if (Math.abs(difference) < 0.01) {
         createBtn.disabled = false;
@@ -910,7 +918,8 @@ function handleAddModalInstallment(e) {
     
     // Check if total would exceed fees
     const currentTotal = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-    if (currentTotal + amount > modalTotalFees * 1.5) {
+    const inputTotalFees = parseInt(document.getElementById('modalTotalFeesInput')?.value) || 0;
+    if (currentTotal + amount > inputTotalFees * 1.5) {
         errorDiv.textContent = 'Installment amounts seem too high. Please verify the total.';
         errorDiv?.classList.remove('hidden');
         return;
@@ -940,8 +949,23 @@ async function submitAdmissionWithPayment() {
     createBtn.innerHTML = '<span class="spinner"></span> Creating...';
     
     try {
+        const totalFeesInput = document.getElementById('modalTotalFeesInput');
+        const totalFees = parseInt(totalFeesInput?.value) || 0;
+        
+        if (!totalFees || totalFees <= 0) {
+            const errorDiv = document.getElementById('modalValidationError');
+            if (errorDiv) {
+                errorDiv.querySelector('p').textContent = 'Total fees must be greater than 0';
+                errorDiv.classList.remove('hidden');
+            }
+            createBtn.disabled = false;
+            createBtn.innerHTML = '<span>Create Admission</span>';
+            return;
+        }
+        
         const payload = {
             paymentType: modalSelectedPaymentType,
+            totalFees: totalFees,
             installments: modalSelectedPaymentType === 'INSTALLMENT' ? modalInstallments : []
         };
         
