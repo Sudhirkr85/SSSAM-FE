@@ -417,8 +417,8 @@ async function loadEnquiryDetail(id) {
             (enquiry.assignedTo._id || enquiry.assignedTo) === (currentUser._id || currentUser.id);
 
         renderEnquiryDetail(enquiry);
-        loadTimeline(id);
-        loadNotes(id);
+        renderTimeline(enquiry.timeline);
+        renderNotes(enquiry.notes);
         checkPermissions();
     } catch (error) {
         showToast('error', 'Error', 'Failed to load enquiry details');
@@ -492,52 +492,57 @@ function checkPermissions() {
     }
 }
 
-async function loadTimeline(id) {
-    try {
-        const timeline = await apiGet(API_ENDPOINTS.ENQUIRIES.TIMELINE(id));
-        const container = document.getElementById('timelineList');
-        
-        if (!timeline || !timeline.length) {
-            container.innerHTML = '<p class="text-gray-500 text-center">No activity yet</p>';
-            return;
-        }
-        
-        container.innerHTML = timeline.map(item => `
-            <div class="timeline-item">
-                <div class="timeline-dot"></div>
-                <div class="timeline-content">
-                    <p class="font-medium text-gray-800">${item.action}</p>
-                    <p class="text-sm text-gray-600">${item.description || ''}</p>
-                    <p class="text-xs text-gray-400 mt-1">${formatRelativeTime(item.timestamp)} by ${item.user?.name || 'System'}</p>
-                </div>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Failed to load timeline:', error);
+function renderTimeline(timeline) {
+    const container = document.getElementById('timelineList');
+
+    if (!timeline || !timeline.length) {
+        container.innerHTML = '<p class="text-gray-500 text-center">No activity yet</p>';
+        return;
     }
+
+    container.innerHTML = timeline.map(item => `
+        <div class="timeline-item">
+            <div class="timeline-dot"></div>
+            <div class="timeline-content">
+                <p class="font-medium text-gray-800">${item.message}</p>
+                ${item.metadata?.notePreview ? `<p class="text-sm text-gray-600">${item.metadata.notePreview}</p>` : ''}
+                ${item.metadata?.previousStatus ? `<p class="text-sm text-gray-600">${item.metadata.previousStatus} → ${item.metadata.newStatus}</p>` : ''}
+                <p class="text-xs text-gray-400 mt-1">${formatRelativeTime(item.timestamp)} by ${item.userName || 'System'}</p>
+            </div>
+        </div>
+    `).join('');
 }
 
-async function loadNotes(id) {
-    try {
-        const response = await apiGet(API_ENDPOINTS.ENQUIRIES.DETAIL(id));
-        const enquiry = response.data?.enquiry || response.data;
-        const notes = enquiry.notes || [];
-        const container = document.getElementById('notesList');
-        
-        if (!notes.length) {
-            container.innerHTML = '<p class="text-gray-500 text-center">No notes yet</p>';
-            return;
-        }
-        
-        container.innerHTML = notes.map(note => `
-            <div class="bg-gray-50 rounded-lg p-3">
-                <p class="text-gray-700">${note.text}</p>
-                <p class="text-xs text-gray-400 mt-1">${formatRelativeTime(note.createdAt)} by ${note.createdBy?.name || 'Unknown'}</p>
-            </div>
-        `).join('');
-    } catch (error) {
-        console.error('Failed to load notes:', error);
+function renderNotes(notesString) {
+    const container = document.getElementById('notesList');
+
+    if (!notesString) {
+        container.innerHTML = '<p class="text-gray-500 text-center">No notes yet</p>';
+        return;
     }
+
+    // Parse notes string - split by newlines
+    const notes = notesString.split('\n').filter(n => n.trim());
+
+    container.innerHTML = notes.map(note => {
+        // Check if note has format: [timestamp] User: message
+        const match = note.match(/^\[(.+?)\]\s*(.+?):\s*(.+)$/);
+        if (match) {
+            const [, timestamp, user, message] = match;
+            return `
+                <div class="bg-gray-50 rounded-lg p-3">
+                    <p class="text-gray-700">${message}</p>
+                    <p class="text-xs text-gray-400 mt-1">${timestamp} by ${user}</p>
+                </div>
+            `;
+        }
+        // Plain note (initial note)
+        return `
+            <div class="bg-gray-50 rounded-lg p-3">
+                <p class="text-gray-700">${note}</p>
+            </div>
+        `;
+    }).join('');
 }
 
 function setupDetailPageListeners(enquiryId) {
@@ -574,8 +579,7 @@ function setupDetailPageListeners(enquiryId) {
             await apiPost(API_ENDPOINTS.ENQUIRIES.ADD_NOTE(enquiryId), { text: noteText });
             document.getElementById('newNote').value = '';
             showToast('success', 'Success', 'Note added successfully');
-            loadNotes(enquiryId);
-            loadTimeline(enquiryId);
+            loadEnquiryDetail(enquiryId);
         } catch (error) {
             showToast('error', 'Error', 'Failed to add note');
         }

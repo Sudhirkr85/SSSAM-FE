@@ -81,7 +81,6 @@ const API_ENDPOINTS = {
         UPDATE_STATUS: (id) => `/enquiries/${id}/status`,
         UPDATE_FOLLOWUP: (id) => `/enquiries/${id}/followup`,
         ADD_NOTE: (id) => `/enquiries/${id}/notes`,
-        TIMELINE: (id) => `/enquiries/${id}/timeline`,
         ASSIGN: (id) => `/enquiries/${id}/assign`,
     },
     
