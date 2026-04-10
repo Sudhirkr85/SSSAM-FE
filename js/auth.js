@@ -43,17 +43,36 @@ function redirectIfAuthenticated() {
 async function login(email, password) {
     try {
         const response = await apiPost(API_ENDPOINTS.AUTH.LOGIN, { email, password });
-        
-        if (response.token) {
-            localStorage.setItem('token', response.token);
-            localStorage.setItem('user', JSON.stringify(response.user));
-            return { success: true, user: response.user };
+        console.log('Login response:', response);
+
+        // Extract token and user from nested data structure
+        // Response format: { success: true, message: "...", data: { user: {...}, token: "..." } }
+        let token = null;
+        let user = null;
+
+        if (response.data && response.data.token) {
+            token = response.data.token;
+            user = response.data.user;
+        } else if (response.token) {
+            token = response.token;
+            user = response.user;
         }
-        
-        return { success: false, error: 'Invalid response from server' };
+
+        console.log('Extracted token:', token ? 'Found' : 'Not found');
+        console.log('Extracted user:', user);
+
+        if (token) {
+            localStorage.setItem('token', token);
+            localStorage.setItem('user', JSON.stringify(user || {}));
+            console.log('Token saved to localStorage');
+            return { success: true, user: user };
+        }
+
+        return { success: false, error: 'Invalid response from server. Token not found.' };
     } catch (error) {
+        console.error('Login error:', error);
         let errorMessage = 'Login failed. Please try again.';
-        
+
         if (error.response) {
             if (error.response.status === 401) {
                 errorMessage = 'Invalid email or password.';
@@ -61,7 +80,7 @@ async function login(email, password) {
                 errorMessage = error.response.data.message;
             }
         }
-        
+
         return { success: false, error: errorMessage };
     }
 }
@@ -118,27 +137,35 @@ document.addEventListener('DOMContentLoaded', () => {
         if (loginForm) {
             loginForm.addEventListener('submit', async (e) => {
                 e.preventDefault();
-                
+
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 const loginBtn = document.getElementById('loginBtn');
                 const btnText = document.getElementById('btnText');
                 const btnSpinner = document.getElementById('btnSpinner');
-                
+
                 // Show loading state
                 loginBtn.disabled = true;
                 btnText.textContent = 'Signing in...';
                 btnSpinner.classList.remove('hidden');
-                
-                const result = await login(email, password);
-                
-                if (result.success) {
-                    showToast('success', 'Welcome!', 'Login successful. Redirecting...');
-                    setTimeout(() => {
-                        window.location.href = 'dashboard.html';
-                    }, 500);
-                } else {
-                    showToast('error', 'Login Failed', result.error);
+
+                try {
+                    const result = await login(email, password);
+
+                    if (result.success) {
+                        showToast('success', 'Welcome!', 'Login successful. Redirecting...');
+                        setTimeout(() => {
+                            window.location.href = 'dashboard.html';
+                        }, 500);
+                    } else {
+                        showToast('error', 'Login Failed', result.error);
+                        loginBtn.disabled = false;
+                        btnText.textContent = 'Sign In';
+                        btnSpinner.classList.add('hidden');
+                    }
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showToast('error', 'Login Failed', 'An unexpected error occurred. Please try again.');
                     loginBtn.disabled = false;
                     btnText.textContent = 'Sign In';
                     btnSpinner.classList.add('hidden');
