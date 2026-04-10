@@ -20,7 +20,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEventListeners();
     loadCourses();
     loadAdmissions();
-    loadInstallmentAlerts();
     loadStats();
 });
 
@@ -126,13 +125,17 @@ async function loadAdmissions() {
         
         const response = await apiGet(API_ENDPOINTS.ADMISSIONS.LIST, params);
         
-        admissionsData = response.data || [];
-        currentPage = response.currentPage || 1;
-        totalPages = response.totalPages || 1;
+        // API returns data as direct array, pagination at root level
+        admissionsData = Array.isArray(response.data) ? response.data : (response.data?.admissions || []);
+        const pagination = response.pagination || {};
+        
+        currentPage = pagination.page || 1;
+        totalPages = pagination.totalPages || 1;
         
         renderAdmissions();
-        updatePagination(response.total || 0);
+        updatePagination(pagination.totalCount || admissionsData.length);
     } catch (error) {
+        console.error('Error loading admissions:', error);
         document.getElementById('admissionsTable').innerHTML = 
             '<tr><td colspan="8" class="px-6 py-8 text-center text-red-500">Failed to load admissions.</td></tr>';
     }
@@ -147,16 +150,16 @@ function renderAdmissions() {
     }
     
     table.innerHTML = admissionsData.map(admission => {
-        const pending = (admission.totalFees || 0) - (admission.paidAmount || 0);
+        const pending = admission.pendingAmount || ((admission.totalFees || 0) - (admission.paidAmount || 0));
         const isLocked = admission.isLocked;
         
         return `
             <tr class="hover:bg-gray-50 transition-colors">
                 <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">${admission.student?.name || admission.enquiry?.name || '-'}</div>
-                    <div class="text-sm text-gray-500">${admission.student?.email || admission.enquiry?.email || ''}</div>
+                    <div class="font-medium text-gray-900">${admission.enquiryId?.name || '-'}</div>
+                    <div class="text-sm text-gray-500">${admission.enquiryId?.mobile || ''}</div>
                 </td>
-                <td class="px-6 py-4 text-gray-600">${admission.course?.name || '-'}</td>
+                <td class="px-6 py-4 text-gray-600">${admission.enquiryId?.course || '-'}</td>
                 <td class="px-6 py-4 text-gray-600">${formatDate(admission.admissionDate)}</td>
                 <td class="px-6 py-4 font-medium text-gray-800">${formatCurrency(admission.totalFees)}</td>
                 <td class="px-6 py-4 text-green-600">${formatCurrency(admission.paidAmount)}</td>
@@ -168,7 +171,7 @@ function renderAdmissions() {
                     }
                 </td>
                 <td class="px-6 py-4">
-                    <button onclick="viewAdmission('${admission._id || admission.id}')" class="text-blue-600 hover:text-blue-800 font-medium">
+                    <button onclick="viewAdmission('${admission._id}')" class="text-blue-600 hover:text-blue-800 font-medium">
                         View
                     </button>
                 </td>
@@ -200,62 +203,20 @@ function updatePagination(total) {
     document.getElementById('pageNumbers').innerHTML = html;
 }
 
-async function loadInstallmentAlerts() {
-    try {
-        const alerts = await apiGet('/installments/alerts');
-        
-        // Upcoming installments
-        const upcomingDiv = document.getElementById('upcomingInstallments');
-        if (alerts.upcoming && alerts.upcoming.length) {
-            upcomingDiv.innerHTML = alerts.upcoming.map(inst => `
-                <div class="flex items-center justify-between p-3 bg-yellow-50 rounded-lg">
-                    <div>
-                        <p class="font-medium text-gray-800">${inst.studentName}</p>
-                        <p class="text-sm text-gray-600">${inst.courseName}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-medium text-gray-800">${formatCurrency(inst.amount)}</p>
-                        <p class="text-xs text-yellow-600">Due: ${formatDate(inst.dueDate)}</p>
-                    </div>
-                </div>
-            `).join('');
-        }
-        
-        // Overdue installments
-        const overdueDiv = document.getElementById('overdueInstallments');
-        if (alerts.overdue && alerts.overdue.length) {
-            overdueDiv.innerHTML = alerts.overdue.map(inst => `
-                <div class="flex items-center justify-between p-3 bg-red-50 rounded-lg">
-                    <div>
-                        <p class="font-medium text-gray-800">${inst.studentName}</p>
-                        <p class="text-sm text-gray-600">${inst.courseName}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="font-medium text-red-600">${formatCurrency(inst.amount)}</p>
-                        <p class="text-xs text-red-600">Overdue: ${formatDate(inst.dueDate)}</p>
-                    </div>
-                </div>
-            `).join('');
-        }
-    } catch (error) {
-        console.error('Failed to load installment alerts:', error);
-    }
-}
-
 async function viewAdmission(id) {
     try {
-        const admission = await apiGet(API_ENDPOINTS.ADMISSIONS.DETAIL(id));
+        const response = await apiGet(API_ENDPOINTS.ADMISSIONS.DETAIL(id));
+        const admission = response.data?.admission || response.data;
         const modal = document.getElementById('admissionModal');
         const content = document.getElementById('admissionModalContent');
         
-        const pending = (admission.totalFees || 0) - (admission.paidAmount || 0);
+        const pending = (admission.pendingAmount || (admission.totalFees || 0) - (admission.paidAmount || 0));
         const isLocked = admission.isLocked;
         const user = getCurrentUser();
         const isAdmin = user?.role === 'admin';
         
         // Check permissions
         const canEdit = !isLocked || isAdmin;
-        const disabledAttr = canEdit ? '' : 'disabled';
         const overlayClass = canEdit ? '' : 'locked-overlay';
         
         content.innerHTML = `
@@ -263,10 +224,9 @@ async function viewAdmission(id) {
                 <div class="${overlayClass}">
                     <h4 class="font-semibold text-gray-700 mb-3">Student Information</h4>
                     <div class="space-y-2">
-                        <p><span class="text-gray-500">Name:</span> ${admission.student?.name || admission.enquiry?.name || '-'}</p>
-                        <p><span class="text-gray-500">Email:</span> ${admission.student?.email || admission.enquiry?.email || '-'}</p>
-                        <p><span class="text-gray-500">Mobile:</span> ${admission.student?.mobile || admission.enquiry?.mobile || '-'}</p>
-                        <p><span class="text-gray-500">Course:</span> ${admission.course?.name || '-'}</p>
+                        <p><span class="text-gray-500">Name:</span> ${admission.enquiryId?.name || '-'}</p>
+                        <p><span class="text-gray-500">Mobile:</span> ${admission.enquiryId?.mobile || '-'}</p>
+                        <p><span class="text-gray-500">Course:</span> ${admission.enquiryId?.course || '-'}</p>
                     </div>
                 </div>
                 
@@ -291,16 +251,11 @@ async function viewAdmission(id) {
             
             ${!canEdit ? '<p class="text-red-600 text-sm mt-4 text-center">🔒 This admission is locked. Contact admin for changes.</p>' : ''}
             
-            ${isAdmin ? `
+            ${isAdmin && !isLocked ? `
                 <div class="mt-6 pt-4 border-t flex justify-end space-x-3">
-                    ${isLocked ? 
-                        `<button onclick="unlockAdmission('${id}')" class="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg">
-                            Unlock Admission
-                        </button>` :
-                        `<button onclick="lockAdmission('${id}')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
-                            Lock Admission
-                        </button>`
-                    }
+                    <button onclick="lockAdmission('${id}')" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg">
+                        Lock Admission
+                    </button>
                 </div>
             ` : ''}
         `;
@@ -316,26 +271,12 @@ async function lockAdmission(id) {
         return;
     }
     try {
-        await apiPost(API_ENDPOINTS.ADMISSIONS.LOCK(id));
+        await apiPut(API_ENDPOINTS.ADMISSIONS.LOCK(id));
         showToast('success', 'Success', 'Admission locked successfully');
         document.getElementById('admissionModal').classList.add('hidden');
         loadAdmissions();
     } catch (error) {
         showToast('error', 'Error', 'Failed to lock admission');
-    }
-}
-
-async function unlockAdmission(id) {
-    if (!confirm('Are you sure you want to unlock this admission?')) {
-        return;
-    }
-    try {
-        await apiPost(API_ENDPOINTS.ADMISSIONS.UNLOCK(id));
-        showToast('success', 'Success', 'Admission unlocked successfully');
-        document.getElementById('admissionModal').classList.add('hidden');
-        loadAdmissions();
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to unlock admission');
     }
 }
 
@@ -347,5 +288,4 @@ function goToAdmissionPage(page) {
 // Exports
 window.viewAdmission = viewAdmission;
 window.lockAdmission = lockAdmission;
-window.unlockAdmission = unlockAdmission;
 window.goToAdmissionPage = goToAdmissionPage;

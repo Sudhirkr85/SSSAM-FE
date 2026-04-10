@@ -107,12 +107,15 @@ async function loadPayments(search = '', dateRange = '') {
         
         const response = await apiGet(API_ENDPOINTS.PAYMENTS.LIST, params);
         
-        paymentsData = response.data || [];
-        currentPage = response.currentPage || 1;
-        totalPages = response.totalPages || 1;
+        // API returns data as direct array, pagination at root level
+        paymentsData = Array.isArray(response.data) ? response.data : (response.data?.payments || []);
+        const pagination = response.pagination || {};
+        
+        currentPage = pagination.page || 1;
+        totalPages = pagination.totalPages || 1;
         
         renderPayments();
-        updatePagination(response.total || 0);
+        updatePagination(pagination.totalCount || paymentsData.length);
     } catch (error) {
         document.getElementById('paymentsTable').innerHTML = 
             '<tr><td colspan="7" class="px-6 py-8 text-center text-red-500">Failed to load payments.</td></tr>';
@@ -127,28 +130,34 @@ function renderPayments() {
         return;
     }
     
-    table.innerHTML = paymentsData.map(payment => `
+    table.innerHTML = paymentsData.map(payment => {
+        const admission = payment.admissionId || {};
+        const enquiry = admission.enquiryId || {};
+        
+        return `
         <tr class="hover:bg-gray-50 transition-colors">
-            <td class="px-6 py-4 font-medium text-gray-900">${payment.receiptNumber || '-'}</td>
+            <td class="px-6 py-4 font-medium text-gray-900">${payment._id?.slice(-6).toUpperCase() || '-'}</td>
             <td class="px-6 py-4">
-                <div class="font-medium text-gray-800">${payment.student?.name || payment.admission?.student?.name || '-'}</div>
+                <div class="font-medium text-gray-800">${enquiry.name || '-'}</div>
+                <div class="text-xs text-gray-500">${enquiry.mobile || ''}</div>
             </td>
-            <td class="px-6 py-4 text-gray-600">${payment.admission?.course?.name || '-'}</td>
+            <td class="px-6 py-4 text-gray-600">${enquiry.course || '-'}</td>
             <td class="px-6 py-4 font-medium text-green-600">${formatCurrency(payment.amount)}</td>
             <td class="px-6 py-4 text-gray-600">${formatDate(payment.paymentDate)}</td>
             <td class="px-6 py-4">
-                <span class="px-2 py-1 bg-gray-100 text-gray-700 rounded-full text-xs font-medium">
-                    ${payment.paymentMode}
+                <span class="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+                    ${payment.createdBy?.name || 'System'}
                 </span>
             </td>
             <td class="px-6 py-4">
                 <div class="flex space-x-2">
-                    <button onclick="viewReceipt('${payment._id || payment.id}')" class="text-blue-600 hover:text-blue-800">
+                    <button onclick="viewReceipt('${payment._id}')" class="text-blue-600 hover:text-blue-800" title="View Receipt">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                         </svg>
                     </button>
-                    <button onclick="printReceipt('${payment._id || payment.id}')" class="text-gray-600 hover:text-gray-800">
+                    <button onclick="printReceipt('${payment._id}')" class="text-gray-600 hover:text-gray-800" title="Print Receipt">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                         </svg>
@@ -156,7 +165,7 @@ function renderPayments() {
                 </div>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 function updatePagination(total) {
@@ -185,17 +194,19 @@ function updatePagination(total) {
 async function loadAdmissionsForPayment() {
     try {
         const response = await apiGet(API_ENDPOINTS.ADMISSIONS.LIST, { limit: 1000 });
-        admissions = response.data || [];
+        admissions = Array.isArray(response.data) ? response.data : (response.data?.admissions || []);
         
         const select = document.getElementById('paymentAdmission');
         if (select) {
             select.innerHTML = '<option value="">Select Admission</option>';
             admissions.forEach(admission => {
-                const pending = (admission.totalFees || 0) - (admission.paidAmount || 0);
-                if (pending > 0) {
-                    select.innerHTML += `<option value="${admission._id || admission.id}">
-                        ${admission.student?.name || admission.enquiry?.name} - ${admission.course?.name} (Pending: ₹${pending})
-                    </option>`;
+                if (!admission.isLocked) {
+                    const pending = admission.pendingAmount || ((admission.totalFees || 0) - (admission.paidAmount || 0));
+                    if (pending > 0) {
+                        select.innerHTML += `<option value="${admission._id}">
+                            ${admission.enquiryId?.name || '-'} - ${admission.enquiryId?.course || '-'} (Pending: ${formatCurrency(pending)})
+                        </option>`;
+                    }
                 }
             });
         }
@@ -213,17 +224,20 @@ function handleAdmissionChange(e) {
         return;
     }
     
-    selectedAdmission = admissions.find(a => (a._id || a.id) === admissionId);
+    selectedAdmission = admissions.find(a => a._id === admissionId);
     
     if (selectedAdmission) {
-        const pending = (selectedAdmission.totalFees || 0) - (selectedAdmission.paidAmount || 0);
+        const pending = selectedAdmission.pendingAmount || ((selectedAdmission.totalFees || 0) - (selectedAdmission.paidAmount || 0));
         document.getElementById('summaryTotal').textContent = formatCurrency(selectedAdmission.totalFees);
         document.getElementById('summaryPaid').textContent = formatCurrency(selectedAdmission.paidAmount);
         document.getElementById('summaryPending').textContent = formatCurrency(pending);
         summary.classList.remove('hidden');
         
         // Set max amount for validation
-        document.getElementById('paymentAmount').max = pending;
+        const amountInput = document.getElementById('paymentAmount');
+        if (amountInput) {
+            amountInput.max = pending;
+        }
     }
 }
 
@@ -284,11 +298,68 @@ async function viewReceipt(id) {
 
 async function printReceipt(id) {
     try {
-        // Fetch receipt and print
-        const receipt = await apiGet(API_ENDPOINTS.PAYMENTS.RECEIPT(id));
+        // Fetch payment and generate printable receipt
+        const response = await apiGet(API_ENDPOINTS.PAYMENTS.DETAIL(id));
+        const payment = response.data?.payment || response.data;
         
         const printWindow = window.open('', '_blank');
-        printWindow.document.write(receipt);
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Payment Receipt - ${payment.receiptNumber || id}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; padding: 40px; max-width: 600px; margin: 0 auto; }
+                    .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 30px; }
+                    .receipt-title { font-size: 24px; font-weight: bold; margin: 10px 0; }
+                    .details { margin: 20px 0; }
+                    .row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #eee; }
+                    .label { font-weight: bold; color: #666; }
+                    .value { font-weight: 500; }
+                    .amount { font-size: 20px; color: #059669; font-weight: bold; }
+                    .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+                    @media print { body { padding: 20px; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div class="receipt-title">PAYMENT RECEIPT</div>
+                    <div>Receipt No: ${payment.receiptNumber || id}</div>
+                </div>
+                <div class="details">
+                    <div class="row">
+                        <span class="label">Student Name:</span>
+                        <span class="value">${payment.admissionId?.enquiryId?.name || payment.student?.name || 'N/A'}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Course:</span>
+                        <span class="value">${payment.admissionId?.enquiryId?.course || payment.admission?.course?.name || 'N/A'}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Payment Date:</span>
+                        <span class="value">${formatDate(payment.paymentDate)}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Payment Mode:</span>
+                        <span class="value">${payment.paymentMode || 'N/A'}</span>
+                    </div>
+                    <div class="row">
+                        <span class="label">Amount Paid:</span>
+                        <span class="value amount">${formatCurrency(payment.amount)}</span>
+                    </div>
+                    ${payment.nextInstallmentDate ? `
+                    <div class="row">
+                        <span class="label">Next Installment Due:</span>
+                        <span class="value">${formatDate(payment.nextInstallmentDate)}</span>
+                    </div>` : ''}
+                </div>
+                <div class="footer">
+                    <p>Thank you for your payment!</p>
+                    <p>This is a computer generated receipt.</p>
+                </div>
+            </body>
+            </html>
+        `);
         printWindow.document.close();
         printWindow.print();
     } catch (error) {

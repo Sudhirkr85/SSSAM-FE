@@ -88,28 +88,28 @@ const API_ENDPOINTS = {
     ADMISSIONS: {
         LIST: '/admissions',
         DETAIL: (id) => `/admissions/${id}`,
+        BY_ENQUIRY: (enquiryId) => `/admissions/by-enquiry/${enquiryId}`,
         CREATE: '/admissions',
         UPDATE: (id) => `/admissions/${id}`,
+        UPDATE_FEES: (id) => `/admissions/${id}/fees`,
         DELETE: (id) => `/admissions/${id}`,
         LOCK: (id) => `/admissions/${id}/lock`,
-        UNLOCK: (id) => `/admissions/${id}/unlock`,
     },
     
     // Payments
     PAYMENTS: {
         LIST: '/payments',
         DETAIL: (id) => `/payments/${id}`,
+        BY_ADMISSION: (admissionId) => `/payments/admission/${admissionId}`,
         CREATE: '/payments',
         UPDATE: (id) => `/payments/${id}`,
         DELETE: (id) => `/payments/${id}`,
-        RECEIPT: (id) => `/payments/${id}/receipt`,
     },
     
     // Reports
     REPORTS: {
         ADMISSIONS: '/reports/admissions',
         FEES: '/reports/fees',
-        INSTALLMENTS: '/reports/installments/alerts',
     },
     
     // Bulk Upload
