@@ -13,6 +13,12 @@ let filters = {
     course: '',
 };
 
+// Simple helper to get course name from ID
+function getCourseName(courseId) {
+    const course = STATIC_COURSES.find(c => c._id === courseId || c.id === courseId);
+    return course?.name || courseId || '-';
+}
+
 // DOM Elements
 let enquiriesTable, searchInput, statusFilter, courseFilter, resetFiltersBtn;
 let prevPageBtn, nextPageBtn, pageNumbers;
@@ -234,7 +240,7 @@ function renderEnquiries() {
                     <div class="font-medium text-gray-900">${enquiry.name || '-'}</div>
                 </td>
                 <td class="px-6 py-4 text-gray-600">${formatPhone(enquiry.mobile)}</td>
-                <td class="px-6 py-4 text-gray-600">${enquiry.course?.name || enquiry.course || '-'}</td>
+                <td class="px-6 py-4 text-gray-600">${getCourseName(enquiry.course)}</td>
                 <td class="px-6 py-4">${getStatusBadge(enquiry.status)}</td>
                 <td class="px-6 py-4">
                     <div class="flex items-center space-x-1 ${isOverdue(enquiry.followUpDate) ? 'text-red-600 font-medium' : 'text-gray-600'}">
@@ -385,14 +391,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadEnquiryDetail(id) {
     try {
-        const enquiry = await apiGet(API_ENDPOINTS.ENQUIRIES.DETAIL(id));
+        const response = await apiGet(API_ENDPOINTS.ENQUIRIES.DETAIL(id));
+        const enquiry = response.data?.enquiry || response.data;
         currentEnquiry = enquiry;
-        
+
         // Check assignment
         const currentUser = getCurrentUser();
-        isAssignedToCurrentUser = !enquiry.assignedTo || 
+        isAssignedToCurrentUser = !enquiry.assignedTo ||
             (enquiry.assignedTo._id || enquiry.assignedTo) === (currentUser._id || currentUser.id);
-        
+
         renderEnquiryDetail(enquiry);
         loadTimeline(id);
         loadNotes(id);
@@ -411,7 +418,7 @@ function renderEnquiryDetail(enquiry) {
     document.getElementById('infoName').textContent = enquiry.name || '-';
     document.getElementById('infoMobile').textContent = formatPhone(enquiry.mobile) || '-';
     document.getElementById('infoEmail').textContent = enquiry.email || '-';
-    document.getElementById('infoCourse').textContent = enquiry.course?.name || enquiry.course || '-';
+    document.getElementById('infoCourse').textContent = getCourseName(enquiry.course);
     document.getElementById('infoSource').textContent = enquiry.source || '-';
     document.getElementById('infoCreated').textContent = formatDate(enquiry.createdAt, true);
     
@@ -496,7 +503,8 @@ async function loadTimeline(id) {
 
 async function loadNotes(id) {
     try {
-        const enquiry = await apiGet(API_ENDPOINTS.ENQUIRIES.DETAIL(id));
+        const response = await apiGet(API_ENDPOINTS.ENQUIRIES.DETAIL(id));
+        const enquiry = response.data?.enquiry || response.data;
         const notes = enquiry.notes || [];
         const container = document.getElementById('notesList');
         

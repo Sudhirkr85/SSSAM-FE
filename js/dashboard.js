@@ -3,6 +3,12 @@
  * Institute Enquiry Management System
  */
 
+// Simple helper to get course name from ID
+function getCourseName(courseId) {
+    const course = STATIC_COURSES.find(c => c._id === courseId || c.id === courseId);
+    return course?.name || courseId || '-';
+}
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     if (!document.getElementById('totalEnquiries')) return;
@@ -64,7 +70,7 @@ async function loadRecentEnquiries() {
                 <td class="px-6 py-4">
                     <div class="font-medium text-gray-900">${enquiry.name || '-'}</div>
                 </td>
-                <td class="px-6 py-4 text-gray-600">${enquiry.course?.name || enquiry.course || '-'}</td>
+                <td class="px-6 py-4 text-gray-600">${getCourseName(enquiry.course)}</td>
                 <td class="px-6 py-4">${getStatusBadge(enquiry.status)}</td>
                 <td class="px-6 py-4 ${isOverdue(enquiry.followUpDate) ? 'text-red-600 font-medium' : 'text-gray-600'}">
                     ${formatDate(enquiry.followUpDate, true)}
