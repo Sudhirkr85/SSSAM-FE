@@ -605,17 +605,32 @@ function setupDetailPageListeners(enquiryId) {
             if (!isAssignedToCurrentUser && !isAdmin()) return;
 
             const status = btn.dataset.status;
+            
+            // If clicking Converted and already Converted, just open payment modal
+            if (status === 'Converted' && currentEnquiry?.status === 'Converted') {
+                openPaymentSelectionModal(enquiryId, currentEnquiry);
+                return;
+            }
+            
             if (!confirm(`Are you sure you want to change status to "${status}"?`)) {
                 return;
             }
+            
             try {
                 const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status });
                 
                 // Check if payment setup is required (for Converted status)
-                if (status === 'Converted' && response.data?.requiresPaymentSetup) {
-                    showToast('success', 'Success', 'Status updated to Converted. Please configure payment plan.');
-                    // Open payment selection modal
-                    openPaymentSelectionModal(enquiryId, response.data?.enquiry);
+                if (status === 'Converted') {
+                    if (response.data?.requiresPaymentSetup) {
+                        showToast('success', 'Success', 'Status updated to Converted. Please configure payment plan.');
+                        openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
+                    } else if (response.data?.admission?._id) {
+                        showToast('success', 'Success', 'Enquiry converted to admission!');
+                        window.location.href = `admissions.html?id=${response.data.admission._id}`;
+                        return;
+                    } else {
+                        showToast('success', 'Success', 'Status updated to Converted');
+                    }
                 } else {
                     showToast('success', 'Success', `Status updated to ${status}`);
                 }
@@ -683,20 +698,27 @@ function setupDetailPageListeners(enquiryId) {
     document.getElementById('convertBtn')?.addEventListener('click', async () => {
         if (!isAssignedToCurrentUser && !isAdmin()) return;
         
+        // If already Converted, directly open payment selection modal
+        if (currentEnquiry?.status === 'Converted') {
+            openPaymentSelectionModal(enquiryId, currentEnquiry);
+            return;
+        }
+        
         // First update status to Converted, then check if payment setup is required
         try {
             const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status: 'Converted' });
             
             if (response.data?.requiresPaymentSetup) {
                 showToast('success', 'Success', 'Status updated. Please configure payment plan.');
-                openPaymentSelectionModal(enquiryId, response.data?.enquiry);
+                openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
                 loadEnquiryDetail(enquiryId);
-            } else {
-                // If no payment setup required, redirect to admission
+            } else if (response.data?.admission?._id) {
+                // If admission was created directly, redirect to it
                 showToast('success', 'Success', 'Enquiry converted to admission!');
-                if (response.data?.admission?._id) {
-                    window.location.href = `admissions.html?id=${response.data.admission._id}`;
-                }
+                window.location.href = `admissions.html?id=${response.data.admission._id}`;
+            } else {
+                showToast('success', 'Success', 'Status updated to Converted');
+                loadEnquiryDetail(enquiryId);
             }
         } catch (error) {
             const message = error.response?.data?.message || 'Failed to convert enquiry';
