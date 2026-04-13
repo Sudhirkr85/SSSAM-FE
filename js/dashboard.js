@@ -42,12 +42,17 @@ async function loadDashboardStats() {
             const created = new Date(e.createdAt).toISOString().split('T')[0];
             return created === today;
         }).length;
+        // Count overdue follow-ups (excluding terminal statuses)
+        const terminalStatuses = [STATUS.CONVERTED, STATUS.NOT_INTERESTED];
         const overdue = enquiries.filter(e => {
             if (!e.followUpDate) return false;
             const followUp = new Date(e.followUpDate);
-            return followUp < new Date() && e.status !== 'Converted' && e.status !== 'Lost';
+            const status = e.status?.toUpperCase();
+            return followUp < new Date() && !terminalStatuses.includes(status);
         }).length;
-        const converted = enquiries.filter(e => e.status === 'Converted').length;
+
+        // Count converted enquiries
+        const converted = enquiries.filter(e => e.status?.toUpperCase() === STATUS.CONVERTED).length;
 
         // Calculate revenue from payments (using payment date, NOT enquiry date)
         const totalRevenue = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
@@ -88,7 +93,10 @@ async function loadRecentEnquiries() {
         }
 
         const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
-        const enquiries = response.data || [];
+        let enquiries = response.data || [];
+
+        // Extra safety: filter by canView permission
+        enquiries = enquiries.filter(enquiry => canView(enquiry));
 
         const table = document.getElementById('recentEnquiriesTable');
 
@@ -112,6 +120,11 @@ async function loadRecentEnquiries() {
                 assignmentDisplay = `<span class="text-gray-800">${enquiry.assignedTo?.name || 'Assigned'}</span>`;
             }
 
+            // Enhanced overdue highlighting
+            const followUpOverdue = isOverdue(enquiry.followUpDate);
+            const followUpClass = followUpOverdue ? 'text-red-600 font-bold bg-red-50 px-2 py-1 rounded' : 'text-gray-600';
+            const overdueLabel = followUpOverdue ? '<span class="text-xs text-red-500 ml-1">(Overdue)</span>' : '';
+
             return `
                 <tr class="hover:bg-gray-50 transition-colors">
                     <td class="px-6 py-4">
@@ -119,8 +132,8 @@ async function loadRecentEnquiries() {
                     </td>
                     <td class="px-6 py-4 text-gray-600">${getCourseName(enquiry.course)}</td>
                     <td class="px-6 py-4">${getStatusBadge(enquiry.status)}</td>
-                    <td class="px-6 py-4 ${isOverdue(enquiry.followUpDate) ? 'text-red-600 font-medium' : 'text-gray-600'}">
-                        ${formatDate(enquiry.followUpDate, true)}
+                    <td class="px-6 py-4 ${followUpClass}">
+                        ${formatDate(enquiry.followUpDate, true)}${overdueLabel}
                     </td>
                     <td class="px-6 py-4">${assignmentDisplay}</td>
                 </tr>

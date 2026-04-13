@@ -4,6 +4,55 @@
  */
 
 /**
+ * Unified Status Enum - Aligns with Backend
+ */
+const STATUS = {
+  NEW: 'NEW',
+  CONTACTED: 'CONTACTED',
+  NO_RESPONSE: 'NO_RESPONSE',
+  FOLLOW_UP: 'FOLLOW_UP',
+  INTERESTED: 'INTERESTED',
+  NOT_INTERESTED: 'NOT_INTERESTED',
+  ADMISSION_PROCESS: 'ADMISSION_PROCESS',
+  CONVERTED: 'CONVERTED'
+};
+
+/**
+ * Valid Status Transitions - Aligns with Backend Flow
+ */
+const STATUS_FLOW = {
+  [STATUS.NEW]: [STATUS.CONTACTED, STATUS.NO_RESPONSE],
+  [STATUS.CONTACTED]: [STATUS.FOLLOW_UP, STATUS.INTERESTED, STATUS.NOT_INTERESTED],
+  [STATUS.NO_RESPONSE]: [STATUS.FOLLOW_UP, STATUS.NOT_INTERESTED],
+  [STATUS.FOLLOW_UP]: [STATUS.CONTACTED, STATUS.INTERESTED, STATUS.NOT_INTERESTED],
+  [STATUS.INTERESTED]: [STATUS.ADMISSION_PROCESS, STATUS.NOT_INTERESTED],
+  [STATUS.NOT_INTERESTED]: [], // Terminal state
+  [STATUS.ADMISSION_PROCESS]: [STATUS.CONVERTED],
+  [STATUS.CONVERTED]: [] // Terminal state
+};
+
+/**
+ * Get valid next statuses based on current status
+ * @param {string} currentStatus - Current status
+ * @returns {string[]} Array of valid next statuses
+ */
+function getValidNextStatuses(currentStatus) {
+  return STATUS_FLOW[currentStatus] || [];
+}
+
+/**
+ * Check if status transition is valid
+ * @param {string} from - Current status
+ * @param {string} to - Target status
+ * @returns {boolean} True if transition is valid
+ */
+function isValidStatusTransition(from, to) {
+  if (!from || !to) return false;
+  const validStatuses = STATUS_FLOW[from] || [];
+  return validStatuses.includes(to);
+}
+
+/**
  * Show toast notification
  * @param {string} type - 'success' | 'error' | 'warning' | 'info'
  * @param {string} title - Toast title
@@ -122,18 +171,32 @@ function formatPhone(phone) {
  */
 function getStatusBadge(status) {
     const statusClasses = {
-        'New': 'status-new',
-        'Attempted': 'status-attempted',
-        'Connected': 'status-connected',
-        'Interested': 'status-interested',
-        'Follow-up': 'status-follow-up',
-        'Converted': 'status-converted',
-        'Lost': 'status-lost',
+        [STATUS.NEW]: 'bg-gray-100 text-gray-800',
+        [STATUS.CONTACTED]: 'bg-blue-100 text-blue-800',
+        [STATUS.NO_RESPONSE]: 'bg-yellow-100 text-yellow-800',
+        [STATUS.FOLLOW_UP]: 'bg-purple-100 text-purple-800',
+        [STATUS.INTERESTED]: 'bg-green-100 text-green-800',
+        [STATUS.NOT_INTERESTED]: 'bg-red-100 text-red-800',
+        [STATUS.ADMISSION_PROCESS]: 'bg-indigo-100 text-indigo-800',
+        [STATUS.CONVERTED]: 'bg-emerald-100 text-emerald-800'
     };
-    
-    const className = statusClasses[status] || 'bg-gray-100 text-gray-800';
-    
-    return `<span class="status-badge ${className}">${status || 'Unknown'}</span>`;
+
+    const displayLabels = {
+        [STATUS.NEW]: 'New',
+        [STATUS.CONTACTED]: 'Contacted',
+        [STATUS.NO_RESPONSE]: 'No Response',
+        [STATUS.FOLLOW_UP]: 'Follow Up',
+        [STATUS.INTERESTED]: 'Interested',
+        [STATUS.NOT_INTERESTED]: 'Not Interested',
+        [STATUS.ADMISSION_PROCESS]: 'Admission Process',
+        [STATUS.CONVERTED]: 'Converted'
+    };
+
+    const normalizedStatus = status?.toUpperCase();
+    const className = statusClasses[normalizedStatus] || 'bg-gray-100 text-gray-800';
+    const label = displayLabels[normalizedStatus] || status || 'Unknown';
+
+    return `<span class="status-badge ${className}">${label}</span>`;
 }
 
 /**
@@ -457,3 +520,9 @@ window.getFieldValue = getFieldValue;
 window.setFormDisabled = setFormDisabled;
 window.setupPhoneInput = setupPhoneInput;
 window.getCleanPhoneNumber = getCleanPhoneNumber;
+
+// Export Status System
+window.STATUS = STATUS;
+window.STATUS_FLOW = STATUS_FLOW;
+window.getValidNextStatuses = getValidNextStatuses;
+window.isValidStatusTransition = isValidStatusTransition;

@@ -11,23 +11,35 @@ let filters = {
     search: '',
     status: '',
     course: '',
+    showTodayAndOverdue: false // Default view: today + overdue
 };
 let isLoading = false;
 
-// Valid status transitions based on backend rules
-const VALID_STATUS_TRANSITIONS = {
-    'New': ['Attempted', 'Connected', 'Lost'],
-    'Attempted': ['Connected', 'Lost'],
-    'Connected': ['Interested', 'Follow-up', 'Lost'],
-    'Interested': ['Follow-up', 'Converted', 'Lost'],
-    'Follow-up': ['Interested', 'Converted', 'Lost'],
-    'Converted': [], // Terminal state
-    'Lost': ['New'] // Can reopen lost enquiries
-};
+// Note: STATUS and STATUS_FLOW are now defined globally in ui.js
+// Use window.STATUS and window.STATUS_FLOW or the exported getValidNextStatuses()
 
-// Get valid next statuses based on current status
-function getValidNextStatuses(currentStatus) {
-    return VALID_STATUS_TRANSITIONS[currentStatus] || [];
+/**
+ * Filter enquiries based on canView permission
+ * @param {Array} enquiries - Array of enquiry objects
+ * @returns {Array} Filtered array
+ */
+function filterByPermission(enquiries) {
+    if (!Array.isArray(enquiries)) return [];
+    return enquiries.filter(enquiry => canView(enquiry));
+}
+
+/**
+ * Update local enquiry data after status/assignment change
+ * @param {string} enquiryId - Enquiry ID
+ * @param {Object} updatedData - Updated data fields
+ */
+function updateLocalEnquiry(enquiryId, updatedData) {
+    const index = enquiriesData.findIndex(e => (e._id || e.id) === enquiryId);
+    if (index !== -1) {
+        enquiriesData[index] = { ...enquiriesData[index], ...updatedData };
+        return true;
+    }
+    return false;
 }
 
 // Simple helper to get course name from ID
@@ -278,14 +290,18 @@ async function loadEnquiries() {
 }
 
 function renderEnquiries() {
-    if (!enquiriesData.length) {
+    // Filter by permission before rendering
+    const viewableEnquiries = filterByPermission(enquiriesData);
+
+    if (!viewableEnquiries.length) {
         enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500">No enquiries found.</td></tr>';
         return;
     }
 
     const currentUserId = getCurrentUserId();
+    const today = new Date().toISOString().split('T')[0];
 
-    enquiriesTable.innerHTML = enquiriesData.map(enquiry => {
+    enquiriesTable.innerHTML = viewableEnquiries.map(enquiry => {
         const rowClass = getEnquiryRowClass(enquiry);
         const enquiryId = enquiry._id || enquiry.id;
 
@@ -333,6 +349,13 @@ function renderEnquiries() {
                 : `<span class="text-gray-800">${assignedName}</span>`;
         }
 
+        // Enhanced follow-up display with overdue highlighting
+        const followUpOverdue = isOverdue(enquiry.followUpDate);
+        const followUpClass = followUpOverdue ? 'text-red-600 font-bold bg-red-50 px-2 py-1 rounded' : 'text-gray-600';
+        const followUpIcon = followUpOverdue ?
+            '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
+        const overdueLabel = followUpOverdue ? '<span class="text-xs text-red-500 ml-1">(Overdue)</span>' : '';
+
         return `
             <tr class="${rowClass} hover:bg-gray-50 transition-colors">
                 <td class="px-6 py-4">
@@ -342,9 +365,10 @@ function renderEnquiries() {
                 <td class="px-6 py-4 text-gray-600">${getCourseName(enquiry.course)}</td>
                 <td class="px-6 py-4">${getStatusBadge(enquiry.status)}</td>
                 <td class="px-6 py-4">
-                    <div class="flex items-center space-x-1 ${isOverdue(enquiry.followUpDate) ? 'text-red-600 font-medium' : 'text-gray-600'}">
-                        ${isOverdue(enquiry.followUpDate) ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : ''}
+                    <div class="flex items-center ${followUpClass}">
+                        ${followUpIcon}
                         <span>${formatDate(enquiry.followUpDate, true)}</span>
+                        ${overdueLabel}
                     </div>
                 </td>
                 <td class="px-6 py-4">${assignmentInfo}</td>
@@ -560,8 +584,10 @@ function renderEnquiryDetail(enquiry) {
     // Follow-up info display
     const followUpInfo = document.getElementById('followUpInfo');
     if (enquiry.followUpDate) {
+        const statusUpper = enquiry.status?.toUpperCase();
+        const terminalStatuses = [STATUS.CONVERTED, STATUS.NOT_INTERESTED];
         const isOverdueFollowUp = new Date(enquiry.followUpDate) < new Date() &&
-            !['Converted', 'Lost'].includes(enquiry.status);
+            !terminalStatuses.includes(statusUpper);
         followUpInfo.innerHTML = `
             <div class="${isOverdueFollowUp ? 'text-red-600' : 'text-gray-600'}">
                 <p class="font-medium">${formatDate(enquiry.followUpDate, true)}</p>
@@ -571,13 +597,15 @@ function renderEnquiryDetail(enquiry) {
     } else {
         followUpInfo.innerHTML = '<p class="text-sm text-gray-500">No follow-up scheduled</p>';
     }
-    
-    // Show convert section if interested/follow-up/converted (but not yet admitted)
+
+    // Show convert section if in appropriate status (but not yet admitted)
     const convertSection = document.getElementById('convertSection');
     const hasAdmission = enquiry.hasAdmission || enquiry.admissionId;
 
-    if ((enquiry.status === 'Interested' || enquiry.status === 'Follow-up' ||
-        enquiry.status === 'Converted') && !hasAdmission) {
+    const convertibleStatuses = [STATUS.INTERESTED, STATUS.FOLLOW_UP, STATUS.ADMISSION_PROCESS];
+    const statusUpper = enquiry.status?.toUpperCase();
+
+    if (convertibleStatuses.includes(statusUpper) && !hasAdmission) {
         convertSection?.classList.remove('hidden');
         // Remove admission badge if it exists (in case state changed)
         const admissionBadge = document.getElementById('admissionCreatedBadge');
@@ -595,7 +623,8 @@ function renderEnquiryDetail(enquiry) {
     // Update convert button text based on status
     const convertBtn = document.getElementById('convertBtn');
     if (convertBtn) {
-        if (enquiry.status === 'Converted') {
+        const statusUpper = enquiry.status?.toUpperCase();
+        if (statusUpper === STATUS.CONVERTED) {
             convertBtn.innerHTML = `
                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
@@ -639,8 +668,8 @@ function checkPermissions() {
         // Check if Converted is selected - handle via statusSelect dropdown
         const statusSelect = document.getElementById('statusSelect');
         if (statusSelect && hasAdmission) {
-            // Remove Converted option if admission exists
-            const convertedOption = statusSelect.querySelector('option[value="Converted"]');
+            // Disable Converted option if admission exists
+            const convertedOption = statusSelect.querySelector(`option[value="${STATUS.CONVERTED}"]`);
             if (convertedOption) {
                 convertedOption.disabled = true;
                 convertedOption.textContent = 'Converted (Admission exists)';
@@ -713,14 +742,28 @@ function populateStatusDropdown(currentStatus) {
     const statusSelect = document.getElementById('statusSelect');
     if (!statusSelect) return;
 
-    const validStatuses = getValidNextStatuses(currentStatus);
+    // Normalize current status to uppercase
+    const normalizedCurrentStatus = currentStatus?.toUpperCase();
+    const validStatuses = getValidNextStatuses(normalizedCurrentStatus);
+
+    // Status display labels
+    const statusLabels = {
+        [STATUS.NEW]: 'New',
+        [STATUS.CONTACTED]: 'Contacted',
+        [STATUS.NO_RESPONSE]: 'No Response',
+        [STATUS.FOLLOW_UP]: 'Follow Up',
+        [STATUS.INTERESTED]: 'Interested',
+        [STATUS.NOT_INTERESTED]: 'Not Interested',
+        [STATUS.ADMISSION_PROCESS]: 'Admission Process',
+        [STATUS.CONVERTED]: 'Converted'
+    };
 
     statusSelect.innerHTML = '<option value="">Select Status</option>';
 
     validStatuses.forEach(status => {
         const option = document.createElement('option');
         option.value = status;
-        option.textContent = status;
+        option.textContent = statusLabels[status] || status;
         statusSelect.appendChild(option);
     });
 
@@ -728,7 +771,8 @@ function populateStatusDropdown(currentStatus) {
     const helpText = document.getElementById('statusHelpText');
     if (helpText) {
         if (validStatuses.length === 0) {
-            helpText.textContent = `Current status "${currentStatus}" is terminal. No further transitions allowed.`;
+            const currentLabel = statusLabels[normalizedCurrentStatus] || normalizedCurrentStatus;
+            helpText.textContent = `Current status "${currentLabel}" is terminal. No further transitions allowed.`;
             helpText.classList.remove('hidden');
             statusSelect.disabled = true;
         } else {
@@ -748,12 +792,12 @@ function handleStatusSelectChange() {
 
     const selectedStatus = statusSelect.value;
 
-    // Show follow-up date field for Follow-up status
-    if (selectedStatus === 'Follow-up') {
+    // Show follow-up date field for FOLLOW_UP status
+    if (selectedStatus === STATUS.FOLLOW_UP) {
         followUpContainer.classList.remove('hidden');
         followUpInput.required = true;
 
-        // Set default to tomorrow
+        // Set default to tomorrow at 9 AM
         const tomorrow = new Date();
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(9, 0, 0, 0);
@@ -774,16 +818,16 @@ function validateStatusForm() {
     const followUpInput = document.getElementById('statusFollowUpDate');
     const submitBtn = document.getElementById('updateStatusBtn');
 
-    if (!statusSelect || !statusNote || !submitBtn) return;
+    if (!statusSelect || !statusNote || !submitBtn) return false;
 
     const status = statusSelect.value;
     const note = statusNote.value.trim();
-    const isFollowUp = status === 'Follow-up';
+    const isFollowUp = status === STATUS.FOLLOW_UP;
 
-    // Required: status and note
+    // Required: status and note always required
     let isValid = status && note;
 
-    // Additional: follow-up date required for Follow-up status
+    // Additional: follow-up date required for FOLLOW_UP status
     if (isFollowUp && !followUpInput?.value) {
         isValid = false;
     }
@@ -828,15 +872,21 @@ async function handleStatusUpdate(e) {
             note: note
         };
 
-        // Add follow-up date if status is Follow-up
-        if (newStatus === 'Follow-up' && followUpDate) {
+        // Add follow-up date if status is FOLLOW_UP
+        if (newStatus === STATUS.FOLLOW_UP && followUpDate) {
             payload.followUpDate = new Date(followUpDate).toISOString();
         }
 
         const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), payload);
 
-        // Handle Converted status
-        if (newStatus === 'Converted') {
+        // Update local state immediately for responsive UI
+        updateLocalEnquiry(enquiryId, {
+            status: newStatus,
+            followUpDate: newStatus === STATUS.FOLLOW_UP ? payload.followUpDate : currentEnquiry?.followUpDate
+        });
+
+        // Handle CONVERTED status
+        if (newStatus === STATUS.CONVERTED) {
             if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
                 const admissionId = response.data?.admission?._id || response.data?.enquiry?.admissionId;
                 if (currentEnquiry) {
@@ -861,8 +911,13 @@ async function handleStatusUpdate(e) {
         document.getElementById('followUpDateContainer')?.classList.add('hidden');
         if (errorDiv) errorDiv.classList.add('hidden');
 
-        // Refresh enquiry data
+        // Refresh enquiry data and re-render table
         await loadEnquiryDetail(enquiryId);
+
+        // If on enquiries list page, refresh it too
+        if (typeof renderEnquiries === 'function' && enquiriesData.length > 0) {
+            renderEnquiries();
+        }
 
     } catch (error) {
         const message = error.response?.data?.message || error.message || 'Failed to update status';
@@ -928,15 +983,16 @@ function setupDetailPageListeners(enquiryId) {
             return;
         }
 
-        // If already Converted, directly open payment selection modal
-        if (currentEnquiry?.status === 'Converted') {
+        // If already CONVERTED, directly open payment selection modal
+        const statusUpper = currentEnquiry?.status?.toUpperCase();
+        if (statusUpper === STATUS.CONVERTED) {
             openPaymentSelectionModal(enquiryId, currentEnquiry);
             return;
         }
 
-        // First update status to Converted, then check if payment setup is required
+        // First update status to CONVERTED, then check if payment setup is required
         try {
-            const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status: 'Converted' });
+            const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status: STATUS.CONVERTED });
 
             if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
                 // Admission already exists - update UI
@@ -953,6 +1009,9 @@ function setupDetailPageListeners(enquiryId) {
             } else {
                 showToast('success', 'Success', 'Status updated to Converted');
             }
+
+            // Update local state immediately
+            updateLocalEnquiry(enquiryId, { status: STATUS.CONVERTED });
             loadEnquiryDetail(enquiryId);
         } catch (error) {
             const message = error.response?.data?.message || 'Failed to convert enquiry';
