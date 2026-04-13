@@ -18,7 +18,46 @@ function getCurrentUser() {
 // Check if user is admin
 function isAdmin() {
     const user = getCurrentUser();
-    return user && user.role === 'admin';
+    return user && (user.role === 'admin' || user.role === 'ADMIN');
+}
+
+// Check if user is counselor
+function isCounselor() {
+    const user = getCurrentUser();
+    return user && (user.role === 'counselor' || user.role === 'COUNSELOR');
+}
+
+// Get current user ID
+function getCurrentUserId() {
+    const user = getCurrentUser();
+    return user ? (user._id || user.id) : null;
+}
+
+// Check if user can edit an enquiry (admin or assigned counselor)
+function canEdit(enquiry) {
+    if (isAdmin()) return true;
+    const userId = getCurrentUserId();
+    if (!userId || !enquiry) return false;
+
+    const assignedId = enquiry.assignedTo?._id || enquiry.assignedTo?.id || enquiry.assignedTo;
+    return assignedId === userId;
+}
+
+// Check if user can delete an enquiry (admin only)
+function canDelete() {
+    return isAdmin();
+}
+
+// Check if user can view an enquiry (admin sees all, counselor sees assigned + unassigned)
+function canView(enquiry) {
+    if (isAdmin()) return true;
+    if (!enquiry) return false;
+
+    // Counselor can see unassigned or their assigned enquiries
+    const assignedId = enquiry.assignedTo?._id || enquiry.assignedTo?.id || enquiry.assignedTo;
+    const userId = getCurrentUserId();
+
+    return !assignedId || assignedId === userId;
 }
 
 // Redirect to login if not authenticated
@@ -215,7 +254,12 @@ document.addEventListener('DOMContentLoaded', () => {
 // Export auth functions
 window.isAuthenticated = isAuthenticated;
 window.getCurrentUser = getCurrentUser;
+window.getCurrentUserId = getCurrentUserId;
 window.isAdmin = isAdmin;
+window.isCounselor = isCounselor;
+window.canEdit = canEdit;
+window.canDelete = canDelete;
+window.canView = canView;
 window.requireAuth = requireAuth;
 window.login = login;
 window.logout = logout;

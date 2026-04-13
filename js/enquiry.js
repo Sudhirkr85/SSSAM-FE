@@ -12,6 +12,23 @@ let filters = {
     status: '',
     course: '',
 };
+let isLoading = false;
+
+// Valid status transitions based on backend rules
+const VALID_STATUS_TRANSITIONS = {
+    'New': ['Attempted', 'Connected', 'Lost'],
+    'Attempted': ['Connected', 'Lost'],
+    'Connected': ['Interested', 'Follow-up', 'Lost'],
+    'Interested': ['Follow-up', 'Converted', 'Lost'],
+    'Follow-up': ['Interested', 'Converted', 'Lost'],
+    'Converted': [], // Terminal state
+    'Lost': ['New'] // Can reopen lost enquiries
+};
+
+// Get valid next statuses based on current status
+function getValidNextStatuses(currentStatus) {
+    return VALID_STATUS_TRANSITIONS[currentStatus] || [];
+}
 
 // Simple helper to get course name from ID
 function getCourseName(courseId) {
@@ -225,17 +242,26 @@ function populateCourseDropdowns(courseList) {
 }
 
 async function loadEnquiries() {
+    if (isLoading) return;
+    isLoading = true;
+
     try {
-        enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500">Loading...</td></tr>';
-        
+        enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500"><span class="spinner mr-2"></span>Loading...</td></tr>';
+
         const params = {
             page: currentPage,
             limit: 10,
             ...filters,
         };
-        
+
+        // For counselors, add filter to show only unassigned and their assigned enquiries
+        if (isCounselor() && !isAdmin()) {
+            params.assignedToMe = true;
+            params.includeUnassigned = true;
+        }
+
         const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
-        
+
         enquiriesData = response.data || [];
         const pagination = response.pagination || {};
         currentPage = pagination.page || 1;
@@ -245,6 +271,9 @@ async function loadEnquiries() {
         updatePagination(pagination.totalCount || 0);
     } catch (error) {
         enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-red-500">Failed to load enquiries. Please try again.</td></tr>';
+        showToast('error', 'Error', 'Failed to load enquiries');
+    } finally {
+        isLoading = false;
     }
 }
 
@@ -253,10 +282,57 @@ function renderEnquiries() {
         enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500">No enquiries found.</td></tr>';
         return;
     }
-    
+
+    const currentUserId = getCurrentUserId();
+
     enquiriesTable.innerHTML = enquiriesData.map(enquiry => {
         const rowClass = getEnquiryRowClass(enquiry);
-        
+        const enquiryId = enquiry._id || enquiry.id;
+
+        // Check permissions for this enquiry
+        const canEditEnquiry = canEdit(enquiry);
+        const canDeleteEnquiry = canDelete();
+        const isUnassignedEnquiry = !enquiry.assignedTo;
+
+        // Build action buttons based on permissions
+        let actionButtons = `
+            <a href="enquiry-detail.html?id=${enquiryId}" class="text-blue-600 hover:text-blue-800 font-medium">
+                View Details
+            </a>
+        `;
+
+        // Show edit link only if user can edit (admin or assigned counselor)
+        if (canEditEnquiry) {
+            actionButtons += `
+                <a href="enquiry-detail.html?id=${enquiryId}&mode=edit" class="text-green-600 hover:text-green-800 font-medium ml-3">
+                    Edit
+                </a>
+            `;
+        }
+
+        // Show delete button only for admin
+        if (canDeleteEnquiry) {
+            actionButtons += `
+                <button onclick="deleteEnquiry('${enquiryId}')" class="text-red-600 hover:text-red-800 ml-3" title="Delete">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                    </svg>
+                </button>
+            `;
+        }
+
+        // Show assignment indicator for counselors
+        let assignmentInfo;
+        if (isUnassignedEnquiry) {
+            assignmentInfo = '<span class="text-yellow-600 font-medium">Unassigned</span>';
+        } else {
+            const assignedName = enquiry.assignedTo?.name || 'Assigned';
+            const isMine = enquiry.assignedTo?._id === currentUserId || enquiry.assignedTo?.id === currentUserId;
+            assignmentInfo = isMine
+                ? `<span class="text-green-600 font-medium">${assignedName} (You)</span>`
+                : `<span class="text-gray-800">${assignedName}</span>`;
+        }
+
         return `
             <tr class="${rowClass} hover:bg-gray-50 transition-colors">
                 <td class="px-6 py-4">
@@ -271,25 +347,9 @@ function renderEnquiries() {
                         <span>${formatDate(enquiry.followUpDate, true)}</span>
                     </div>
                 </td>
+                <td class="px-6 py-4">${assignmentInfo}</td>
                 <td class="px-6 py-4">
-                    ${enquiry.assignedTo ? 
-                        `<span class="text-gray-800">${enquiry.assignedTo.name || enquiry.assignedTo}</span>` : 
-                        '<span class="text-yellow-600 font-medium">Unassigned</span>'
-                    }
-                </td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center space-x-3">
-                        <a href="enquiry-detail.html?id=${enquiry._id || enquiry.id}" class="text-blue-600 hover:text-blue-800 font-medium">
-                            View Details
-                        </a>
-                        ${isAdmin() ? `
-                            <button onclick="deleteEnquiry('${enquiry._id || enquiry.id}')" class="text-red-600 hover:text-red-800" title="Delete">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                                </svg>
-                            </button>
-                        ` : ''}
-                    </div>
+                    <div class="flex items-center">${actionButtons}</div>
                 </td>
             </tr>
         `;
@@ -327,30 +387,48 @@ function goToPage(page) {
 
 async function handleCreateEnquiry(e) {
     e.preventDefault();
-    
+
+    // Validate required fields
+    const name = document.getElementById('enquiryName').value.trim();
+    const mobile = getCleanPhoneNumber(document.getElementById('enquiryMobile').value);
+    const course = document.getElementById('enquiryCourse').value;
+
+    if (!name) {
+        showToast('warning', 'Validation Error', 'Please enter a name');
+        return;
+    }
+    if (!mobile || mobile.length !== 10) {
+        showToast('warning', 'Validation Error', 'Please enter a valid 10-digit mobile number');
+        return;
+    }
+    if (!course) {
+        showToast('warning', 'Validation Error', 'Please select a course');
+        return;
+    }
+
     saveEnquiryBtn.disabled = true;
-    saveEnquiryBtn.innerHTML = '<span class="spinner"></span> Creating...';
-    
+    saveEnquiryBtn.innerHTML = '<span class="spinner mr-2"></span> Creating...';
+
     try {
         const data = {
-            name: document.getElementById('enquiryName').value,
-            mobile: getCleanPhoneNumber(document.getElementById('enquiryMobile').value),
+            name: name,
+            mobile: mobile,
             email: document.getElementById('enquiryEmail').value,
-            course: document.getElementById('enquiryCourse').value === 'other'
+            course: course === 'other'
                 ? document.getElementById('enquiryCourseOther').value
-                : document.getElementById('enquiryCourse').value,
+                : course,
             source: document.getElementById('enquirySource').value,
             notes: document.getElementById('enquiryNotes').value,
         };
-        
+
         await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, data);
-        
+
         showToast('success', 'Success', 'Enquiry created successfully!');
         closeModal(createEnquiryModal);
         createEnquiryForm.reset();
         loadEnquiries();
     } catch (error) {
-        const message = error.response?.data?.message || 'Failed to create enquiry';
+        const message = error.response?.data?.message || error.message || 'Failed to create enquiry';
         showToast('error', 'Error', message);
     } finally {
         saveEnquiryBtn.disabled = false;
@@ -441,14 +519,13 @@ async function loadEnquiryDetail(id) {
         const enquiry = response.data?.enquiry || response.data;
         currentEnquiry = enquiry;
 
-        // Check assignment
-        const currentUser = getCurrentUser();
-        isAssignedToCurrentUser = !enquiry.assignedTo ||
-            (enquiry.assignedTo._id || enquiry.assignedTo) === (currentUser._id || currentUser.id);
+        // Check assignment using centralized auth function
+        isAssignedToCurrentUser = canEdit(enquiry);
 
         renderEnquiryDetail(enquiry);
         renderTimeline(enquiry.timeline);
         renderNotes(enquiry.notes);
+        populateStatusDropdown(enquiry.status);
         checkPermissions();
     } catch (error) {
         showToast('error', 'Error', 'Failed to load enquiry details');
@@ -459,7 +536,7 @@ function renderEnquiryDetail(enquiry) {
     // Header
     document.getElementById('enquiryTitle').textContent = enquiry.name || 'Enquiry Details';
     document.getElementById('enquirySubtitle').textContent = `Enquiry #${enquiry._id || enquiry.id}`;
-    
+
     // Info
     document.getElementById('infoName').textContent = enquiry.name || '-';
     document.getElementById('infoMobile').textContent = formatPhone(enquiry.mobile) || '-';
@@ -467,10 +544,10 @@ function renderEnquiryDetail(enquiry) {
     document.getElementById('infoCourse').textContent = getCourseName(enquiry.course);
     document.getElementById('infoSource').textContent = enquiry.source || '-';
     document.getElementById('infoCreated').textContent = formatDate(enquiry.createdAt, true);
-    
+
     // Status badge
     document.getElementById('currentStatus').innerHTML = getStatusBadge(enquiry.status);
-    
+
     // Assigned info
     if (enquiry.assignedTo) {
         document.getElementById('assignedName').textContent = enquiry.assignedTo.name || 'Assigned';
@@ -479,25 +556,20 @@ function renderEnquiryDetail(enquiry) {
         document.getElementById('assignedName').textContent = 'Unassigned';
         document.getElementById('assignedRole').textContent = 'Not assigned yet';
     }
-    
-    // Status buttons
-    const statusButtons = document.querySelectorAll('.status-btn');
-    statusButtons.forEach(btn => {
-        const status = btn.dataset.status;
-        btn.classList.toggle('active', status === enquiry.status);
-        btn.classList.add('bg-gray-100', 'text-gray-700', 'border-gray-300');
-        
-        if (!isAssignedToCurrentUser && !isAdmin()) {
-            btn.disabled = true;
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
-        }
-    });
-    
-    // Follow-up date
-    const followUpInput = document.getElementById('followUpDate');
+
+    // Follow-up info display
+    const followUpInfo = document.getElementById('followUpInfo');
     if (enquiry.followUpDate) {
-        const date = new Date(enquiry.followUpDate);
-        followUpInput.value = date.toISOString().slice(0, 16);
+        const isOverdueFollowUp = new Date(enquiry.followUpDate) < new Date() &&
+            !['Converted', 'Lost'].includes(enquiry.status);
+        followUpInfo.innerHTML = `
+            <div class="${isOverdueFollowUp ? 'text-red-600' : 'text-gray-600'}">
+                <p class="font-medium">${formatDate(enquiry.followUpDate, true)}</p>
+                ${isOverdueFollowUp ? '<p class="text-xs mt-1 font-medium">Overdue</p>' : ''}
+            </div>
+        `;
+    } else {
+        followUpInfo.innerHTML = '<p class="text-sm text-gray-500">No follow-up scheduled</p>';
     }
     
     // Show convert section if interested/follow-up/converted (but not yet admitted)
@@ -547,23 +619,38 @@ function renderEnquiryDetail(enquiry) {
 }
 
 function checkPermissions() {
-    if (!isAssignedToCurrentUser && !isAdmin()) {
-        // Disable all inputs
-        setFormDisabled(document.getElementById('statusSection'), true);
-        setFormDisabled(document.getElementById('notesSection'), true);
-        setFormDisabled(document.getElementById('followUpSection'), true);
-        const convertBtn = document.getElementById('convertBtn');
-        if (convertBtn) convertBtn.disabled = true;
-    }
+    const statusSection = document.getElementById('statusSection');
+    const convertBtn = document.getElementById('convertBtn');
 
-    // Also disable Converted status button if admission already exists
-    const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
-    if (hasAdmission) {
-        const convertedBtn = document.querySelector('.status-btn[data-status="Converted"]');
-        if (convertedBtn) {
-            convertedBtn.disabled = true;
-            convertedBtn.classList.add('opacity-50', 'cursor-not-allowed');
-            convertedBtn.title = 'Admission already created';
+    // If user cannot edit, disable the entire status form section
+    if (!isAssignedToCurrentUser && !isAdmin()) {
+        if (statusSection) {
+            setFormDisabled(statusSection, true);
+        }
+        if (convertBtn) convertBtn.disabled = true;
+
+        // Show locked badge
+        const lockedBadge = document.getElementById('lockedBadge');
+        if (lockedBadge) lockedBadge.classList.remove('hidden');
+    } else {
+        // User can edit - enable form but disable Converted if admission exists
+        const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
+
+        // Check if Converted is selected - handle via statusSelect dropdown
+        const statusSelect = document.getElementById('statusSelect');
+        if (statusSelect && hasAdmission) {
+            // Remove Converted option if admission exists
+            const convertedOption = statusSelect.querySelector('option[value="Converted"]');
+            if (convertedOption) {
+                convertedOption.disabled = true;
+                convertedOption.textContent = 'Converted (Admission exists)';
+            }
+        }
+
+        // Disable convert button if admission already exists
+        if (convertBtn && hasAdmission) {
+            convertBtn.disabled = true;
+            convertBtn.title = 'Admission already created';
         }
     }
 }
@@ -621,123 +708,214 @@ function renderNotes(notesString) {
     }).join('');
 }
 
-function setupDetailPageListeners(enquiryId) {
-    // Status buttons
-    document.querySelectorAll('.status-btn').forEach(btn => {
-        btn.addEventListener('click', async () => {
-            if (!isAssignedToCurrentUser && !isAdmin()) return;
+// Populate status dropdown based on current status and valid transitions
+function populateStatusDropdown(currentStatus) {
+    const statusSelect = document.getElementById('statusSelect');
+    if (!statusSelect) return;
 
-            const status = btn.dataset.status;
+    const validStatuses = getValidNextStatuses(currentStatus);
 
-            // If clicking Converted, check if admission already exists
-            if (status === 'Converted') {
-                const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
-                if (hasAdmission) {
-                    showToast('info', 'Info', 'Admission already exists for this enquiry');
-                    updateEnquiryUIForAdmission(currentEnquiry.admissionId);
-                    return;
-                }
-                // If already Converted status but no admission, open payment modal
-                if (currentEnquiry?.status === 'Converted') {
-                    openPaymentSelectionModal(enquiryId, currentEnquiry);
-                    return;
-                }
-            }
-            
-            if (!confirm(`Are you sure you want to change status to "${status}"?`)) {
-                return;
-            }
-            
-            try {
-                const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status });
+    statusSelect.innerHTML = '<option value="">Select Status</option>';
 
-                // Check if payment setup is required (for Converted status)
-                if (status === 'Converted') {
-                    if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
-                        // Admission already exists - update UI
-                        const admissionId = response.data?.admission?._id || response.data?.enquiry?.admissionId;
-                        if (currentEnquiry) {
-                            currentEnquiry.hasAdmission = true;
-                            currentEnquiry.admissionId = admissionId;
-                        }
-                        updateEnquiryUIForAdmission(admissionId);
-                        showToast('info', 'Info', 'Admission already exists for this enquiry');
-                    } else if (response.data?.requiresPaymentSetup) {
-                        showToast('success', 'Success', 'Status updated to Converted. Please configure payment plan.');
-                        openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
-                    } else {
-                        showToast('success', 'Success', 'Status updated to Converted');
-                    }
-                } else {
-                    showToast('success', 'Success', `Status updated to ${status}`);
-                }
-
-                loadEnquiryDetail(enquiryId);
-            } catch (error) {
-                showToast('error', 'Error', 'Failed to update status');
-            }
-        });
+    validStatuses.forEach(status => {
+        const option = document.createElement('option');
+        option.value = status;
+        option.textContent = status;
+        statusSelect.appendChild(option);
     });
-    
+
+    // Add help text about current status
+    const helpText = document.getElementById('statusHelpText');
+    if (helpText) {
+        if (validStatuses.length === 0) {
+            helpText.textContent = `Current status "${currentStatus}" is terminal. No further transitions allowed.`;
+            helpText.classList.remove('hidden');
+            statusSelect.disabled = true;
+        } else {
+            helpText.classList.add('hidden');
+            statusSelect.disabled = !isAssignedToCurrentUser && !isAdmin();
+        }
+    }
+}
+
+// Handle status select change - show/hide follow-up date field
+function handleStatusSelectChange() {
+    const statusSelect = document.getElementById('statusSelect');
+    const followUpContainer = document.getElementById('followUpDateContainer');
+    const followUpInput = document.getElementById('statusFollowUpDate');
+
+    if (!statusSelect || !followUpContainer) return;
+
+    const selectedStatus = statusSelect.value;
+
+    // Show follow-up date field for Follow-up status
+    if (selectedStatus === 'Follow-up') {
+        followUpContainer.classList.remove('hidden');
+        followUpInput.required = true;
+
+        // Set default to tomorrow
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        tomorrow.setHours(9, 0, 0, 0);
+        followUpInput.value = tomorrow.toISOString().slice(0, 16);
+    } else {
+        followUpContainer.classList.add('hidden');
+        followUpInput.required = false;
+        followUpInput.value = '';
+    }
+
+    validateStatusForm();
+}
+
+// Validate status form
+function validateStatusForm() {
+    const statusSelect = document.getElementById('statusSelect');
+    const statusNote = document.getElementById('statusNote');
+    const followUpInput = document.getElementById('statusFollowUpDate');
+    const submitBtn = document.getElementById('updateStatusBtn');
+
+    if (!statusSelect || !statusNote || !submitBtn) return;
+
+    const status = statusSelect.value;
+    const note = statusNote.value.trim();
+    const isFollowUp = status === 'Follow-up';
+
+    // Required: status and note
+    let isValid = status && note;
+
+    // Additional: follow-up date required for Follow-up status
+    if (isFollowUp && !followUpInput?.value) {
+        isValid = false;
+    }
+
+    submitBtn.disabled = !isValid;
+    return isValid;
+}
+
+// Handle status update form submission
+async function handleStatusUpdate(e) {
+    e.preventDefault();
+
+    if (!isAssignedToCurrentUser && !isAdmin()) {
+        showToast('error', 'Error', 'You do not have permission to update this enquiry');
+        return;
+    }
+
+    if (!validateStatusForm()) return;
+
+    const statusSelect = document.getElementById('statusSelect');
+    const statusNote = document.getElementById('statusNote');
+    const followUpInput = document.getElementById('statusFollowUpDate');
+    const submitBtn = document.getElementById('updateStatusBtn');
+    const errorDiv = document.getElementById('statusUpdateError');
+
+    const newStatus = statusSelect.value;
+    const note = statusNote.value.trim();
+    const followUpDate = followUpInput?.value || null;
+
+    // Show loading state
+    submitBtn.disabled = true;
+    const originalText = submitBtn.innerHTML;
+    submitBtn.innerHTML = '<span class="spinner mr-2"></span>Updating...';
+
+    try {
+        const urlParams = new URLSearchParams(window.location.search);
+        const enquiryId = urlParams.get('id');
+
+        // Prepare payload
+        const payload = {
+            status: newStatus,
+            note: note
+        };
+
+        // Add follow-up date if status is Follow-up
+        if (newStatus === 'Follow-up' && followUpDate) {
+            payload.followUpDate = new Date(followUpDate).toISOString();
+        }
+
+        const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), payload);
+
+        // Handle Converted status
+        if (newStatus === 'Converted') {
+            if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
+                const admissionId = response.data?.admission?._id || response.data?.enquiry?.admissionId;
+                if (currentEnquiry) {
+                    currentEnquiry.hasAdmission = true;
+                    currentEnquiry.admissionId = admissionId;
+                }
+                updateEnquiryUIForAdmission(admissionId);
+                showToast('info', 'Info', 'Admission already exists for this enquiry');
+            } else if (response.data?.requiresPaymentSetup) {
+                showToast('success', 'Success', 'Status updated to Converted. Please configure payment plan.');
+                openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
+            } else {
+                showToast('success', 'Success', 'Status updated to Converted');
+            }
+        } else {
+            showToast('success', 'Success', `Status updated to ${newStatus}`);
+        }
+
+        // Reset form
+        statusNote.value = '';
+        if (followUpInput) followUpInput.value = '';
+        document.getElementById('followUpDateContainer')?.classList.add('hidden');
+        if (errorDiv) errorDiv.classList.add('hidden');
+
+        // Refresh enquiry data
+        await loadEnquiryDetail(enquiryId);
+
+    } catch (error) {
+        const message = error.response?.data?.message || error.message || 'Failed to update status';
+        if (errorDiv) {
+            errorDiv.querySelector('p').textContent = message;
+            errorDiv.classList.remove('hidden');
+        }
+        showToast('error', 'Error', message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalText;
+    }
+}
+
+function setupDetailPageListeners(enquiryId) {
+    // Status Update Form
+    const statusUpdateForm = document.getElementById('statusUpdateForm');
+    if (statusUpdateForm) {
+        statusUpdateForm.addEventListener('submit', handleStatusUpdate);
+    }
+
+    // Status select change - show/hide follow-up date and update validation
+    const statusSelect = document.getElementById('statusSelect');
+    if (statusSelect) {
+        statusSelect.addEventListener('change', handleStatusSelectChange);
+    }
+
+    // Note input - real-time validation
+    const statusNote = document.getElementById('statusNote');
+    if (statusNote) {
+        statusNote.addEventListener('input', validateStatusForm);
+    }
+
     // Payment Selection Modal Listeners
     document.getElementById('closePaymentSelectionModal')?.addEventListener('click', closePaymentSelectionModal);
     document.getElementById('cancelPaymentSelection')?.addEventListener('click', closePaymentSelectionModal);
     document.getElementById('paymentSelectionModal')?.addEventListener('click', (e) => {
         if (e.target === e.currentTarget) closePaymentSelectionModal();
     });
-    
+
     // Total fees input listener to re-validate installments
     document.getElementById('modalTotalFeesInput')?.addEventListener('input', () => {
         if (modalSelectedPaymentType === 'INSTALLMENT') {
             validateModalInstallments();
         }
     });
-    
+
     // Add Installment Sub-Modal Listeners
     document.getElementById('closeAddInstallmentSubModal')?.addEventListener('click', closeAddInstallmentSubModal);
     document.getElementById('addInstallmentSubModal')?.addEventListener('click', (e) => {
         if (e.target === e.currentTarget) closeAddInstallmentSubModal();
     });
-    
-    // Add note
-    document.getElementById('addNoteBtn')?.addEventListener('click', async () => {
-        if (!isAssignedToCurrentUser && !isAdmin()) return;
-        
-        const noteText = document.getElementById('newNote').value.trim();
-        if (!noteText) {
-            showToast('warning', 'Warning', 'Please enter a note');
-            return;
-        }
-        
-        try {
-            await apiPost(API_ENDPOINTS.ENQUIRIES.ADD_NOTE(enquiryId), { text: noteText });
-            document.getElementById('newNote').value = '';
-            showToast('success', 'Success', 'Note added successfully');
-            loadEnquiryDetail(enquiryId);
-        } catch (error) {
-            showToast('error', 'Error', 'Failed to add note');
-        }
-    });
-    
-    // Update follow-up
-    document.getElementById('updateFollowUp')?.addEventListener('click', async () => {
-        if (!isAssignedToCurrentUser && !isAdmin()) return;
-        
-        const followUpDate = document.getElementById('followUpDate').value;
-        if (!followUpDate) {
-            showToast('warning', 'Warning', 'Please select a follow-up date');
-            return;
-        }
-        
-        try {
-            await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_FOLLOWUP(enquiryId), { followUpDate });
-            showToast('success', 'Success', 'Follow-up date updated');
-            loadEnquiryDetail(enquiryId);
-        } catch (error) {
-            showToast('error', 'Error', 'Failed to update follow-up date');
-        }
-    });
-    
+
     // Convert to admission - now opens payment selection modal
     document.getElementById('convertBtn')?.addEventListener('click', async () => {
         if (!isAssignedToCurrentUser && !isAdmin()) return;
@@ -1179,6 +1357,13 @@ window.removeModalInstallment = removeModalInstallment;
 window.submitAdmissionWithPayment = submitAdmissionWithPayment;
 window.updateEnquiryUIForAdmission = updateEnquiryUIForAdmission;
 window.viewAdmissionFromEnquiry = viewAdmissionFromEnquiry;
+
+// Export status form functions
+window.populateStatusDropdown = populateStatusDropdown;
+window.handleStatusSelectChange = handleStatusSelectChange;
+window.handleStatusUpdate = handleStatusUpdate;
+window.validateStatusForm = validateStatusForm;
+window.getValidNextStatuses = getValidNextStatuses;
 
 // Delete enquiry (admin only)
 async function deleteEnquiry(id) {

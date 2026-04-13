@@ -86,23 +86,28 @@ async function loadReports() {
             startDate,
             endDate,
         };
-        
+
         // Load all reports in parallel (using available endpoints only)
-        const [admissions, fees, installments] = await Promise.all([
+        const [admissions, fees, installments, payments] = await Promise.all([
             apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, { range: currentPeriod }).catch(() => ({ data: { summary: {}, admissions: [] } })),
             apiGet(API_ENDPOINTS.REPORTS.FEES, { range: currentPeriod }).catch(() => ({ data: { summary: {}, periodPayments: [] } })),
             apiGet(API_ENDPOINTS.REPORTS.INSTALLMENTS).catch(() => ({ data: { summary: { upcomingCount: 0, overdueCount: 0 }, upcoming: [], overdue: [] } })),
+            apiGet(API_ENDPOINTS.PAYMENTS.LIST, { ...params, limit: 1000 }).catch(() => ({ data: [] }))
         ]);
 
-        renderDashboardStats(admissions, fees, installments);
-        renderFeesOverview(fees);
+        // Store payments data for accurate revenue calculation
+        const paymentsData = payments.data || [];
+        window.reportsPaymentsData = paymentsData;
+
+        renderDashboardStats(admissions, fees, installments, paymentsData);
+        renderFeesOverview(fees, paymentsData);
         renderInstallments(installments);
     } catch (error) {
         showToast('error', 'Error', 'Failed to load reports');
     }
 }
 
-function renderDashboardStats(admissions, fees, installments) {
+function renderDashboardStats(admissions, fees, installments, paymentsData = []) {
     const admissionsData = admissions.data || {};
     const feesData = fees.data || {};
 
@@ -112,8 +117,11 @@ function renderDashboardStats(admissions, fees, installments) {
     const admissionsGrowth = summary.growth || 0;
 
     const feesSummary = feesData.summary || {};
-    const totalRevenue = feesSummary.totalRevenueCollected || 0;
-    const collectionRate = feesSummary.collectionRate || 0;
+
+    // Calculate revenue from payments data (using payment date, NOT enquiry date)
+    const totalRevenue = paymentsData.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    const expectedRevenue = feesSummary.totalFeesExpected || 0;
+    const collectionRate = expectedRevenue > 0 ? ((totalRevenue / expectedRevenue) * 100).toFixed(1) : 0;
 
     // Calculate enquiries from admissions data (enquiriesConverted)
     const totalEnquiries = summary.enquiriesConverted || totalAdmissions;
@@ -142,20 +150,22 @@ function renderDashboardStats(admissions, fees, installments) {
     const conversionRate = totalEnquiries > 0 ? (totalAdmissions / totalEnquiries * 100) : 0;
     document.getElementById('reportConversionRate').textContent = conversionRate.toFixed(1) + '%';
 
-    // Total Revenue
+    // Total Revenue - calculated from payments using payment date
     document.getElementById('reportTotalRevenue').textContent = formatCurrency(totalRevenue);
     const revenueTrendEl = document.getElementById('revenueTrend');
     revenueTrendEl.textContent = `Collection rate: ${collectionRate}%`;
     revenueTrendEl.className = 'text-xs text-blue-600 mt-1';
 }
 
-function renderFeesOverview(fees) {
+function renderFeesOverview(fees, paymentsData = []) {
     const feesData = fees.data || {};
     const summary = feesData.summary || {};
 
     const totalExpected = summary.totalFeesExpected || 0;
-    const totalCollected = summary.totalPaid || summary.totalRevenueCollected || 0;
-    const totalPending = summary.totalPending || (totalExpected - totalCollected);
+
+    // Calculate collected from actual payments data (using payment date)
+    const totalCollected = paymentsData.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    const totalPending = Math.max(0, totalExpected - totalCollected);
 
     document.getElementById('totalFeesExpected').textContent = formatCurrency(totalExpected);
     document.getElementById('totalFeesCollected').textContent = formatCurrency(totalCollected);
