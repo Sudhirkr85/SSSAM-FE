@@ -5,7 +5,7 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admissions • CRM</title>
+    <title>Today Calls • CRM</title>
 
     <!-- Tailwind -->
 
@@ -29,7 +29,7 @@
 
         <aside class="w-64 bg-gray-900 text-gray-300 flex flex-col">
 
-
+            ```
             <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
                 <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
                     <i data-lucide="building-2" class="text-white"></i>
@@ -38,33 +38,39 @@
             </div>
 
             <nav class="flex-1 py-4 space-y-1">
-                <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+
+                <a href="today.html" class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
                     <i data-lucide="phone"></i> Today Calls
                 </a>
+
                 <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="layout-dashboard"></i> Dashboard
                 </a>
+
                 <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="message-square"></i> Enquiries
                 </a>
-                <a href="admissions.html"
-                    class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
+
+                <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="graduation-cap"></i> Admissions
                 </a>
+
                 <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="wallet"></i> Payments
                 </a>
+
                 <a href="reports.html" id="reportsMenu"
                     class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="bar-chart-3"></i> Reports
                 </a>
+
             </nav>
 
             <div class="p-4 border-t border-gray-800">
                 <p id="userName" class="text-sm text-white"></p>
                 <p id="userRole" class="text-xs text-gray-400"></p>
             </div>
-
+            ```
 
         </aside>
 
@@ -72,14 +78,37 @@
 
         <div class="flex-1 flex flex-col">
 
-
+            ```
             <!-- NAVBAR -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-                <h1 class="text-lg font-semibold">Admissions</h1>
+                <h1 class="text-lg font-semibold">Today Calls</h1>
+                <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600">
+                    <i data-lucide="log-out"></i> Logout
+                </button>
             </header>
 
             <!-- CONTENT -->
             <main class="p-6 space-y-6 overflow-y-auto">
+
+                <!-- STATS -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    <div class="bg-white p-5 rounded-xl shadow">
+                        <p class="text-sm text-gray-500">Total Calls</p>
+                        <p id="totalCalls" class="text-2xl font-bold">0</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow">
+                        <p class="text-sm text-gray-500">Pending</p>
+                        <p id="pendingCalls" class="text-2xl font-bold text-yellow-600">0</p>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow">
+                        <p class="text-sm text-gray-500">Completed</p>
+                        <p id="doneCalls" class="text-2xl font-bold text-green-600">0</p>
+                    </div>
+
+                </div>
 
                 <!-- TABLE -->
                 <div class="bg-white rounded-xl shadow overflow-hidden">
@@ -90,16 +119,15 @@
                             <tr>
                                 <th class="px-6 py-3 text-left">Name</th>
                                 <th class="px-6 py-3">Course</th>
-                                <th class="px-6 py-3">Total Fees</th>
-                                <th class="px-6 py-3">Paid</th>
-                                <th class="px-6 py-3">Pending</th>
-                                <th class="px-6 py-3">Action</th>
+                                <th class="px-6 py-3">Status</th>
+                                <th class="px-6 py-3">Follow-Up</th>
+                                <th class="px-6 py-3">Actions</th>
                             </tr>
                         </thead>
 
-                        <tbody id="admissionTable">
+                        <tbody id="todayCallsTable">
                             <tr>
-                                <td colspan="6" class="text-center py-6 text-gray-400">Loading...</td>
+                                <td colspan="5" class="text-center py-6 text-gray-400">Loading...</td>
                             </tr>
                         </tbody>
 
@@ -108,34 +136,39 @@
                 </div>
 
             </main>
-
+            ```
 
         </div>
 
     </div>
 
-    <!-- PAYMENT MODAL -->
+    <!-- STATUS MODAL -->
 
-    <div id="paymentModal" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50">
+    <div id="statusModal" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50">
 
         <div class="bg-white rounded-xl w-full max-w-md p-6 space-y-4">
 
+            ```
+            <h2 class="font-semibold text-lg">Update Status</h2>
 
-            <h2 class="font-semibold text-lg">Add Payment</h2>
-
-            <input id="amount" type="number" placeholder="Amount" class="w-full border p-2 rounded" />
-
-            <select id="paymentMode" class="w-full border p-2 rounded">
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI</option>
-                <option value="Card">Card</option>
+            <select id="statusSelect" class="w-full border p-2 rounded">
+                <option value="CONTACTED">Contacted</option>
+                <option value="NO_RESPONSE">No Response</option>
+                <option value="FOLLOW_UP">Follow Up</option>
+                <option value="INTERESTED">Interested</option>
+                <option value="NOT_INTERESTED">Not Interested</option>
+                <option value="ADMISSION_PROCESS">Admission Process</option>
             </select>
 
-            <div class="flex justify-end gap-3 pt-2">
-                <button onclick="closePaymentModal()" class="px-4 py-2 border rounded">Cancel</button>
-                <button onclick="submitPayment()" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
-            </div>
+            <textarea id="statusNote" placeholder="Enter note..." class="w-full border p-2 rounded"></textarea>
 
+            <input type="date" id="followUpDate" class="w-full border p-2 rounded" />
+
+            <div class="flex justify-end gap-3 pt-2">
+                <button onclick="closeModal()" class="px-4 py-2 border rounded">Cancel</button>
+                <button onclick="confirmUpdate()" class="px-4 py-2 bg-blue-600 text-white rounded">Confirm</button>
+            </div>
+            ```
 
         </div>
 
@@ -153,7 +186,7 @@
 
     <script src="js/auth.js"></script>
 
-    <script src="js/admission.js"></script>
+    <script src="js/today.js"></script>
 
     <script>
         lucide.createIcons();

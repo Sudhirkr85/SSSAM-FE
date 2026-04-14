@@ -1,9 +1,10 @@
 <!DOCTYPE html>
 
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Enquiries • CRM</title>
 
   <!-- Tailwind -->
@@ -14,7 +15,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
-  <!-- Lucide Icons -->
+  <!-- Lucide -->
 
   <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -22,195 +23,193 @@
 
 <body class="bg-gray-100">
 
-<div class="flex h-screen">
+  <div class="flex h-screen">
 
-  <!-- Sidebar -->
+    <!-- SIDEBAR -->
 
-  <aside class="w-64 bg-gray-900 text-white flex flex-col">
-    <div class="p-6 border-b border-gray-700 flex items-center gap-3">
-      <i data-lucide="building-2" class="w-6 h-6 text-blue-400"></i>
-      <span class="font-semibold text-lg">CRM</span>
+    <aside class="w-64 bg-gray-900 text-gray-300 flex flex-col">
+
+
+      <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="building-2" class="text-white"></i>
+        </div>
+        <span class="text-lg font-semibold text-white">CRM</span>
+      </div>
+
+      <nav class="flex-1 py-4 space-y-1">
+        <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+          <i data-lucide="phone"></i> Today Calls
+        </a>
+        <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+          <i data-lucide="layout-dashboard"></i> Dashboard
+        </a>
+        <a href="enquiries.html" class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
+          <i data-lucide="message-square"></i> Enquiries
+        </a>
+        <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+          <i data-lucide="graduation-cap"></i> Admissions
+        </a>
+        <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+          <i data-lucide="wallet"></i> Payments
+        </a>
+        <a href="reports.html" id="reportsMenu"
+          class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+          <i data-lucide="bar-chart-3"></i> Reports
+        </a>
+      </nav>
+
+      <div class="p-4 border-t border-gray-800">
+        <p id="userName" class="text-sm text-white"></p>
+        <p id="userRole" class="text-xs text-gray-400"></p>
+      </div>
+
+
+    </aside>
+
+    <!-- MAIN -->
+
+    <div class="flex-1 flex flex-col">
+
+
+      <!-- NAVBAR -->
+      <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
+        <h1 class="text-lg font-semibold">Enquiries</h1>
+
+        <button onclick="openCreateModal()" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
+          <i data-lucide="plus"></i> Add
+        </button>
+      </header>
+
+      <!-- CONTENT -->
+      <main class="p-6 space-y-6 overflow-y-auto">
+
+        <!-- FILTERS -->
+        <div class="bg-white p-4 rounded-xl shadow flex flex-wrap gap-4">
+
+          <input id="searchInput" placeholder="Search..." class="px-4 py-2 border rounded-lg w-60">
+
+          <select id="statusFilter" class="px-4 py-2 border rounded-lg">
+            <option value="">All Status</option>
+            <option value="NEW">New</option>
+            <option value="CONTACTED">Contacted</option>
+            <option value="NO_RESPONSE">No Response</option>
+            <option value="FOLLOW_UP">Follow Up</option>
+            <option value="INTERESTED">Interested</option>
+            <option value="NOT_INTERESTED">Not Interested</option>
+            <option value="ADMISSION_PROCESS">Admission</option>
+            <option value="CONVERTED">Converted</option>
+          </select>
+
+          <button id="resetFilters" class="text-gray-600">Reset</button>
+
+        </div>
+
+        <!-- TABLE -->
+        <div class="bg-white rounded-xl shadow overflow-hidden">
+
+          <table class="w-full text-sm">
+
+            <thead class="bg-gray-50 text-gray-500">
+              <tr>
+                <th class="px-6 py-3 text-left">Name</th>
+                <th class="px-6 py-3">Course</th>
+                <th class="px-6 py-3">Status</th>
+                <th class="px-6 py-3">Follow-Up</th>
+                <th class="px-6 py-3">Actions</th>
+              </tr>
+            </thead>
+
+            <tbody id="enquiryTable">
+              <tr>
+                <td colspan="5" class="text-center py-6 text-gray-400">Loading...</td>
+              </tr>
+            </tbody>
+
+          </table>
+
+        </div>
+
+      </main>
+
+
     </div>
 
-```
-<nav class="flex-1 py-4 space-y-1">
-
-  <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800 hover:text-white">
-    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-    Dashboard
-  </a>
-
-  <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 bg-blue-600">
-    <i data-lucide="message-square" class="w-5 h-5"></i>
-    Enquiries
-  </a>
-
-  <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800 hover:text-white">
-    <i data-lucide="graduation-cap" class="w-5 h-5"></i>
-    Admissions
-  </a>
-
-  <a href="payments.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800 hover:text-white">
-    <i data-lucide="wallet" class="w-5 h-5"></i>
-    Payments
-  </a>
-
-</nav>
-
-<div class="p-4 border-t border-gray-700 text-sm">
-  <div id="userName"></div>
-  <div id="userRole" class="text-gray-400 text-xs"></div>
-</div>
-```
-
-  </aside>
-
-  <!-- Main -->
-
-  <div class="flex-1 flex flex-col">
-
-```
-<!-- Header -->
-<header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-  <h1 class="text-xl font-semibold">Enquiries</h1>
-
-  <div class="flex gap-3">
-
-    <button id="createEnquiryBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700">
-      <i data-lucide="plus"></i>
-      New
-    </button>
-
-    <button id="logoutBtn" class="text-gray-600 hover:text-red-500">
-      <i data-lucide="log-out"></i>
-    </button>
-
   </div>
-</header>
 
-<!-- Content -->
-<main class="p-6 space-y-6 overflow-y-auto">
+  <!-- STATUS MODAL -->
 
-  <!-- Filters -->
-  <div class="bg-white p-4 rounded-xl shadow-sm flex flex-wrap gap-4">
+  <div id="statusModal" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50">
 
-    <input id="searchInput" placeholder="Search..." 
-      class="px-4 py-2 border rounded-lg w-60"/>
+    <div class="bg-white rounded-xl w-full max-w-md p-6 space-y-4">
 
-    <select id="statusFilter" class="px-4 py-2 border rounded-lg">
-      <option value="">All</option>
-      <option value="FOLLOW_UP">Follow Up</option>
-      <option value="INTERESTED">Interested</option>
-    </select>
 
-    <select id="followUpFilter" class="px-4 py-2 border rounded-lg">
-      <option value="today">Today</option>
-      <option value="overdue">Overdue</option>
-      <option value="all">All</option>
-    </select>
+      <h2 class="font-semibold text-lg">Update Status</h2>
+
+      <select id="statusSelect" class="w-full border p-2 rounded">
+        <option value="CONTACTED">Contacted</option>
+        <option value="NO_RESPONSE">No Response</option>
+        <option value="FOLLOW_UP">Follow Up</option>
+        <option value="INTERESTED">Interested</option>
+        <option value="NOT_INTERESTED">Not Interested</option>
+        <option value="ADMISSION_PROCESS">Admission Process</option>
+      </select>
+
+      <textarea id="statusNote" placeholder="Enter note..." class="w-full border p-2 rounded"></textarea>
+
+      <input type="date" id="followUpDate" class="w-full border p-2 rounded" />
+
+      <div class="flex justify-end gap-3 pt-2">
+        <button onclick="closeModal()" class="px-4 py-2 border rounded">Cancel</button>
+        <button onclick="confirmUpdate()" class="px-4 py-2 bg-blue-600 text-white rounded">Confirm</button>
+      </div>
+
+
+    </div>
 
   </div>
 
-  <!-- Table -->
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <!-- CREATE MODAL -->
 
-    <table class="w-full">
+  <div id="createModal" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50">
 
-      <thead class="bg-gray-50 text-gray-500 text-sm">
-        <tr>
-          <th class="px-6 py-3 text-left">Name</th>
-          <th class="px-6 py-3 text-left">Course</th>
-          <th class="px-6 py-3 text-left">Status</th>
-          <th class="px-6 py-3 text-left">Follow-up</th>
-          <th class="px-6 py-3 text-left">Actions</th>
-        </tr>
-      </thead>
+    <div class="bg-white rounded-xl w-full max-w-md p-6 space-y-4">
 
-      <tbody id="enquiryTableBody" class="divide-y">
 
-        <tr>
-          <td colspan="5" class="text-center py-6 text-gray-400">
-            Loading...
-          </td>
-        </tr>
+      <h2 class="font-semibold text-lg">Add Enquiry</h2>
 
-      </tbody>
+      <input id="name" placeholder="Name" class="w-full border p-2 rounded" />
+      <input id="mobile" placeholder="Mobile" class="w-full border p-2 rounded" />
+      <input id="course" placeholder="Course" class="w-full border p-2 rounded" />
 
-    </table>
+      <div class="flex justify-end gap-3 pt-2">
+        <button onclick="closeCreateModal()" class="px-4 py-2 border rounded">Cancel</button>
+        <button onclick="createEnquiry()" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+      </div>
+
+
+    </div>
 
   </div>
 
-</main>
-```
+  <!-- TOAST -->
 
-  </div>
+  <div id="toast" class="fixed top-4 right-4 hidden"></div>
 
-</div>
+  <!-- JS -->
 
-<!-- STATUS MODAL -->
+  <script src="js/api.js"></script>
 
-<div id="statusModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
-  <form id="statusForm" class="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
+  <script src="js/ui.js"></script>
 
-```
-<input type="hidden" id="statusEnquiryId">
-<input type="hidden" id="statusTargetStatus">
+  <script src="js/auth.js"></script>
 
-<h2 class="text-lg font-semibold">Update Status</h2>
+  <script src="js/enquiry.js"></script>
 
-<textarea id="statusNote" placeholder="Add note..." required
-  class="w-full border rounded-lg px-4 py-2"></textarea>
-
-<input type="date" id="statusFollowUpDate" class="w-full border rounded-lg px-4 py-2">
-
-<div class="flex justify-end gap-3">
-  <button type="button" onclick="closeStatusModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
-  <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
-</div>
-```
-
-  </form>
-</div>
-
-<!-- CONVERT MODAL -->
-
-<div id="convertModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
-  <form id="convertForm" class="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
-
-```
-<input type="hidden" id="convertEnquiryId">
-
-<h2 class="text-lg font-semibold">Convert to Admission</h2>
-
-<input id="convertCourse" placeholder="Course" class="w-full border px-4 py-2 rounded-lg">
-<input id="convertFees" placeholder="Fees" type="number" class="w-full border px-4 py-2 rounded-lg">
-
-<div class="flex justify-end gap-3">
-  <button type="button" onclick="closeConvertModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
-  <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">Convert</button>
-</div>
-```
-
-  </form>
-</div>
-
-<!-- Toast -->
-
-<div id="toast" class="fixed top-4 right-4 hidden bg-white shadow-lg rounded-lg px-4 py-2"></div>
-
-<!-- Scripts -->
-
-<script src="js/api.js"></script>
-
-<script src="js/ui.js"></script>
-
-<script src="js/auth.js"></script>
-
-<script src="js/enquiry.js"></script>
-
-<script>
-  lucide.createIcons();
-</script>
+  <script>
+    lucide.createIcons();
+  </script>
 
 </body>
+
 </html>

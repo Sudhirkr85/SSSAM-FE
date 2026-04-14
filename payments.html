@@ -15,7 +15,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
-    <!-- Lucide Icons -->
+    <!-- Lucide -->
 
     <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -25,124 +25,79 @@
 
     <div class="flex h-screen">
 
-        <!-- Sidebar -->
+        <!-- SIDEBAR -->
 
-        <aside class="w-64 bg-gray-900 text-white flex flex-col">
-            <div class="p-6 border-b border-gray-800 flex items-center gap-3">
-                <i data-lucide="building-2" class="text-blue-400"></i>
-                <span class="font-semibold text-lg">CRM</span>
+        <aside class="w-64 bg-gray-900 text-gray-300 flex flex-col">
+
+
+            <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <i data-lucide="building-2" class="text-white"></i>
+                </div>
+                <span class="text-lg font-semibold text-white">CRM</span>
             </div>
 
-            ```
             <nav class="flex-1 py-4 space-y-1">
-                <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800">
+                <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+                    <i data-lucide="phone"></i> Today Calls
+                </a>
+                <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="layout-dashboard"></i> Dashboard
                 </a>
-                <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800">
+                <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="message-square"></i> Enquiries
                 </a>
-                <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800">
+                <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="graduation-cap"></i> Admissions
                 </a>
-                <a href="payments.html" class="flex items-center gap-3 px-6 py-3 bg-blue-600">
+                <a href="payments.html"
+                    class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
                     <i data-lucide="wallet"></i> Payments
+                </a>
+                <a href="reports.html" id="reportsMenu"
+                    class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
+                    <i data-lucide="bar-chart-3"></i> Reports
                 </a>
             </nav>
 
-            <div class="p-4 border-t border-gray-800 text-sm">
-                <div id="userName"></div>
-                <div id="userRole" class="text-gray-400 text-xs"></div>
+            <div class="p-4 border-t border-gray-800">
+                <p id="userName" class="text-sm text-white"></p>
+                <p id="userRole" class="text-xs text-gray-400"></p>
             </div>
-            ```
+
 
         </aside>
 
-        <!-- Main -->
+        <!-- MAIN -->
 
         <div class="flex-1 flex flex-col">
 
-            ```
-            <!-- Header -->
+
+            <!-- NAVBAR -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-                <h1 class="text-xl font-semibold">Payments</h1>
-                <button id="logoutBtn">
-                    <i data-lucide="log-out"></i>
-                </button>
+                <h1 class="text-lg font-semibold">Payments</h1>
             </header>
 
-            <!-- Content -->
-            <main class="p-6 space-y-6 overflow-y-auto">
+            <!-- CONTENT -->
+            <main class="p-6 overflow-y-auto">
 
-                <!-- Stats -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-white rounded-xl shadow overflow-hidden">
 
-                    <div class="bg-white p-5 rounded-xl shadow-sm flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">Today</p>
-                            <p id="todayCollection" class="text-2xl font-bold text-green-600">₹0</p>
-                        </div>
-                        <i data-lucide="trending-up" class="text-green-500"></i>
-                    </div>
+                    <table class="w-full text-sm">
 
-                    <div class="bg-white p-5 rounded-xl shadow-sm flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">This Month</p>
-                            <p id="monthCollection" class="text-2xl font-bold text-blue-600">₹0</p>
-                        </div>
-                        <i data-lucide="calendar" class="text-blue-500"></i>
-                    </div>
-
-                    <div class="bg-white p-5 rounded-xl shadow-sm flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">Transactions</p>
-                            <p id="totalTransactions" class="text-2xl font-bold text-purple-600">0</p>
-                        </div>
-                        <i data-lucide="receipt" class="text-purple-500"></i>
-                    </div>
-
-                </div>
-
-                <!-- Filters -->
-                <div class="bg-white p-4 rounded-xl shadow-sm flex flex-wrap gap-4">
-
-                    <input id="searchInput" placeholder="Search..." class="px-4 py-2 border rounded-lg w-64">
-
-                    <select id="dateFilter" class="px-4 py-2 border rounded-lg">
-                        <option value="">All</option>
-                        <option value="today">Today</option>
-                        <option value="week">Week</option>
-                        <option value="month">Month</option>
-                    </select>
-
-                    <button id="resetFilters" class="text-gray-600">Reset</button>
-
-                    <button id="addPaymentBtn"
-                        class="ml-auto bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2">
-                        <i data-lucide="plus"></i> Add Payment
-                    </button>
-
-                </div>
-
-                <!-- Table -->
-                <div class="bg-white rounded-xl shadow-sm overflow-hidden">
-
-                    <table class="w-full">
-
-                        <thead class="bg-gray-50 text-gray-500 text-sm">
+                        <thead class="bg-gray-50 text-gray-500">
                             <tr>
-                                <th class="px-6 py-3 text-left">Receipt</th>
                                 <th class="px-6 py-3 text-left">Student</th>
-                                <th class="px-6 py-3 text-left">Course</th>
-                                <th class="px-6 py-3 text-left">Amount</th>
-                                <th class="px-6 py-3 text-left">Date</th>
-                                <th class="px-6 py-3 text-left">Mode</th>
-                                <th class="px-6 py-3 text-left">Actions</th>
+                                <th class="px-6 py-3">Course</th>
+                                <th class="px-6 py-3">Amount</th>
+                                <th class="px-6 py-3">Mode</th>
+                                <th class="px-6 py-3">Date</th>
                             </tr>
                         </thead>
 
-                        <tbody id="paymentsTable" class="divide-y">
+                        <tbody id="paymentTable">
                             <tr>
-                                <td colspan="7" class="text-center py-6 text-gray-400">Loading...</td>
+                                <td colspan="5" class="text-center py-6 text-gray-400">Loading...</td>
                             </tr>
                         </tbody>
 
@@ -151,52 +106,17 @@
                 </div>
 
             </main>
-            ```
+
 
         </div>
 
     </div>
 
-    <!-- ADD PAYMENT MODAL -->
+    <!-- TOAST -->
 
-    <div id="paymentModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
-        <form id="paymentForm" class="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
+    <div id="toast" class="fixed top-4 right-4 hidden"></div>
 
-            ```
-            <h2 class="text-lg font-semibold">Add Payment</h2>
-
-            <select id="paymentAdmission" required class="w-full border px-4 py-2 rounded-lg">
-                <option value="">Select Admission</option>
-            </select>
-
-            <input id="paymentAmount" type="number" placeholder="Amount" required
-                class="w-full border px-4 py-2 rounded-lg">
-
-            <select id="paymentMode" required class="w-full border px-4 py-2 rounded-lg">
-                <option value="">Mode</option>
-                <option>Cash</option>
-                <option>UPI</option>
-                <option>Card</option>
-            </select>
-
-            <input id="paymentDate" type="date" required class="w-full border px-4 py-2 rounded-lg">
-
-            <textarea id="paymentNotes" placeholder="Notes" class="w-full border px-4 py-2 rounded-lg"></textarea>
-
-            <div class="flex justify-end gap-3">
-                <button type="button" onclick="closePaymentModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
-            </div>
-            ```
-
-        </form>
-    </div>
-
-    <!-- Toast -->
-
-    <div id="toast" class="fixed top-4 right-4 hidden bg-white shadow-lg rounded-lg px-4 py-2"></div>
-
-    <!-- Scripts -->
+    <!-- JS -->
 
     <script src="js/api.js"></script>
 

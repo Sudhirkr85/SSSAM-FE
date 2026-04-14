@@ -1,171 +1,147 @@
 /* ======================
+GLOBAL
+====================== */
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+/* ======================
 SCROLLBAR
 ====================== */
-
 ::-webkit-scrollbar {
     width: 6px;
 }
 
 ::-webkit-scrollbar-thumb {
     background: #cbd5f5;
-    border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-    background: #a5b4fc;
+    border-radius: 10px;
 }
 
 /* ======================
-STATUS BADGES
+TABLE
 ====================== */
+table tr {
+    transition: all 0.2s ease;
+}
 
-.status-badge {
-    padding: 4px 10px;
+table tr:hover {
+    background: #f9fafb;
+}
+
+/* ======================
+BUTTON
+====================== */
+button {
+    transition: all 0.2s ease;
+}
+
+button:hover {
+    transform: translateY(-1px);
+}
+
+/* ======================
+INPUT
+====================== */
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.4);
+}
+
+/* ======================
+CARD
+====================== */
+.card {
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.05);
+}
+
+/* ======================
+STATUS COLORS
+====================== */
+.status-NEW {
+    background: #e5e7eb;
+}
+
+.status-CONTACTED {
+    background: #bfdbfe;
+}
+
+.status-NO_RESPONSE {
+    background: #fecaca;
+}
+
+.status-FOLLOW_UP {
+    background: #fef9c3;
+}
+
+.status-INTERESTED {
+    background: #bbf7d0;
+}
+
+.status-NOT_INTERESTED {
+    background: #fca5a5;
+}
+
+.status-ADMISSION_PROCESS {
+    background: #ddd6fe;
+}
+
+.status-CONVERTED {
+    background: #22c55e;
+    color: white;
+}
+
+/* ======================
+MODAL ANIMATION
+====================== */
+.modal-enter {
+    animation: scaleIn 0.2s ease;
+}
+
+@keyframes scaleIn {
+    from {
+        transform: scale(0.9);
+        opacity: 0;
+    }
+
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+/* ======================
+PREMIUM EFFECT
+====================== */
+.glass {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* ======================
+NAV HOVER
+====================== */
+.nav-item:hover {
+    background: #1f2937;
+    color: #fff;
+}
+
+/* ======================
+BADGE
+====================== */
+.badge {
+    padding: 2px 8px;
     font-size: 11px;
     border-radius: 999px;
-    font-weight: 500;
-}
-
-.status-new {
-    background: #f3f4f6;
-    color: #374151;
-}
-
-.status-contacted {
-    background: #dbeafe;
-    color: #1d4ed8;
-}
-
-.status-follow_up {
-    background: #fef3c7;
-    color: #92400e;
-}
-
-.status-interested {
-    background: #dcfce7;
-    color: #166534;
-}
-
-.status-not_interested {
-    background: #fee2e2;
-    color: #991b1b;
-}
-
-.status-converted {
-    background: #ede9fe;
-    color: #5b21b6;
 }
 
 /* ======================
-TABLE STATES
+SMOOTH UI
 ====================== */
 
-.row-overdue {
-    background: #fef2f2;
-}
-
-.row-unassigned {
-    background: #fffbeb;
-}
-
-/* ======================
-TIMELINE
-====================== */
-
-.timeline-item {
-    border-left: 2px solid #e5e7eb;
-    padding-left: 12px;
-    margin-bottom: 12px;
-}
-
-.timeline-dot {
-    width: 8px;
-    height: 8px;
-    background: #3b82f6;
-    border-radius: 50%;
-    position: absolute;
-    left: -5px;
-}
-
-/* ======================
-MODAL
-====================== */
-
-.modal {
-    animation: fadeIn 0.2s ease;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: scale(0.95);
-    }
-
-    to {
-        opacity: 1;
-        transform: scale(1);
-    }
-}
-
-/* ======================
-TOAST
-====================== */
-
-.toast {
-    animation: slideIn 0.3s ease;
-}
-
-@keyframes slideIn {
-    from {
-        transform: translateX(100%);
-    }
-
-    to {
-        transform: translateX(0);
-    }
-}
-
-/* ======================
-CARD HOVER
-====================== */
-
-.card-hover {
-    transition: 0.2s;
-}
-
-.card-hover:hover {
-    transform: translateY(-3px);
-}
-
-/* ======================
-LOADING
-====================== */
-
-.spinner {
-    animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* ======================
-LOCKED STATE
-====================== */
-
-.locked {
-    pointer-events: none;
-    opacity: 0.6;
-}
-
-/* ======================
-PRINT
-====================== */
-
-@media print {
-    .no-print {
-        display: none !important;
-    }
+* {
+    transition: background 0.2s, color 0.2s;
 }
