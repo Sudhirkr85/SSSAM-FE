@@ -108,37 +108,32 @@
 
                 </div>
 
-                <!-- ACTION BUTTONS -->
+                <!-- ACTION BUTTONS - All Options -->
                 <div class="flex gap-3 flex-wrap">
 
                     <button onclick="openStatusModal(currentId,'CONTACTED')"
-                        class="flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
-                        <i data-lucide="phone" class="w-4 h-4"></i>
-                        <span>Contacted</span>
+                        class="px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        Contacted
                     </button>
 
                     <button onclick="openStatusModal(currentId,'FOLLOW_UP')"
-                        class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
-                        <i data-lucide="calendar" class="w-4 h-4"></i>
-                        <span>Follow Up</span>
+                        class="px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        Follow Up
                     </button>
 
                     <button onclick="openStatusModal(currentId,'INTERESTED')"
-                        class="flex items-center gap-2 px-4 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
-                        <i data-lucide="thumbs-up" class="w-4 h-4"></i>
-                        <span>Interested</span>
+                        class="px-4 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        Interested
                     </button>
 
                     <button onclick="openStatusModal(currentId,'NOT_INTERESTED')"
-                        class="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
-                        <i data-lucide="x-circle" class="w-4 h-4"></i>
-                        <span>Not Interested</span>
+                        class="px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        Not Interested
                     </button>
 
                     <button onclick="openConvertModal(currentId)"
-                        class="flex items-center gap-2 px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
-                        <i data-lucide="graduation-cap" class="w-4 h-4"></i>
-                        <span>Convert</span>
+                        class="px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        Convert
                     </button>
 
                 </div>
@@ -253,57 +248,83 @@
         </div>
     </div>
 
-    <!-- CONVERT MODAL -->
-    <div id="convertModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="convertModalContent">
+    <!-- SETUP FEES MODAL -->
+    <div id="setupFeesModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="setupFeesModalContent">
 
             <!-- Header -->
             <div class="flex items-center gap-3 mb-6">
                 <div class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
-                    <i data-lucide="graduation-cap" class="text-white w-5 h-5"></i>
+                    <i data-lucide="wallet" class="text-white w-5 h-5"></i>
                 </div>
-                <h2 class="text-xl font-semibold text-gray-800">Convert to Admission</h2>
+                <h2 class="text-xl font-semibold text-gray-800">Setup Fees</h2>
             </div>
 
-            <input type="hidden" id="convertEnquiryId">
+            <input type="hidden" id="setupFeesEnquiryId">
 
             <!-- Form -->
             <div class="space-y-5">
 
-                <!-- Course -->
+                <!-- Total Fees -->
                 <div class="relative">
-                    <input type="text" id="convertCourse" required
+                    <input type="number" id="totalFees" required min="0" step="0.01"
                         class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
-                        placeholder="Course">
-                    <label for="convertCourse"
+                        placeholder="Total Fees">
+                    <label for="totalFees"
                         class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-purple-600">
-                        Course Name <span class="text-red-500">*</span>
+                        Total Fees (Rs.) <span class="text-red-500">*</span>
                     </label>
-                    <p id="convertCourseError" class="hidden text-red-500 text-xs mt-1 ml-1">Course is required</p>
+                    <p id="totalFeesError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter valid amount</p>
                 </div>
 
-                <!-- Fees -->
+                <!-- Installment Amount -->
                 <div class="relative">
-                    <input type="number" id="convertFees" required min="0"
+                    <input type="number" id="installmentAmount" required min="0" step="0.01"
                         class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
-                        placeholder="Fees">
-                    <label for="convertFees"
+                        placeholder="Installment Amount">
+                    <label for="installmentAmount"
                         class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-purple-600">
-                        Course Fees (₹) <span class="text-red-500">*</span>
+                        Installment Amount (Rs.) <span class="text-red-500">*</span>
                     </label>
-                    <p id="convertFeesError" class="hidden text-red-500 text-xs mt-1 ml-1">Valid fee amount required</p>
+                    <p id="installmentAmountError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter valid amount</p>
+                </div>
+
+                <!-- Payment Date -->
+                <div class="relative">
+                    <input type="date" id="paymentDate" required
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all">
+                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+                        Payment Date <span class="text-red-500">*</span>
+                    </label>
+                    <p id="paymentDateError" class="hidden text-red-500 text-xs mt-1 ml-1">Select payment date</p>
+                </div>
+
+                <!-- Payment Mode -->
+                <div class="relative">
+                    <select id="paymentMode" required
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all appearance-none bg-white">
+                        <option value="CASH">Cash</option>
+                        <option value="CARD">Card</option>
+                        <option value="ONLINE">Online</option>
+                        <option value="UPI">UPI</option>
+                        <option value="CHEQUE">Cheque</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
+                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+                        Payment Mode <span class="text-red-500">*</span>
+                    </label>
                 </div>
 
             </div>
 
             <!-- Actions -->
             <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-                <button onclick="closeConvertModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                <button onclick="closeSetupFeesModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
                     Cancel
                 </button>
-                <button onclick="submitConvert()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                <button onclick="submitSetupFees()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
                     <i data-lucide="check" class="w-4 h-4"></i>
-                    Convert
+                    Save Admission
                 </button>
             </div>
 

@@ -182,16 +182,16 @@ function renderTable(data) {
   }
 
   table.innerHTML = data.map(e => `
-    <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+    <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='enquiry-detail.html?id=${e._id}'">
       <td class="px-6 py-4">
         <div class="font-medium text-gray-900">${e.name || '-'}</div>
         <div class="text-xs text-gray-500">${e.mobile || ''}</div>
       </td>
       <td class="px-6 py-4 text-gray-700">${e.courseInterested || '-'}</td>
       <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
-      <td class="px-6 py-4 text-gray-600">${formatDate(e.followUpDate)}</td>
-      <td class="px-6 py-4 text-center">
-        <button onclick="openModal('${e._id}')"
+      <td class="px-6 py-4 text-gray-600">${e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
+      <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
+        <button onclick="openQuickUpdateModal('${e._id}')"
           class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm">
           Update
         </button>
@@ -496,6 +496,93 @@ async function executeUpdate() {
     loadEnquiries();
   } catch {
     showToast('error', 'Failed to update status');
+  }
+}
+
+/* ======================
+QUICK UPDATE MODAL (Direct Notes)
+====================== */
+function openQuickUpdateModal(id) {
+  selectedId = id;
+  const modal = document.getElementById('quickUpdateModal');
+  const modalContent = document.getElementById('quickUpdateModalContent');
+
+  // Reset form
+  document.getElementById('quickStatusSelect').value = 'CONTACTED';
+  document.getElementById('quickNote').value = '';
+  document.getElementById('quickFollowUpDate').value = '';
+  clearQuickStatusErrors();
+
+  modal.classList.remove('hidden');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    modalContent.classList.remove('scale-95');
+    modalContent.classList.add('scale-100');
+  }, 10);
+  lucide.createIcons();
+}
+
+function closeQuickUpdateModal() {
+  const modal = document.getElementById('quickUpdateModal');
+  const modalContent = document.getElementById('quickUpdateModalContent');
+  modal.classList.add('opacity-0');
+  modalContent.classList.remove('scale-100');
+  modalContent.classList.add('scale-95');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+  }, 300);
+}
+
+function clearQuickStatusErrors() {
+  const noteError = document.getElementById('quickNoteError');
+  const noteInput = document.getElementById('quickNote');
+  noteError.classList.add('hidden');
+  noteInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+  noteInput.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+}
+
+function validateQuickNote() {
+  const note = document.getElementById('quickNote');
+  const error = document.getElementById('quickNoteError');
+  if (!note.value.trim()) {
+    error.classList.remove('hidden');
+    note.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+    note.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+    return false;
+  }
+  error.classList.add('hidden');
+  note.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+  note.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+  return true;
+}
+
+async function submitQuickUpdate() {
+  // Validate note
+  if (!validateQuickNote()) {
+    showToast('error', 'Please add a note');
+    return;
+  }
+
+  const status = document.getElementById('quickStatusSelect').value;
+  const note = document.getElementById('quickNote').value;
+  const followUpDate = document.getElementById('quickFollowUpDate').value;
+
+  try {
+    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), {
+      status,
+      note,
+      followUpDate
+    });
+
+    showToast('success', 'Status updated successfully');
+    closeQuickUpdateModal();
+    loadEnquiries();
+  } catch (err) {
+    showToast('error', 'Failed to update status');
+    // Show error popup
+    setTimeout(() => {
+      alert('Update failed: ' + (err.message || 'Please try again'));
+    }, 100);
   }
 }
 
@@ -805,3 +892,6 @@ window.submitBulkUpload = submitBulkUpload;
 window.clearSelectedFile = clearSelectedFile;
 window.downloadTemplate = downloadTemplate;
 window.showFormatGuide = showFormatGuide;
+window.openQuickUpdateModal = openQuickUpdateModal;
+window.closeQuickUpdateModal = closeQuickUpdateModal;
+window.submitQuickUpdate = submitQuickUpdate;

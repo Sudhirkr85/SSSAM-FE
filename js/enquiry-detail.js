@@ -1,15 +1,15 @@
 let currentId = null;
 let confirmCallback = null;
 
-// Status labels with icons
+// Status labels - text only, no icons
 const statusLabels = {
-    'CONTACTED': { text: 'Contacted', icon: '📞', color: 'blue' },
-    'NO_RESPONSE': { text: 'No Response', icon: '🔕', color: 'gray' },
-    'FOLLOW_UP': { text: 'Follow Up', icon: '📅', color: 'amber' },
-    'INTERESTED': { text: 'Interested', icon: '👍', color: 'green' },
-    'NOT_INTERESTED': { text: 'Not Interested', icon: '👎', color: 'red' },
-    'ADMISSION_PROCESS': { text: 'Admission Process', icon: '🎓', color: 'purple' },
-    'CONVERTED': { text: 'Converted', icon: '✅', color: 'green' }
+    'CONTACTED': { text: 'Contacted', color: 'blue' },
+    'NO_RESPONSE': { text: 'No Response', color: 'gray' },
+    'FOLLOW_UP': { text: 'Follow Up', color: 'amber' },
+    'INTERESTED': { text: 'Interested', color: 'green' },
+    'NOT_INTERESTED': { text: 'Not Interested', color: 'red' },
+    'ADMISSION_PROCESS': { text: 'Admission Process', color: 'purple' },
+    'CONVERTED': { text: 'Converted', color: 'green' }
 };
 
 /* ======================
@@ -107,11 +107,11 @@ function openStatusModal(id, status) {
     document.getElementById('statusEnquiryId').value = id;
     document.getElementById('statusTargetStatus').value = status;
 
-    // Show status display
-    const statusInfo = statusLabels[status] || { text: status, icon: '', color: 'gray' };
+    // Show status display - text only, no icon
+    const statusInfo = statusLabels[status] || { text: status, color: 'gray' };
+    const colorClass = statusInfo.color === 'blue' ? 'text-blue-600' : statusInfo.color === 'green' ? 'text-green-600' : statusInfo.color === 'red' ? 'text-red-600' : statusInfo.color === 'amber' ? 'text-amber-600' : statusInfo.color === 'purple' ? 'text-purple-600' : 'text-gray-600';
     document.getElementById('statusDisplay').innerHTML = `
-        <span class="text-2xl">${statusInfo.icon}</span>
-        <span class="${statusInfo.color === 'blue' ? 'text-blue-600' : statusInfo.color === 'green' ? 'text-green-600' : statusInfo.color === 'red' ? 'text-red-600' : statusInfo.color === 'amber' ? 'text-amber-600' : 'text-gray-600'}">${statusInfo.text}</span>
+        <span class="${colorClass} font-medium">${statusInfo.text}</span>
     `;
 
     // Reset form
@@ -209,100 +209,24 @@ async function executeStatusUpdate(id, status, note, followUpDate) {
 }
 
 /* ======================
-CONVERT MODAL
+CONVERT TO ADMISSION FLOW
 ====================== */
+let pendingConvertData = null;
+
+// Step 1: Show Convert Confirmation
 function openConvertModal(id) {
     currentId = id;
-    document.getElementById('convertEnquiryId').value = id;
+    pendingConvertData = null;
 
-    // Reset form
-    document.getElementById('convertCourse').value = '';
-    document.getElementById('convertFees').value = '';
-    clearConvertErrors();
-
-    // Show modal with animation
-    const modal = document.getElementById('convertModal');
-    const modalContent = document.getElementById('convertModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
-}
-
-function closeConvertModal() {
-    const modal = document.getElementById('convertModal');
-    const modalContent = document.getElementById('convertModalContent');
-    modal.classList.add('opacity-0');
-    modalContent.classList.remove('scale-100');
-    modalContent.classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
-}
-
-function clearConvertErrors() {
-    document.getElementById('convertCourseError').classList.add('hidden');
-    document.getElementById('convertFeesError').classList.add('hidden');
-
-    const courseInput = document.getElementById('convertCourse');
-    const feesInput = document.getElementById('convertFees');
-
-    courseInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    courseInput.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-
-    feesInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    feesInput.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-}
-
-function validateConvertForm() {
-    let valid = true;
-
-    const course = document.getElementById('convertCourse');
-    const fees = document.getElementById('convertFees');
-    const courseError = document.getElementById('convertCourseError');
-    const feesError = document.getElementById('convertFeesError');
-
-    if (!course.value.trim()) {
-        courseError.classList.remove('hidden');
-        course.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-        course.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        valid = false;
-    } else {
-        courseError.classList.add('hidden');
-        course.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        course.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-    }
-
-    if (!fees.value || parseFloat(fees.value) < 0) {
-        feesError.classList.remove('hidden');
-        fees.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-        fees.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        valid = false;
-    } else {
-        feesError.classList.add('hidden');
-        fees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        fees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-    }
-
-    return valid;
-}
-
-function submitConvert() {
-    if (!validateConvertForm()) {
-        showToast('error', 'Please fill all required fields');
-        return;
-    }
-
-    const course = document.getElementById('convertCourse').value;
-    const fees = document.getElementById('convertFees').value;
-
-    // Open confirm modal
+    // Show confirmation modal directly
     document.getElementById('confirmActionText').textContent = 'Convert to Admission';
-    document.getElementById('confirmDetailsText').textContent = `${course} - ₹${fees}`;
+    document.getElementById('confirmDetailsText').textContent = 'Are you sure you want to convert this enquiry to admission?';
 
-    confirmCallback = () => executeConvert(currentId, course, fees);
+    confirmCallback = () => {
+        closeConfirmModal();
+        // After confirmation, show Setup Fees modal
+        openSetupFeesModal(id);
+    };
 
     const modal = document.getElementById('confirmModal');
     const modalContent = document.getElementById('confirmModalContent');
@@ -314,20 +238,148 @@ function submitConvert() {
     }, 10);
 }
 
-async function executeConvert(id, course, fees) {
+// Step 2: Setup Fees Modal
+function openSetupFeesModal(id) {
+    document.getElementById('setupFeesEnquiryId').value = id;
+
+    // Reset form
+    document.getElementById('totalFees').value = '';
+    document.getElementById('installmentAmount').value = '';
+    document.getElementById('paymentDate').value = '';
+    document.getElementById('paymentMode').value = 'CASH';
+    clearSetupFeesErrors();
+
+    // Show modal with animation
+    const modal = document.getElementById('setupFeesModal');
+    const modalContent = document.getElementById('setupFeesModalContent');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+        lucide.createIcons();
+    }, 10);
+}
+
+function closeSetupFeesModal() {
+    const modal = document.getElementById('setupFeesModal');
+    const modalContent = document.getElementById('setupFeesModalContent');
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function clearSetupFeesErrors() {
+    const fields = ['totalFees', 'installmentAmount', 'paymentDate'];
+    fields.forEach(field => {
+        const error = document.getElementById(field + 'Error');
+        const input = document.getElementById(field);
+        if (error) error.classList.add('hidden');
+        if (input) {
+            input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+            input.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        }
+    });
+}
+
+function validateSetupFeesForm() {
+    let valid = true;
+
+    const totalFees = document.getElementById('totalFees');
+    const installmentAmount = document.getElementById('installmentAmount');
+    const paymentDate = document.getElementById('paymentDate');
+
+    // Validate Total Fees
+    if (!totalFees.value || parseFloat(totalFees.value) <= 0) {
+        document.getElementById('totalFeesError').classList.remove('hidden');
+        totalFees.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        totalFees.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        valid = false;
+    } else {
+        document.getElementById('totalFeesError').classList.add('hidden');
+        totalFees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+    }
+
+    // Validate Installment Amount
+    if (!installmentAmount.value || parseFloat(installmentAmount.value) <= 0) {
+        document.getElementById('installmentAmountError').classList.remove('hidden');
+        installmentAmount.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        installmentAmount.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        valid = false;
+    } else if (parseFloat(installmentAmount.value) > parseFloat(totalFees.value || 0)) {
+        document.getElementById('installmentAmountError').textContent = 'Cannot exceed total fees';
+        document.getElementById('installmentAmountError').classList.remove('hidden');
+        installmentAmount.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        installmentAmount.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        valid = false;
+    } else {
+        document.getElementById('installmentAmountError').classList.add('hidden');
+        installmentAmount.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        installmentAmount.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+    }
+
+    // Validate Payment Date
+    if (!paymentDate.value) {
+        document.getElementById('paymentDateError').classList.remove('hidden');
+        paymentDate.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        paymentDate.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        valid = false;
+    } else {
+        document.getElementById('paymentDateError').classList.add('hidden');
+        paymentDate.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        paymentDate.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+    }
+
+    return valid;
+}
+
+async function submitSetupFees() {
+    if (!validateSetupFeesForm()) {
+        showToast('error', 'Please fill all required fields correctly');
+        return;
+    }
+
+    const id = document.getElementById('setupFeesEnquiryId').value;
+    const totalFees = parseFloat(document.getElementById('totalFees').value);
+    const installmentAmount = parseFloat(document.getElementById('installmentAmount').value);
+    const paymentDate = document.getElementById('paymentDate').value;
+    const paymentMode = document.getElementById('paymentMode').value;
+
     try {
-        await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, {
+        // Step 1: Create Admission
+        const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, {
             enquiryId: id,
-            course,
-            fees: parseFloat(fees)
+            totalFees: totalFees,
+            finalStatus: 'JOINED'
         });
 
-        showToast('success', 'Converted to admission successfully');
-        closeConfirmModal();
-        closeConvertModal();
+        const admissionId = admissionRes.admission?._id || admissionRes._id;
+
+        // Step 2: Create First Payment
+        if (admissionId && installmentAmount > 0) {
+            await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, {
+                admissionId: admissionId,
+                amount: installmentAmount,
+                paymentDate: paymentDate,
+                paymentMode: paymentMode,
+                paymentType: 'INSTALLMENT',
+                notes: 'First installment payment'
+            });
+        }
+
+        showToast('success', 'Admission created with payment successfully');
+        closeSetupFeesModal();
         loadEnquiryDetail(id);
-    } catch {
-        showToast('error', 'Failed to convert');
+    } catch (err) {
+        showToast('error', 'Failed to create admission');
+        // Show error popup
+        setTimeout(() => {
+            alert('Failed to create admission: ' + (err.message || 'Please try again'));
+        }, 100);
     }
 }
 
@@ -359,7 +411,7 @@ window.openStatusModal = openStatusModal;
 window.closeStatusModal = closeStatusModal;
 window.submitStatusUpdate = submitStatusUpdate;
 window.openConvertModal = openConvertModal;
-window.closeConvertModal = closeConvertModal;
-window.submitConvert = submitConvert;
+window.closeSetupFeesModal = closeSetupFeesModal;
+window.submitSetupFees = submitSetupFees;
 window.closeConfirmModal = closeConfirmModal;
 window.executeConfirmAction = executeConfirmAction;

@@ -6,24 +6,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadDashboard() {
     try {
-        const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL);
-        const data = res.enquiries || [];
+        // Get total enquiries count
+        const totalRes = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { limit: 1 });
+        document.getElementById('totalEnquiries').textContent = totalRes.pagination?.totalCount || totalRes.totalCount || 0;
 
-        document.getElementById('totalEnquiries').textContent = data.length;
+        // Get today's enquiries
+        const today = new Date().toISOString().split('T')[0];
+        const todayRes = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+            startDate: today,
+            endDate: today,
+            limit: 1
+        });
+        document.getElementById('newEnquiries').textContent = todayRes.pagination?.totalCount || todayRes.totalCount || 0;
 
-        const today = new Date().toDateString();
-        const todayCount = data.filter(e =>
-            new Date(e.createdAt).toDateString() === today
-        ).length;
-        document.getElementById('newEnquiries').textContent = todayCount;
+        // Get overdue enquiries (follow-up date passed but not contacted/converted)
+        const overdueRes = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+            followUpDateTo: today,
+            statusNotIn: 'CONVERTED,NOT_INTERESTED',
+            limit: 1
+        });
+        document.getElementById('overdueEnquiries').textContent = overdueRes.pagination?.totalCount || overdueRes.totalCount || 0;
 
-        const overdue = data.filter(e =>
-            e.followUpDate && new Date(e.followUpDate) < new Date() && e.status !== 'CONVERTED'
-        ).length;
-        document.getElementById('overdueEnquiries').textContent = overdue;
-
-        const converted = data.filter(e => e.status === 'CONVERTED').length;
-        document.getElementById('convertedEnquiries').textContent = converted;
+        // Get converted enquiries count
+        const convertedRes = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+            status: 'CONVERTED',
+            limit: 1
+        });
+        document.getElementById('convertedEnquiries').textContent = convertedRes.pagination?.totalCount || convertedRes.totalCount || 0;
     } catch {
         showToast('error', 'Dashboard load failed');
     }
@@ -44,14 +53,10 @@ async function loadTodayCalls() {
             table.innerHTML = `
                 <tr>
                     <td colspan="4" class="text-center py-8">
-                        <div class="flex flex-col items-center gap-2 text-gray-400">
-                            <i data-lucide="check-circle" class="w-8 h-8 text-green-500"></i>
-                            <p>No calls scheduled for today</p>
-                        </div>
+                        <p class="text-gray-400">No calls scheduled for today</p>
                     </td>
                 </tr>
             `;
-            lucide.createIcons();
             return;
         }
 
@@ -62,8 +67,8 @@ async function loadTodayCalls() {
                 </td>
                 <td class="px-4 py-3 text-gray-700">${e.courseInterested || '-'}</td>
                 <td class="px-4 py-3">${getStatusBadge(e.status)}</td>
-                <td class="px-4 py-3 ${isOverdue(e.followUpDate) ? 'text-red-600 font-medium' : 'text-gray-600'}">
-                    ${formatDate(e.followUpDate)}
+                <td class="px-4 py-3 ${e.followUpDate && new Date(e.followUpDate) < new Date() ? 'text-red-600 font-medium' : 'text-gray-600'}">
+                    ${e.followUpDate ? formatDate(e.followUpDate) : '-'}
                 </td>
             </tr>
         `).join('');
@@ -104,7 +109,7 @@ async function loadRecentEnquiries() {
                 </td>
                 <td class="px-4 py-3 text-gray-700">${e.courseInterested || '-'}</td>
                 <td class="px-4 py-3">${getStatusBadge(e.status)}</td>
-                <td class="px-4 py-3 text-gray-600">${formatDate(e.followUpDate)}</td>
+                <td class="px-4 py-3 text-gray-600">${e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
             </tr>
         `).join('');
     } catch {

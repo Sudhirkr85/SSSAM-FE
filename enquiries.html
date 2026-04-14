@@ -228,16 +228,16 @@
       <!-- Form -->
       <div class="space-y-5">
 
-        <!-- Status Dropdown with Icons -->
+        <!-- Status Dropdown -->
         <div class="relative">
           <select id="statusSelect" required
             class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white">
-            <option value="CONTACTED" data-color="blue">📞 Contacted</option>
-            <option value="NO_RESPONSE" data-color="red">🔕 No Response</option>
-            <option value="FOLLOW_UP" data-color="yellow">📅 Follow Up</option>
-            <option value="INTERESTED" data-color="green">👍 Interested</option>
-            <option value="NOT_INTERESTED" data-color="gray">👎 Not Interested</option>
-            <option value="ADMISSION_PROCESS" data-color="purple">🎓 Admission Process</option>
+            <option value="CONTACTED" data-color="blue">Contacted</option>
+            <option value="NO_RESPONSE" data-color="red">No Response</option>
+            <option value="FOLLOW_UP" data-color="yellow">Follow Up</option>
+            <option value="INTERESTED" data-color="green">Interested</option>
+            <option value="NOT_INTERESTED" data-color="gray">Not Interested</option>
+            <option value="ADMISSION_PROCESS" data-color="purple">Admission Process</option>
           </select>
           <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
           <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
@@ -307,6 +307,71 @@
         </button>
         <button onclick="executeUpdate()" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all font-medium">
           Yes, Update
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- QUICK UPDATE MODAL (Direct Notes) -->
+  <div id="quickUpdateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="quickUpdateModalContent">
+
+      <!-- Header -->
+      <div class="mb-6">
+        <h2 class="text-xl font-semibold text-gray-800">Quick Update</h2>
+      </div>
+
+      <!-- Form -->
+      <div class="space-y-5">
+
+        <!-- Status Dropdown -->
+        <div class="relative">
+          <select id="quickStatusSelect" required
+            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white">
+            <option value="CONTACTED">Contacted</option>
+            <option value="NO_RESPONSE">No Response</option>
+            <option value="FOLLOW_UP">Follow Up</option>
+            <option value="INTERESTED">Interested</option>
+            <option value="NOT_INTERESTED">Not Interested</option>
+            <option value="ADMISSION_PROCESS">Admission Process</option>
+          </select>
+          <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
+          <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+            New Status <span class="text-red-500">*</span>
+          </label>
+        </div>
+
+        <!-- Note (Required) -->
+        <div class="relative">
+          <textarea id="quickNote" required rows="3"
+            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+            placeholder="Add note"></textarea>
+          <label for="quickNote"
+            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
+            Add Note <span class="text-red-500">*</span>
+          </label>
+          <p id="quickNoteError" class="hidden text-red-500 text-xs mt-1 ml-1">Note is required</p>
+        </div>
+
+        <!-- Follow-up Date -->
+        <div class="relative">
+          <input type="date" id="quickFollowUpDate"
+            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+          <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+            Follow-up Date (Optional)
+          </label>
+        </div>
+
+      </div>
+
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+        <button onclick="closeQuickUpdateModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+          Cancel
+        </button>
+        <button onclick="submitQuickUpdate()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium">
+          Update
         </button>
       </div>
 
