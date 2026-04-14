@@ -1,528 +1,133 @@
-/**
- * UI Utilities Module
- * Institute Enquiry Management System
- */
-
-/**
- * Unified Status Enum - Aligns with Backend
- */
 const STATUS = {
-  NEW: 'NEW',
-  CONTACTED: 'CONTACTED',
-  NO_RESPONSE: 'NO_RESPONSE',
-  FOLLOW_UP: 'FOLLOW_UP',
-  INTERESTED: 'INTERESTED',
-  NOT_INTERESTED: 'NOT_INTERESTED',
-  ADMISSION_PROCESS: 'ADMISSION_PROCESS',
-  CONVERTED: 'CONVERTED'
+    NEW: 'NEW',
+    CONTACTED: 'CONTACTED',
+    NO_RESPONSE: 'NO_RESPONSE',
+    FOLLOW_UP: 'FOLLOW_UP',
+    INTERESTED: 'INTERESTED',
+    NOT_INTERESTED: 'NOT_INTERESTED',
+    ADMISSION_PROCESS: 'ADMISSION_PROCESS',
+    CONVERTED: 'CONVERTED'
 };
 
-/**
- * Valid Status Transitions - Aligns with Backend Flow
- */
 const STATUS_FLOW = {
-  [STATUS.NEW]: [STATUS.CONTACTED, STATUS.NO_RESPONSE],
-  [STATUS.CONTACTED]: [STATUS.FOLLOW_UP, STATUS.INTERESTED, STATUS.NOT_INTERESTED],
-  [STATUS.NO_RESPONSE]: [STATUS.FOLLOW_UP, STATUS.NOT_INTERESTED],
-  [STATUS.FOLLOW_UP]: [STATUS.CONTACTED, STATUS.INTERESTED, STATUS.NOT_INTERESTED],
-  [STATUS.INTERESTED]: [STATUS.ADMISSION_PROCESS, STATUS.NOT_INTERESTED],
-  [STATUS.NOT_INTERESTED]: [], // Terminal state
-  [STATUS.ADMISSION_PROCESS]: [STATUS.CONVERTED],
-  [STATUS.CONVERTED]: [] // Terminal state
+    NEW: ['CONTACTED', 'NO_RESPONSE'],
+    CONTACTED: ['FOLLOW_UP', 'INTERESTED', 'NOT_INTERESTED'],
+    NO_RESPONSE: ['FOLLOW_UP', 'NOT_INTERESTED'],
+    FOLLOW_UP: ['CONTACTED', 'INTERESTED', 'NOT_INTERESTED'],
+    INTERESTED: ['ADMISSION_PROCESS', 'NOT_INTERESTED'],
+    NOT_INTERESTED: [],
+    ADMISSION_PROCESS: ['CONVERTED'],
+    CONVERTED: []
 };
 
-/**
- * Get valid next statuses based on current status
- * @param {string} currentStatus - Current status
- * @returns {string[]} Array of valid next statuses
- */
-function getValidNextStatuses(currentStatus) {
-  return STATUS_FLOW[currentStatus] || [];
+/* ======================
+ROLE CHECK
+====================== */
+
+function canAccess(role, feature) {
+    const rules = {
+        admin: ['all'],
+        counselor: ['enquiry', 'admission', 'payment']
+    };
+
+    return rules[role]?.includes('all') || rules[role]?.includes(feature);
 }
 
-/**
- * Check if status transition is valid
- * @param {string} from - Current status
- * @param {string} to - Target status
- * @returns {boolean} True if transition is valid
- */
-function isValidStatusTransition(from, to) {
-  if (!from || !to) return false;
-  const validStatuses = STATUS_FLOW[from] || [];
-  return validStatuses.includes(to);
-}
+/* ======================
+TOAST (LUCIDE BASED)
+====================== */
 
-/**
- * Show toast notification
- * @param {string} type - 'success' | 'error' | 'warning' | 'info'
- * @param {string} title - Toast title
- * @param {string} message - Toast message
- */
 function showToast(type, title, message) {
     const toast = document.getElementById('toast');
-    const toastIcon = document.getElementById('toastIcon');
-    const toastTitle = document.getElementById('toastTitle');
-    const toastMessage = document.getElementById('toastMessage');
-    
     if (!toast) return;
-    
-    // Define icons
+
     const icons = {
-        success: `<svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
-        error: `<svg class="w-6 h-6 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
-        warning: `<svg class="w-6 h-6 text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/></svg>`,
-        info: `<svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>`,
+        success: 'check-circle',
+        error: 'x-circle',
+        warning: 'alert-triangle',
+        info: 'info'
     };
-    
-    // Set content
-    toastIcon.innerHTML = icons[type] || icons.info;
-    toastTitle.textContent = title;
-    toastMessage.textContent = message;
-    
-    // Show toast
-    toast.classList.remove('translate-x-full');
-    
-    // Hide after 4 seconds
+
+    toast.innerHTML = `     <div class="bg-white shadow-xl rounded-lg px-4 py-3 flex items-center gap-3 border">       <i data-lucide="${icons[type] || 'info'}" class="w-5 h-5 text-blue-500"></i>       <div>         <p class="text-sm font-semibold">${title}</p>         <p class="text-xs text-gray-500">${message}</p>       </div>     </div>
+  `;
+
+    toast.classList.remove('hidden');
+
+    lucide.createIcons();
+
     setTimeout(() => {
-        hideToast();
-    }, 4000);
+        toast.classList.add('hidden');
+    }, 3000);
 }
 
-/**
- * Hide toast notification
- */
-function hideToast() {
-    const toast = document.getElementById('toast');
-    if (toast) {
-        toast.classList.add('translate-x-full');
-    }
-}
+/* ======================
+FORMATTERS
+====================== */
 
-/**
- * Format date for display
- * @param {string|Date} date - Date to format
- * @param {boolean} includeTime - Whether to include time
- * @returns {string} Formatted date string
- */
-function formatDate(date, includeTime = false) {
+function formatDate(date) {
     if (!date) return '-';
-    
-    const d = new Date(date);
-    if (isNaN(d.getTime())) return '-';
-    
-    const options = {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-    };
-    
-    if (includeTime) {
-        options.hour = '2-digit';
-        options.minute = '2-digit';
-    }
-    
-    return d.toLocaleDateString('en-IN', options);
+    return new Date(date).toLocaleDateString('en-IN');
 }
 
-/**
- * Format currency for display
- * @param {number} amount - Amount to format
- * @returns {string} Formatted currency string
- */
 function formatCurrency(amount) {
-    if (amount === null || amount === undefined || isNaN(amount)) return '₹0';
-    
     return new Intl.NumberFormat('en-IN', {
         style: 'currency',
-        currency: 'INR',
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-    }).format(amount);
+        currency: 'INR'
+    }).format(amount || 0);
 }
 
-/**
- * Format phone number for display
- * @param {string} phone - Phone number to format
- * @returns {string} Formatted phone number
- */
-function formatPhone(phone) {
-    if (!phone) return '-';
-    
-    // Remove non-numeric characters
-    const cleaned = phone.replace(/\D/g, '');
-    
-    // Format as +91 XXXXX XXXXX if 10 digits
-    if (cleaned.length === 10) {
-        return `+91 ${cleaned.slice(0, 5)} ${cleaned.slice(5)}`;
-    }
-    
-    // Format as +91 XXXXX XXXXX if includes country code
-    if (cleaned.length === 12 && cleaned.startsWith('91')) {
-        return `+${cleaned.slice(0, 2)} ${cleaned.slice(2, 7)} ${cleaned.slice(7)}`;
-    }
-    
-    return phone;
-}
+/* ======================
+STATUS BADGE
+====================== */
 
-/**
- * Get status badge HTML
- * @param {string} status - Status value
- * @returns {string} HTML for status badge
- */
 function getStatusBadge(status) {
-    const statusClasses = {
-        [STATUS.NEW]: 'bg-gray-100 text-gray-800',
-        [STATUS.CONTACTED]: 'bg-blue-100 text-blue-800',
-        [STATUS.NO_RESPONSE]: 'bg-yellow-100 text-yellow-800',
-        [STATUS.FOLLOW_UP]: 'bg-purple-100 text-purple-800',
-        [STATUS.INTERESTED]: 'bg-green-100 text-green-800',
-        [STATUS.NOT_INTERESTED]: 'bg-red-100 text-red-800',
-        [STATUS.ADMISSION_PROCESS]: 'bg-indigo-100 text-indigo-800',
-        [STATUS.CONVERTED]: 'bg-emerald-100 text-emerald-800'
+    const map = {
+        NEW: 'bg-gray-100 text-gray-600',
+        CONTACTED: 'bg-blue-100 text-blue-600',
+        FOLLOW_UP: 'bg-yellow-100 text-yellow-600',
+        INTERESTED: 'bg-green-100 text-green-600',
+        NOT_INTERESTED: 'bg-red-100 text-red-600',
+        CONVERTED: 'bg-purple-100 text-purple-600'
     };
 
-    const displayLabels = {
-        [STATUS.NEW]: 'New',
-        [STATUS.CONTACTED]: 'Contacted',
-        [STATUS.NO_RESPONSE]: 'No Response',
-        [STATUS.FOLLOW_UP]: 'Follow Up',
-        [STATUS.INTERESTED]: 'Interested',
-        [STATUS.NOT_INTERESTED]: 'Not Interested',
-        [STATUS.ADMISSION_PROCESS]: 'Admission Process',
-        [STATUS.CONVERTED]: 'Converted'
-    };
-
-    const normalizedStatus = status?.toUpperCase();
-    const className = statusClasses[normalizedStatus] || 'bg-gray-100 text-gray-800';
-    const label = displayLabels[normalizedStatus] || status || 'Unknown';
-
-    return `<span class="status-badge ${className}">${label}</span>`;
+    return `     <span class="px-2 py-1 text-xs rounded ${map[status] || 'bg-gray-100'}">
+      ${status}     </span>
+  `;
 }
 
-/**
- * Check if follow-up date is overdue
- * @param {string|Date} followUpDate - Follow-up date
- * @returns {boolean} True if overdue
- */
-function isOverdue(followUpDate) {
-    if (!followUpDate) return false;
-    
-    const now = new Date();
-    const followUp = new Date(followUpDate);
-    
-    return followUp < now;
-}
+/* ======================
+DEBOUNCE
+====================== */
 
-/**
- * Check if enquiry is unassigned
- * @param {Object} enquiry - Enquiry object
- * @returns {boolean} True if unassigned
- */
-function isUnassigned(enquiry) {
-    return !enquiry.assignedTo || enquiry.assignedTo === null || enquiry.assignedTo === undefined;
-}
-
-/**
- * Get row class based on enquiry status
- * @param {Object} enquiry - Enquiry object
- * @returns {string} CSS class for row
- */
-function getEnquiryRowClass(enquiry) {
-    if (!enquiry) return '';
-    
-    if (isOverdue(enquiry.followUpDate)) {
-        return 'row-overdue';
-    }
-    
-    if (isUnassigned(enquiry)) {
-        return 'row-unassigned';
-    }
-    
-    return '';
-}
-
-/**
- * Debounce function
- * @param {Function} func - Function to debounce
- * @param {number} wait - Milliseconds to wait
- * @returns {Function} Debounced function
- */
 function debounce(func, wait = 300) {
     let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
+    return (...args) => {
         clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
+        timeout = setTimeout(() => func(...args), wait);
     };
 }
 
-/**
- * Truncate text to specified length
- * @param {string} text - Text to truncate
- * @param {number} length - Maximum length
- * @returns {string} Truncated text
- */
-function truncateText(text, length = 50) {
-    if (!text || text.length <= length) return text;
-    return text.substring(0, length) + '...';
+/* ======================
+FORM LOADING
+====================== */
+
+function setLoading(button, loading = true) {
+    if (!button) return;
+
+    button.disabled = loading;
+    button.classList.toggle('opacity-50', loading);
 }
 
-/**
- * Generate pagination HTML
- * @param {number} currentPage - Current page number
- * @param {number} totalPages - Total number of pages
- * @param {Function} onPageChange - Callback when page changes
- * @returns {string} HTML for pagination
- */
-function generatePagination(currentPage, totalPages, onPageChange) {
-    if (totalPages <= 1) return '';
-    
-    let html = '';
-    
-    // Previous button
-    const prevDisabled = currentPage === 1 ? 'disabled' : '';
-    html += `<button onclick="${onPageChange}(${currentPage - 1})" ${prevDisabled} class="pagination-btn px-3 py-1 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Previous</button>`;
-    
-    // Page numbers
-    html += '<div class="flex space-x-1">';
-    
-    for (let i = 1; i <= totalPages; i++) {
-        // Show first, last, current, and pages around current
-        if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-            const activeClass = i === currentPage ? 'active' : '';
-            html += `<button onclick="${onPageChange}(${i})" class="pagination-btn px-3 py-1 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 ${activeClass}">${i}</button>`;
-        } else if (i === currentPage - 2 || i === currentPage + 2) {
-            html += `<span class="px-2 text-gray-400">...</span>`;
-        }
-    }
-    
-    html += '</div>';
-    
-    // Next button
-    const nextDisabled = currentPage === totalPages ? 'disabled' : '';
-    html += `<button onclick="${onPageChange}(${currentPage + 1})" ${nextDisabled} class="pagination-btn px-3 py-1 border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Next</button>`;
-    
-    return html;
-}
+/* ======================
+EXPORT
+====================== */
 
-/**
- * Format relative time
- * @param {string|Date} date - Date to format
- * @returns {string} Relative time string
- */
-function formatRelativeTime(date) {
-    if (!date) return '-';
-    
-    const now = new Date();
-    const then = new Date(date);
-    const diffInSeconds = Math.floor((now - then) / 1000);
-    
-    if (diffInSeconds < 60) return 'Just now';
-    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} minutes ago`;
-    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} hours ago`;
-    if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)} days ago`;
-    
-    return formatDate(date);
-}
-
-/**
- * Show confirmation dialog
- * @param {string} title - Dialog title
- * @param {string} message - Dialog message
- * @param {Function} onConfirm - Callback when confirmed
- */
-function showConfirm(title, message, onConfirm) {
-    // Create modal if not exists
-    let modal = document.getElementById('confirmModal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'confirmModal';
-        modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center';
-        modal.innerHTML = `
-            <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 transform transition-all">
-                <div class="px-6 py-4 border-b border-gray-200">
-                    <h3 id="confirmTitle" class="text-lg font-semibold text-gray-800"></h3>
-                </div>
-                <div class="p-6">
-                    <p id="confirmMessage" class="text-gray-600"></p>
-                    <div class="flex justify-end space-x-3 mt-6">
-                        <button id="confirmCancel" class="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors">
-                            Cancel
-                        </button>
-                        <button id="confirmOk" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors">
-                            Confirm
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(modal);
-    }
-    
-    // Set content
-    document.getElementById('confirmTitle').textContent = title;
-    document.getElementById('confirmMessage').textContent = message;
-    
-    // Show modal
-    modal.classList.remove('hidden');
-    
-    // Handle buttons
-    const cancelBtn = document.getElementById('confirmCancel');
-    const okBtn = document.getElementById('confirmOk');
-    
-    const closeModal = () => {
-        modal.classList.add('hidden');
-        cancelBtn.removeEventListener('click', closeModal);
-        okBtn.removeEventListener('click', handleConfirm);
-    };
-    
-    const handleConfirm = () => {
-        closeModal();
-        onConfirm();
-    };
-    
-    cancelBtn.addEventListener('click', closeModal);
-    okBtn.addEventListener('click', handleConfirm);
-    
-    // Close on overlay click
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal) closeModal();
-    });
-}
-
-/**
- * Set form field value
- * @param {string} id - Field ID
- * @param {string|number} value - Field value
- */
-function setFieldValue(id, value) {
-    const field = document.getElementById(id);
-    if (field) {
-        field.value = value || '';
-    }
-}
-
-/**
- * Get form field value
- * @param {string} id - Field ID
- * @returns {string} Field value
- */
-function getFieldValue(id) {
-    const field = document.getElementById(id);
-    return field ? field.value.trim() : '';
-}
-
-/**
- * Disable form elements
- * @param {HTMLElement} container - Container element
- * @param {boolean} disable - Whether to disable
- */
-function setFormDisabled(container, disable = true) {
-    const elements = container.querySelectorAll('input, select, textarea, button:not(.exclude-disable)');
-    elements.forEach(el => {
-        el.disabled = disable;
-    });
-    
-    if (disable) {
-        container.classList.add('locked-overlay');
-    } else {
-        container.classList.remove('locked-overlay');
-    }
-}
-
-/**
- * Setup phone input with +91 prefix and 10-digit limit
- * @param {string} inputId - ID of the phone input element
- */
-function setupPhoneInput(inputId) {
-    const input = document.getElementById(inputId);
-    if (!input) return;
-
-    const prefix = '+91 ';
-
-    // Set initial value with prefix
-    input.value = prefix;
-
-    input.addEventListener('focus', function() {
-        if (!this.value.startsWith(prefix)) {
-            this.value = prefix;
-        }
-    });
-
-    input.addEventListener('input', function(e) {
-        let value = this.value;
-
-        // Ensure prefix is always present
-        if (!value.startsWith(prefix)) {
-            // If user deleted the prefix, restore it
-            value = prefix + value.replace(/\D/g, '');
-        }
-
-        // Extract digits only (excluding the country code)
-        const digitsOnly = value.slice(prefix.length).replace(/\D/g, '');
-
-        // Limit to 10 digits
-        const limitedDigits = digitsOnly.slice(0, 10);
-
-        // Reconstruct the value
-        this.value = prefix + limitedDigits;
-    });
-
-    input.addEventListener('keydown', function(e) {
-        // Prevent cursor from moving before the prefix
-        if (this.selectionStart < prefix.length) {
-            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft' && e.key !== 'Tab' && !e.ctrlKey && !e.metaKey) {
-                e.preventDefault();
-                // Move cursor to after prefix
-                this.setSelectionRange(prefix.length, prefix.length);
-            }
-        }
-    });
-
-    input.addEventListener('paste', function(e) {
-        e.preventDefault();
-        const pastedData = (e.clipboardData || window.clipboardData).getData('text');
-        const digitsOnly = pastedData.replace(/\D/g, '').slice(0, 10);
-        this.value = prefix + digitsOnly;
-    });
-}
-
-/**
- * Get clean phone number without +91 prefix
- * @param {string} phoneValue - Phone input value
- * @returns {string} Clean phone number (10 digits)
- */
-function getCleanPhoneNumber(phoneValue) {
-    if (!phoneValue) return '';
-    return phoneValue.replace('+91 ', '').replace(/\D/g, '');
-}
-
-// Export UI utilities
 window.showToast = showToast;
-window.hideToast = hideToast;
 window.formatDate = formatDate;
 window.formatCurrency = formatCurrency;
-window.formatPhone = formatPhone;
 window.getStatusBadge = getStatusBadge;
-window.isOverdue = isOverdue;
-window.isUnassigned = isUnassigned;
-window.getEnquiryRowClass = getEnquiryRowClass;
 window.debounce = debounce;
-window.truncateText = truncateText;
-window.generatePagination = generatePagination;
-window.formatRelativeTime = formatRelativeTime;
-window.showConfirm = showConfirm;
-window.setFieldValue = setFieldValue;
-window.getFieldValue = getFieldValue;
-window.setFormDisabled = setFormDisabled;
-window.setupPhoneInput = setupPhoneInput;
-window.getCleanPhoneNumber = getCleanPhoneNumber;
-
-// Export Status System
+window.setLoading = setLoading;
 window.STATUS = STATUS;
 window.STATUS_FLOW = STATUS_FLOW;
-window.getValidNextStatuses = getValidNextStatuses;
-window.isValidStatusTransition = isValidStatusTransition;
+window.canAccess = canAccess;

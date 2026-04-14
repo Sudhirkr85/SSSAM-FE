@@ -1,245 +1,136 @@
-/**
- * API Configuration and Base Setup
- * Institute Enquiry Management System
- */
-
-// API Base URL
 const API_BASE_URL = 'http://localhost:5000/api';
 
-// Create axios instance with default config
+/* ======================
+AXIOS INSTANCE
+====================== */
+
 const api = axios.create({
     baseURL: API_BASE_URL,
-    headers: {
-        'Content-Type': 'application/json',
-    },
-    timeout: 30000, // 30 second timeout
+    headers: { 'Content-Type': 'application/json' },
+    timeout: 15000
 });
 
-// Request interceptor to attach JWT token
-api.interceptors.request.use(
-    (config) => {
-        const token = localStorage.getItem('token');
-        if (token) {
-            config.headers.Authorization = `Bearer ${token}`;
-        }
-        return config;
-    },
-    (error) => {
-        return Promise.reject(error);
-    }
-);
+/* ======================
+INTERCEPTORS
+====================== */
 
-// Response interceptor to handle common errors
+api.interceptors.request.use(config => {
+    const token = localStorage.getItem('token');
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+    return config;
+});
+
 api.interceptors.response.use(
-    (response) => response,
-    (error) => {
-        // Handle 401 Unauthorized
-        if (error.response && error.response.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
-            window.location.href = 'index.html';
-        }
-        
-        // Handle 403 Forbidden
-        if (error.response && error.response.status === 403) {
-            showToast('error', 'Access Denied', 'You do not have permission to perform this action.');
-        }
-        
-        // Handle 500 Server Error
-        if (error.response && error.response.status >= 500) {
-            showToast('error', 'Server Error', 'Something went wrong on the server. Please try again later.');
-        }
-        
-        // Handle network errors
-        if (error.code === 'ECONNABORTED' || !error.response) {
-            showToast('error', 'Connection Error', 'Unable to connect to the server. Please check your internet connection.');
-        }
-        
-        return Promise.reject(error);
+    res => res,
+    err => {
+        const status = err.response?.status;
+
+        ```
+if (status === 401) {
+  localStorage.clear();
+  window.location.href = 'index.html';
+}
+
+return Promise.reject(err);
+```
+
     }
 );
 
-/**
- * API Endpoints
- */
+/* ======================
+ENDPOINTS (CLEAN)
+====================== */
+
 const API_ENDPOINTS = {
-    // Auth
+
     AUTH: {
         LOGIN: '/auth/login',
-        LOGOUT: '/auth/logout',
-        ME: '/auth/me',
-        REFRESH: '/auth/refresh',
+        LOGOUT: '/auth/logout'
     },
-    
-    // Enquiries
+
     ENQUIRIES: {
-        LIST: '/enquiries',
-        ALL: '/enquiries/all',
-        DETAIL: (id) => `/enquiries/${id}`,
+        GET_ALL: '/enquiries',
+        GET_ONE: id => `/enquiries/${id}`,
         CREATE: '/enquiries',
-        UPDATE: (id) => `/enquiries/${id}/update`,
-        DELETE: (id) => `/enquiries/${id}`,
-        UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
-        UPDATE_FOLLOWUP: (id) => `/enquiries/${id}/update`,
-        ADD_NOTE: (id) => `/enquiries/${id}/notes`,
-        ASSIGN: (id) => `/enquiries/${id}/assign`,
+        UPDATE_STATUS: id => `/enquiries/${id}/update`,
+        DELETE: id => `/enquiries/${id}`
     },
-    
-    // Admissions
+
     ADMISSIONS: {
-        LIST: '/admissions',
-        DETAIL: (id) => `/admissions/${id}`,
-        BY_ENQUIRY: (enquiryId) => `/admissions/by-enquiry/${enquiryId}`,
-        FROM_ENQUIRY: (enquiryId) => `/admissions/from-enquiry/${enquiryId}`,
-        CREATE: '/admissions',
-        UPDATE: (id) => `/admissions/${id}`,
-        UPDATE_FEES: (id) => `/admissions/${id}/fees`,
-        DELETE: (id) => `/admissions/${id}`,
-        LOCK: (id) => `/admissions/${id}/lock`,
-        PAYMENT_PLAN: (id) => `/admissions/${id}/payment-plan`,
+        GET_ALL: '/admissions',
+        CREATE_FROM_ENQUIRY: id => `/admissions/from-enquiry/${id}`,
+        UPDATE: id => `/admissions/${id}`
     },
-    
-    // Payments
+
     PAYMENTS: {
-        LIST: '/payments',
-        DETAIL: (id) => `/payments/${id}`,
-        BY_ADMISSION: (admissionId) => `/payments/admission/${admissionId}`,
-        CREATE: '/payments',
-        UPDATE: (id) => `/payments/${id}`,
-        DELETE: (id) => `/payments/${id}`,
-    },
-    
-    // Dashboard
-    DASHBOARD: '/dashboard',
-
-    // Reports
-    REPORTS: {
-        ADMISSIONS: '/reports/admissions',
-        FEES: '/reports/fees',
-        INSTALLMENTS: '/reports/installments',
-    },
-    
-    // Bulk Upload
-    BULK: {
-        UPLOAD: '/bulk-upload/enquiries',
+        GET_ALL: '/payments',
+        CREATE: '/payments'
     },
 
-    // Counselors
-    COUNSELORS: {
-        LIST: '/counselors',
-    },
+    DASHBOARD: '/dashboard'
 };
 
-/**
- * Helper functions for API calls
- */
+/* ======================
+HELPERS
+====================== */
 
-// Generic GET request
-async function get(url, params = {}) {
-    try {
-        // Filter out empty/null/undefined values to prevent validation errors
-        const filteredParams = Object.fromEntries(
-            Object.entries(params).filter(([_, value]) => value !== '' && value !== null && value !== undefined)
-        );
-        const response = await api.get(url, { params: filteredParams });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+async function apiGet(url, params = {}) {
+    const res = await api.get(url, { params });
+    return res.data;
 }
 
-// Generic POST request
-async function post(url, data = {}) {
-    try {
-        const response = await api.post(url, data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+async function apiPost(url, data = {}) {
+    const res = await api.post(url, data);
+    return res.data;
 }
 
-// Generic PUT request
-async function put(url, data = {}) {
-    try {
-        const response = await api.put(url, data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+async function apiPut(url, data = {}) {
+    const res = await api.put(url, data);
+    return res.data;
 }
 
-// Generic PATCH request
-async function patch(url, data = {}) {
-    try {
-        const response = await api.patch(url, data);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
+async function apiDelete(url) {
+    const res = await api.delete(url);
+    return res.data;
 }
 
-// Generic DELETE request
-async function del(url) {
-    try {
-        const response = await api.delete(url);
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
-}
+/* ======================
+STATIC COURSES
+====================== */
 
-// File upload (multipart/form-data)
-async function uploadFile(url, file, fieldName = 'file') {
-    try {
-        const formData = new FormData();
-        formData.append(fieldName, file);
-        
-        const response = await api.post(url, formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
-        return response.data;
-    } catch (error) {
-        throw error;
-    }
-}
-
-// Static courses list (used when API is unavailable)
 const STATIC_COURSES = [
-    { _id: 'bcc', name: 'Basic Computer Course (BCC)' },
-    { _id: 'dit', name: 'Diploma in Information Technology (DIT)' },
-    { _id: 'adca', name: 'Advanced Diploma in Computer Applications (ADCA)' },
-    { _id: 'ms-office', name: 'Computer Fundamentals & MS Office' },
-    { _id: 'tally-gst', name: 'Tally with GST' },
-    { _id: 'web-design', name: 'Web Designing (HTML, CSS, JavaScript)' },
-    { _id: 'fullstack', name: 'Full Stack Web Development' },
-    { _id: 'python', name: 'Python Programming' },
-    { _id: 'java', name: 'Java Programming' },
-    { _id: 'c-cpp', name: 'C & C++ Programming' },
-    { _id: 'data-science', name: 'Data Science & Analytics' },
-    { _id: 'ai-ml', name: 'Artificial Intelligence & Machine Learning' },
-    { _id: 'cyber-security', name: 'Cyber Security & Ethical Hacking' },
-    { _id: 'cloud', name: 'Cloud Computing (AWS/Azure)' },
-    { _id: 'networking', name: 'Networking & Hardware (CCNA)' },
-    { _id: 'database', name: 'Database Management (SQL)' },
-    { _id: 'mobile-dev', name: 'Mobile App Development (Android/iOS)' },
-    { _id: 'graphic-design', name: 'Graphic Designing (Photoshop, CorelDRAW)' },
-    { _id: 'ui-ux', name: 'UI/UX Design' },
-    { _id: 'digital-marketing', name: 'Digital Marketing' },
-    { _id: 'video-editing', name: 'Video Editing & Animation' },
-    { _id: 'devops', name: 'DevOps Engineering' }
+    'BCC',
+    'DIT',
+    'ADCA',
+    'MS Office',
+    'Tally GST',
+    'Web Designing',
+    'Full Stack',
+    'Python',
+    'Java',
+    'C/C++',
+    'Data Science',
+    'AI/ML',
+    'Cyber Security',
+    'Cloud',
+    'Networking',
+    'SQL',
+    'Mobile Dev',
+    'Graphic Design',
+    'UI/UX',
+    'Digital Marketing',
+    'Video Editing',
+    'DevOps'
 ];
 
-/**
- * Export API utilities
- */
+/* ======================
+EXPORT
+====================== */
+
 window.api = api;
 window.API_ENDPOINTS = API_ENDPOINTS;
-window.apiGet = get;
-window.apiPost = post;
-window.apiPut = put;
-window.apiPatch = patch;
-window.apiDelete = del;
-window.apiUploadFile = uploadFile;
+window.apiGet = apiGet;
+window.apiPost = apiPost;
+window.apiPut = apiPut;
+window.apiDelete = apiDelete;
 window.STATIC_COURSES = STATIC_COURSES;
