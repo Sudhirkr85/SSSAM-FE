@@ -74,12 +74,13 @@ const API_ENDPOINTS = {
     // Enquiries
     ENQUIRIES: {
         LIST: '/enquiries',
+        ALL: '/enquiries/all',
         DETAIL: (id) => `/enquiries/${id}`,
         CREATE: '/enquiries',
-        UPDATE: (id) => `/enquiries/${id}`,
+        UPDATE: (id) => `/enquiries/${id}/update`,
         DELETE: (id) => `/enquiries/${id}`,
-        UPDATE_STATUS: (id) => `/enquiries/${id}/status`,
-        UPDATE_FOLLOWUP: (id) => `/enquiries/${id}/followup`,
+        UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
+        UPDATE_FOLLOWUP: (id) => `/enquiries/${id}/update`,
         ADD_NOTE: (id) => `/enquiries/${id}/notes`,
         ASSIGN: (id) => `/enquiries/${id}/assign`,
     },
@@ -108,10 +109,14 @@ const API_ENDPOINTS = {
         DELETE: (id) => `/payments/${id}`,
     },
     
+    // Dashboard
+    DASHBOARD: '/dashboard',
+
     // Reports
     REPORTS: {
         ADMISSIONS: '/reports/admissions',
         FEES: '/reports/fees',
+        INSTALLMENTS: '/reports/installments',
     },
     
     // Bulk Upload

@@ -1,6 +1,7 @@
 /**
  * Dashboard Module
  * Institute Enquiry Management System
+ * Uses /api/dashboard endpoint as per specification
  */
 
 // State
@@ -20,28 +21,84 @@ document.addEventListener('DOMContentLoaded', () => {
     loadRecentEnquiries();
 });
 
+/**
+ * Load dashboard stats from /api/dashboard endpoint
+ * Expected response format per spec:
+ * {
+ *   revenue: { today, weekly, monthly, yearly },
+ *   enquiries: { today, weekly, monthly },
+ *   followUps: { today, overdue }
+ * }
+ */
 async function loadDashboardStats() {
     if (isLoadingStats) return;
     isLoadingStats = true;
 
     try {
-        // Fetch enquiries and payments in parallel
-        const [enquiriesRes, paymentsRes] = await Promise.all([
-            apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { limit: 1000 }).catch(() => ({ data: [], pagination: {} })),
-            apiGet(API_ENDPOINTS.PAYMENTS.LIST, { limit: 1000 }).catch(() => ({ data: [] }))
-        ]);
+        // Use the dashboard endpoint as per specification
+        const response = await apiGet(API_ENDPOINTS.DASHBOARD);
+        const data = response.data || {};
 
-        const enquiries = enquiriesRes.data || [];
-        const enquiriesPagination = enquiriesRes.pagination || {};
-        const payments = paymentsRes.data || [];
+        // Extract revenue stats
+        const revenue = data.revenue || {};
+        const enquiries = data.enquiries || {};
+        const followUps = data.followUps || {};
 
-        // Calculate stats from enquiries data
-        const totalEnquiries = enquiriesPagination.totalCount || enquiries.length;
+        // Calculate totals for display
+        const totalEnquiries = (enquiries.today || 0) + (enquiries.weekly || 0) + (enquiries.monthly || 0);
+        const newToday = enquiries.today || 0;
+        const overdue = followUps.overdue || 0;
+        
+        // Get converted count from enquiries data or calculate from list
+        let converted = data.convertedCount || 0;
+        
+        // If not provided by dashboard endpoint, fall back to calculating
+        if (!converted && data.enquiryList) {
+            converted = data.enquiryList.filter(e => e.status?.toUpperCase() === STATUS.CONVERTED).length;
+        }
+
+        // Update stat cards
+        animateValue('totalEnquiries', 0, totalEnquiries, 1000);
+        animateValue('newEnquiries', 0, newToday, 1000);
+        animateValue('overdueEnquiries', 0, overdue, 1000);
+        animateValue('convertedEnquiries', 0, converted, 1000);
+
+        // Store full dashboard data for potential extended display
+        window.dashboardData = data;
+
+    } catch (error) {
+        console.error('Failed to load dashboard stats:', error);
+        // Silent fail - don't show toast on initial load to avoid annoying user
+        // Fall back to calculating from enquiries list
+        await loadDashboardStatsFallback();
+    } finally {
+        isLoadingStats = false;
+    }
+}
+
+/**
+ * Fallback method if dashboard endpoint fails
+ * Calculates stats from enquiries list
+ */
+async function loadDashboardStatsFallback() {
+    try {
+        const params = { limit: 1000 };
+        // For counselors, only get their assigned + unassigned per spec
+        if (isCounselor() && !isAdmin()) {
+            params.assigned = 'me,unassigned';
+        } else if (isAdmin()) {
+            params.assigned = 'all';
+        }
+
+        const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
+        const enquiries = response.data || [];
+
         const today = new Date().toISOString().split('T')[0];
         const newToday = enquiries.filter(e => {
             const created = new Date(e.createdAt).toISOString().split('T')[0];
             return created === today;
         }).length;
+
         // Count overdue follow-ups (excluding terminal statuses)
         const terminalStatuses = [STATUS.CONVERTED, STATUS.NOT_INTERESTED];
         const overdue = enquiries.filter(e => {
@@ -51,45 +108,29 @@ async function loadDashboardStats() {
             return followUp < new Date() && !terminalStatuses.includes(status);
         }).length;
 
-        // Count converted enquiries
         const converted = enquiries.filter(e => e.status?.toUpperCase() === STATUS.CONVERTED).length;
 
-        // Calculate revenue from payments (using payment date, NOT enquiry date)
-        const totalRevenue = payments.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-        const todayRevenue = payments.filter(p => {
-            const paymentDate = new Date(p.paymentDate || p.createdAt).toISOString().split('T')[0];
-            return paymentDate === today;
-        }).reduce((sum, p) => sum + (p.amount || 0), 0);
-
-        // Update stat cards
-        animateValue('totalEnquiries', 0, totalEnquiries, 1000);
+        animateValue('totalEnquiries', 0, enquiries.length, 1000);
         animateValue('newEnquiries', 0, newToday, 1000);
         animateValue('overdueEnquiries', 0, overdue, 1000);
         animateValue('convertedEnquiries', 0, converted, 1000);
-
-        // Store revenue for display (can be shown in a new card if needed)
-        window.dashboardRevenue = { total: totalRevenue, today: todayRevenue };
-
     } catch (error) {
-        console.error('Failed to load dashboard stats:', error);
-        showToast('error', 'Error', 'Failed to load dashboard statistics');
-        // Set defaults on error
+        console.error('Fallback stats load failed:', error);
         animateValue('totalEnquiries', 0, 0, 1000);
         animateValue('newEnquiries', 0, 0, 1000);
         animateValue('overdueEnquiries', 0, 0, 1000);
         animateValue('convertedEnquiries', 0, 0, 1000);
-    } finally {
-        isLoadingStats = false;
     }
 }
 
 async function loadRecentEnquiries() {
     try {
-        // For counselors, filter to show only assigned + unassigned
+        // For counselors, filter to show only assigned + unassigned per spec
         const params = { limit: 5 };
         if (isCounselor() && !isAdmin()) {
-            params.assignedToMe = true;
-            params.includeUnassigned = true;
+            params.assigned = 'me,unassigned';
+        } else if (isAdmin()) {
+            params.assigned = 'all';
         }
 
         const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);

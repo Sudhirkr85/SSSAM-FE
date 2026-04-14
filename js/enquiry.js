@@ -1,1444 +1,226 @@
-/**
- * Enquiry Module
- * Institute Enquiry Management System
- */
+/* ===========================
+FINAL ENQUIRY.JS (PREMIUM UI)
+Icon-based • Clean • Production
+=========================== */
 
-// State
-let enquiriesData = [];
-let currentPage = 1;
-let totalPages = 1;
+let enquiries = [];
 let filters = {
-    search: '',
-    status: '',
-    course: '',
-    showTodayAndOverdue: false // Default view: today + overdue
+page: 1,
+limit: 10,
+status: '',
+search: ''
 };
-let isLoading = false;
 
-// Note: STATUS and STATUS_FLOW are now defined globally in ui.js
-// Use window.STATUS and window.STATUS_FLOW or the exported getValidNextStatuses()
+/* ===========================
+INIT
+=========================== */
 
-/**
- * Filter enquiries based on canView permission
- * @param {Array} enquiries - Array of enquiry objects
- * @returns {Array} Filtered array
- */
-function filterByPermission(enquiries) {
-    if (!Array.isArray(enquiries)) return [];
-    return enquiries.filter(enquiry => canView(enquiry));
-}
-
-/**
- * Update local enquiry data after status/assignment change
- * @param {string} enquiryId - Enquiry ID
- * @param {Object} updatedData - Updated data fields
- */
-function updateLocalEnquiry(enquiryId, updatedData) {
-    const index = enquiriesData.findIndex(e => (e._id || e.id) === enquiryId);
-    if (index !== -1) {
-        enquiriesData[index] = { ...enquiriesData[index], ...updatedData };
-        return true;
-    }
-    return false;
-}
-
-// Simple helper to get course name from ID
-function getCourseName(courseId) {
-    const course = STATIC_COURSES.find(c => c._id === courseId || c.id === courseId);
-    return course?.name || courseId || '-';
-}
-
-// DOM Elements
-let enquiriesTable, searchInput, statusFilter, courseFilter, resetFiltersBtn;
-let prevPageBtn, nextPageBtn, pageNumbers;
-let createEnquiryBtn, createEnquiryModal, closeCreateModal, cancelCreateBtn;
-let createEnquiryForm, saveEnquiryBtn;
-let bulkUploadBtn, bulkUploadModal, closeBulkModal, cancelBulkBtn, uploadBulkBtn;
-
-// Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
-    if (!document.getElementById('enquiriesTable')) return;
-
-    initializeElements();
-    setupEventListeners();
-    loadCourses();
-    loadEnquiries();
-
-    // Setup phone input with +91 prefix and 10-digit limit
-    setupPhoneInput('enquiryMobile');
+loadEnquiries();
 });
 
-function initializeElements() {
-    enquiriesTable = document.getElementById('enquiriesTable');
-    searchInput = document.getElementById('searchInput');
-    statusFilter = document.getElementById('statusFilter');
-    courseFilter = document.getElementById('courseFilter');
-    resetFiltersBtn = document.getElementById('resetFilters');
-    prevPageBtn = document.getElementById('prevPage');
-    nextPageBtn = document.getElementById('nextPage');
-    pageNumbers = document.getElementById('pageNumbers');
-    
-    // Create enquiry modal
-    createEnquiryBtn = document.getElementById('createEnquiryBtn');
-    createEnquiryModal = document.getElementById('createEnquiryModal');
-    closeCreateModal = document.getElementById('closeCreateModal');
-    cancelCreateBtn = document.getElementById('cancelCreate');
-    createEnquiryForm = document.getElementById('createEnquiryForm');
-    saveEnquiryBtn = document.getElementById('saveEnquiry');
-    
-    // Bulk upload modal
-    bulkUploadBtn = document.getElementById('bulkUploadBtn');
-    bulkUploadModal = document.getElementById('bulkUploadModal');
-    closeBulkModal = document.getElementById('closeBulkModal');
-    cancelBulkBtn = document.getElementById('cancelBulk');
-    uploadBulkBtn = document.getElementById('uploadBulk');
-}
-
-function setupEventListeners() {
-    // Search with debounce
-    if (searchInput) {
-        searchInput.addEventListener('input', debounce(() => {
-            filters.search = searchInput.value;
-            currentPage = 1;
-            loadEnquiries();
-        }, 300));
-    }
-    
-    // Status filter
-    if (statusFilter) {
-        statusFilter.addEventListener('change', () => {
-            filters.status = statusFilter.value;
-            currentPage = 1;
-            loadEnquiries();
-        });
-    }
-    
-    // Course filter
-    if (courseFilter) {
-        courseFilter.addEventListener('change', () => {
-            filters.course = courseFilter.value;
-            currentPage = 1;
-            loadEnquiries();
-        });
-    }
-    
-    // Reset filters
-    if (resetFiltersBtn) {
-        resetFiltersBtn.addEventListener('click', () => {
-            filters = { search: '', status: '', course: '' };
-            if (searchInput) searchInput.value = '';
-            if (statusFilter) statusFilter.value = '';
-            if (courseFilter) courseFilter.value = '';
-            currentPage = 1;
-            loadEnquiries();
-        });
-    }
-
-    // Course dropdown - show/hide Other text input
-    const enquiryCourse = document.getElementById('enquiryCourse');
-    if (enquiryCourse) {
-        enquiryCourse.addEventListener('change', () => {
-            const otherInput = document.getElementById('enquiryCourseOther');
-            if (otherInput) {
-                if (enquiryCourse.value === 'other') {
-                    otherInput.classList.remove('hidden');
-                    otherInput.required = true;
-                } else {
-                    otherInput.classList.add('hidden');
-                    otherInput.required = false;
-                    otherInput.value = '';
-                }
-            }
-        });
-    }
-
-    // Pagination
-    if (prevPageBtn) {
-        prevPageBtn.addEventListener('click', () => {
-            if (currentPage > 1) {
-                currentPage--;
-                loadEnquiries();
-            }
-        });
-    }
-    
-    if (nextPageBtn) {
-        nextPageBtn.addEventListener('click', () => {
-            if (currentPage < totalPages) {
-                currentPage++;
-                loadEnquiries();
-            }
-        });
-    }
-    
-    // Create enquiry modal
-    if (createEnquiryBtn) {
-        createEnquiryBtn.addEventListener('click', () => {
-            openModal(createEnquiryModal);
-        });
-    }
-    
-    if (closeCreateModal) {
-        closeCreateModal.addEventListener('click', () => {
-            closeModal(createEnquiryModal);
-        });
-    }
-    
-    if (cancelCreateBtn) {
-        cancelCreateBtn.addEventListener('click', () => {
-            closeModal(createEnquiryModal);
-        });
-    }
-    
-    if (createEnquiryForm) {
-        createEnquiryForm.addEventListener('submit', handleCreateEnquiry);
-    }
-    
-    // Bulk upload modal
-    if (bulkUploadBtn) {
-        bulkUploadBtn.addEventListener('click', () => {
-            openModal(bulkUploadModal);
-        });
-    }
-    
-    if (closeBulkModal) {
-        closeBulkModal.addEventListener('click', () => {
-            closeModal(bulkUploadModal);
-        });
-    }
-    
-    if (cancelBulkBtn) {
-        cancelBulkBtn.addEventListener('click', () => {
-            closeModal(bulkUploadModal);
-        });
-    }
-    
-    if (uploadBulkBtn) {
-        uploadBulkBtn.addEventListener('click', handleBulkUpload);
-    }
-    
-    // Close modals on overlay click
-    [createEnquiryModal, bulkUploadModal].forEach(modal => {
-        if (modal) {
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) {
-                    closeModal(modal);
-                }
-            });
-        }
-    });
-}
-
-function loadCourses() {
-    populateCourseDropdowns(STATIC_COURSES);
-}
-
-function populateCourseDropdowns(courseList) {
-    const enquiryCourse = document.getElementById('enquiryCourse');
-    const courseFilter = document.getElementById('courseFilter');
-
-    if (enquiryCourse) {
-        enquiryCourse.innerHTML = '<option value="">Select Course</option>';
-        courseList.forEach(course => {
-            enquiryCourse.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
-        });
-        enquiryCourse.innerHTML += '<option value="other">Other</option>';
-    }
-
-    if (courseFilter) {
-        courseFilter.innerHTML = '<option value="">All Courses</option>';
-        courseList.forEach(course => {
-            courseFilter.innerHTML += `<option value="${course._id || course.id}">${course.name}</option>`;
-        });
-    }
-}
+/* ===========================
+FETCH
+=========================== */
 
 async function loadEnquiries() {
-    if (isLoading) return;
-    isLoading = true;
+try {
+const params = cleanParams(filters);
+const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
 
-    try {
-        enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500"><span class="spinner mr-2"></span>Loading...</td></tr>';
+```
+enquiries = res.data.enquiries || [];
+renderEnquiries();
 
-        const params = {
-            page: currentPage,
-            limit: 10,
-            ...filters,
-        };
+if (window.lucide) lucide.createIcons();
+```
 
-        // For counselors, add filter to show only unassigned and their assigned enquiries
-        if (isCounselor() && !isAdmin()) {
-            params.assignedToMe = true;
-            params.includeUnassigned = true;
-        }
-
-        const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
-
-        enquiriesData = response.data || [];
-        const pagination = response.pagination || {};
-        currentPage = pagination.page || 1;
-        totalPages = pagination.totalPages || 1;
-
-        renderEnquiries();
-        updatePagination(pagination.totalCount || 0);
-    } catch (error) {
-        enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-red-500">Failed to load enquiries. Please try again.</td></tr>';
-        showToast('error', 'Error', 'Failed to load enquiries');
-    } finally {
-        isLoading = false;
-    }
+} catch {
+showToast('error', 'Error', 'Failed to load enquiries');
 }
+}
+
+function cleanParams(params) {
+const clean = {};
+Object.keys(params).forEach(k => {
+if (params[k]) clean[k] = params[k];
+});
+return clean;
+}
+
+/* ===========================
+RENDER
+=========================== */
 
 function renderEnquiries() {
-    // Filter by permission before rendering
-    const viewableEnquiries = filterByPermission(enquiriesData);
+const tbody = document.getElementById('enquiryTableBody');
+if (!tbody) return;
 
-    if (!viewableEnquiries.length) {
-        enquiriesTable.innerHTML = '<tr><td colspan="7" class="px-6 py-8 text-center text-gray-500">No enquiries found.</td></tr>';
-        return;
-    }
-
-    const currentUserId = getCurrentUserId();
-    const today = new Date().toISOString().split('T')[0];
-
-    enquiriesTable.innerHTML = viewableEnquiries.map(enquiry => {
-        const rowClass = getEnquiryRowClass(enquiry);
-        const enquiryId = enquiry._id || enquiry.id;
-
-        // Check permissions for this enquiry
-        const canEditEnquiry = canEdit(enquiry);
-        const canDeleteEnquiry = canDelete();
-        const isUnassignedEnquiry = !enquiry.assignedTo;
-
-        // Build action buttons based on permissions
-        let actionButtons = `
-            <a href="enquiry-detail.html?id=${enquiryId}" class="text-blue-600 hover:text-blue-800 font-medium">
-                View Details
-            </a>
-        `;
-
-        // Show edit link only if user can edit (admin or assigned counselor)
-        if (canEditEnquiry) {
-            actionButtons += `
-                <a href="enquiry-detail.html?id=${enquiryId}&mode=edit" class="text-green-600 hover:text-green-800 font-medium ml-3">
-                    Edit
-                </a>
-            `;
-        }
-
-        // Show delete button only for admin
-        if (canDeleteEnquiry) {
-            actionButtons += `
-                <button onclick="deleteEnquiry('${enquiryId}')" class="text-red-600 hover:text-red-800 ml-3" title="Delete">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                    </svg>
-                </button>
-            `;
-        }
-
-        // Show assignment indicator for counselors
-        let assignmentInfo;
-        if (isUnassignedEnquiry) {
-            assignmentInfo = '<span class="text-yellow-600 font-medium">Unassigned</span>';
-        } else {
-            const assignedName = enquiry.assignedTo?.name || 'Assigned';
-            const isMine = enquiry.assignedTo?._id === currentUserId || enquiry.assignedTo?.id === currentUserId;
-            assignmentInfo = isMine
-                ? `<span class="text-green-600 font-medium">${assignedName} (You)</span>`
-                : `<span class="text-gray-800">${assignedName}</span>`;
-        }
-
-        // Enhanced follow-up display with overdue highlighting
-        const followUpOverdue = isOverdue(enquiry.followUpDate);
-        const followUpClass = followUpOverdue ? 'text-red-600 font-bold bg-red-50 px-2 py-1 rounded' : 'text-gray-600';
-        const followUpIcon = followUpOverdue ?
-            '<svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>' : '';
-        const overdueLabel = followUpOverdue ? '<span class="text-xs text-red-500 ml-1">(Overdue)</span>' : '';
-
-        return `
-            <tr class="${rowClass} hover:bg-gray-50 transition-colors">
-                <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">${enquiry.name || '-'}</div>
-                </td>
-                <td class="px-6 py-4 text-gray-600">${formatPhone(enquiry.mobile)}</td>
-                <td class="px-6 py-4 text-gray-600">${getCourseName(enquiry.course)}</td>
-                <td class="px-6 py-4">${getStatusBadge(enquiry.status)}</td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center ${followUpClass}">
-                        ${followUpIcon}
-                        <span>${formatDate(enquiry.followUpDate, true)}</span>
-                        ${overdueLabel}
-                    </div>
-                </td>
-                <td class="px-6 py-4">${assignmentInfo}</td>
-                <td class="px-6 py-4">
-                    <div class="flex items-center">${actionButtons}</div>
-                </td>
-            </tr>
-        `;
-    }).join('');
+if (!enquiries.length) {
+tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-gray-400">No enquiries found</td></tr>`;
+return;
 }
 
-function updatePagination(total) {
-    const start = (currentPage - 1) * 10 + 1;
-    const end = Math.min(currentPage * 10, total);
-    
-    document.getElementById('showingStart').textContent = start;
-    document.getElementById('showingEnd').textContent = end;
-    document.getElementById('totalItems').textContent = total;
-    
-    prevPageBtn.disabled = currentPage === 1;
-    nextPageBtn.disabled = currentPage === totalPages;
-    
-    // Generate page numbers
-    let html = '';
-    for (let i = 1; i <= totalPages; i++) {
-        if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
-            const activeClass = i === currentPage ? 'bg-blue-600 text-white border-blue-600' : 'bg-white text-gray-600 border-gray-300 hover:bg-gray-50';
-            html += `<button onclick="goToPage(${i})" class="px-3 py-1 border rounded-lg text-sm ${activeClass}">${i}</button>`;
-        } else if (i === currentPage - 2 || i === currentPage + 2) {
-            html += `<span class="px-2 text-gray-400">...</span>`;
-        }
-    }
-    pageNumbers.innerHTML = html;
+tbody.innerHTML = enquiries.map(e => `     <tr class="hover:bg-gray-50 transition-all duration-150">       <td class="py-3 font-medium">${e.name}</td>       <td>${e.courseInterested}</td>       <td>${statusBadge(e.status)}</td>       <td>${formatDate(e.followUpDate)}</td>       <td>         <div class="flex gap-2">
+          ${renderActions(e)}         </div>       </td>     </tr>
+  `).join('');
 }
 
-function goToPage(page) {
-    currentPage = page;
-    loadEnquiries();
+/* ===========================
+STATUS BADGE
+=========================== */
+
+function statusBadge(status) {
+const styles = {
+NEW: 'bg-gray-100 text-gray-600',
+CONTACTED: 'bg-blue-100 text-blue-600',
+FOLLOW_UP: 'bg-yellow-100 text-yellow-700',
+INTERESTED: 'bg-green-100 text-green-600',
+NOT_INTERESTED: 'bg-red-100 text-red-600',
+CONVERTED: 'bg-purple-100 text-purple-600'
+};
+
+return `<span class="px-2 py-1 text-xs rounded ${styles[status] || 'bg-gray-100'}">${status}</span>`;
 }
 
-async function handleCreateEnquiry(e) {
-    e.preventDefault();
+/* ===========================
+ACTION BUTTONS (ICON BASED)
+=========================== */
 
-    // Validate required fields
-    const name = document.getElementById('enquiryName').value.trim();
-    const mobile = getCleanPhoneNumber(document.getElementById('enquiryMobile').value);
-    const course = document.getElementById('enquiryCourse').value;
-
-    if (!name) {
-        showToast('warning', 'Validation Error', 'Please enter a name');
-        return;
-    }
-    if (!mobile || mobile.length !== 10) {
-        showToast('warning', 'Validation Error', 'Please enter a valid 10-digit mobile number');
-        return;
-    }
-    if (!course) {
-        showToast('warning', 'Validation Error', 'Please select a course');
-        return;
-    }
-
-    saveEnquiryBtn.disabled = true;
-    saveEnquiryBtn.innerHTML = '<span class="spinner mr-2"></span> Creating...';
-
-    try {
-        const data = {
-            name: name,
-            mobile: mobile,
-            email: document.getElementById('enquiryEmail').value,
-            course: course === 'other'
-                ? document.getElementById('enquiryCourseOther').value
-                : course,
-            source: document.getElementById('enquirySource').value,
-            notes: document.getElementById('enquiryNotes').value,
-        };
-
-        await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, data);
-
-        showToast('success', 'Success', 'Enquiry created successfully!');
-        closeModal(createEnquiryModal);
-        createEnquiryForm.reset();
-        loadEnquiries();
-    } catch (error) {
-        const message = error.response?.data?.message || error.message || 'Failed to create enquiry';
-        showToast('error', 'Error', message);
-    } finally {
-        saveEnquiryBtn.disabled = false;
-        saveEnquiryBtn.innerHTML = 'Create Enquiry';
-    }
+function actionBtn(icon, action, title) {
+return `     <button 
+      onclick="${action}" 
+      class="w-9 h-9 flex items-center justify-center rounded-lg bg-gray-100 hover:bg-gray-200 transition"
+      title="${title}">       <i data-lucide="${icon}" class="w-4 h-4"></i>     </button>
+  `;
 }
 
-async function handleBulkUpload() {
-    const fileInput = document.getElementById('bulkFile');
-    const file = fileInput.files[0];
-    
-    if (!file) {
-        showToast('warning', 'Warning', 'Please select a file to upload');
-        return;
-    }
-    
-    uploadBulkBtn.disabled = true;
-    uploadBulkBtn.innerHTML = '<span class="spinner"></span> Uploading...';
-    
-    try {
-        await apiUploadFile(API_ENDPOINTS.BULK.UPLOAD, file);
-        
-        showToast('success', 'Success', 'Bulk upload completed successfully!');
-        closeModal(bulkUploadModal);
-        fileInput.value = '';
-        loadEnquiries();
-    } catch (error) {
-        const message = error.response?.data?.message || 'Failed to upload file';
-        showToast('error', 'Error', message);
-    } finally {
-        uploadBulkBtn.disabled = false;
-        uploadBulkBtn.innerHTML = 'Upload';
-    }
+function renderActions(e) {
+let btns = `    ${actionBtn('phone',`openStatusModal('${e._id}','CONTACTED')`, 'Contacted')}
+    ${actionBtn('calendar', `openStatusModal('${e._id}','FOLLOW_UP')`, 'Follow Up')}
+    ${actionBtn('thumbs-up', `openStatusModal('${e._id}','INTERESTED')`, 'Interested')}
+    ${actionBtn('x-circle', `openStatusModal('${e._id}','NOT_INTERESTED')`, 'Not Interested')}
+  `;
+
+if (e.status === 'INTERESTED') {
+btns += actionBtn('graduation-cap', `openConvertModal('${e._id}')`, 'Convert');
 }
 
-function openModal(modal) {
-    if (modal) {
-        modal.classList.remove('hidden');
-        document.body.style.overflow = 'hidden';
-    }
+return btns;
 }
 
-function closeModal(modal) {
-    if (modal) {
-        modal.classList.add('hidden');
-        document.body.style.overflow = '';
+/* ===========================
+MODAL
+=========================== */
 
-        // Reset phone input with +91 prefix if enquiryMobile exists
-        const mobileInput = document.getElementById('enquiryMobile');
-        if (mobileInput) {
-            mobileInput.value = '+91 ';
-        }
-    }
+function openStatusModal(id, status) {
+document.getElementById('statusEnquiryId').value = id;
+document.getElementById('statusTargetStatus').value = status;
+document.getElementById('statusModal').classList.remove('hidden');
 }
 
-// ==================== ENQUIRY DETAIL PAGE ====================
+function closeStatusModal() {
+document.getElementById('statusModal').classList.add('hidden');
+}
 
-let currentEnquiry = null;
-let isAssignedToCurrentUser = false;
+/* ===========================
+UPDATE
+=========================== */
 
-// Payment Selection Modal State
-let modalEnquiryId = null;
-let modalSelectedPaymentType = '';
-let modalInstallments = [];
-let modalTotalFees = 0;
+async function handleStatusSubmit(e) {
+e.preventDefault();
 
-// Initialize detail page
-document.addEventListener('DOMContentLoaded', () => {
-    // Check if we're on the detail page
-    if (!document.getElementById('enquiryTitle')) return;
-    
-    const urlParams = new URLSearchParams(window.location.search);
-    const enquiryId = urlParams.get('id');
-    
-    if (!enquiryId) {
-        showToast('error', 'Error', 'No enquiry ID provided');
-        window.location.href = 'enquiries.html';
-        return;
-    }
-    
-    loadEnquiryDetail(enquiryId);
-    setupDetailPageListeners(enquiryId);
+const id = document.getElementById('statusEnquiryId').value;
+const status = document.getElementById('statusTargetStatus').value;
+const note = document.getElementById('statusNote').value.trim();
+const date = document.getElementById('statusFollowUpDate').value;
+
+if (!note) {
+showToast('error', 'Error', 'Note required');
+return;
+}
+
+const payload = { status, note };
+
+if (status === 'FOLLOW_UP' && date) {
+payload.followUpDate = new Date(date).toISOString();
+}
+
+try {
+await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(id), payload);
+
+```
+showToast('success', 'Success', 'Updated');
+closeStatusModal();
+loadEnquiries();
+```
+
+} catch (err) {
+showToast('error', 'Error', err.response?.data?.message || 'Failed');
+}
+}
+
+/* ===========================
+CONVERT
+=========================== */
+
+function openConvertModal(id) {
+document.getElementById('convertEnquiryId').value = id;
+document.getElementById('convertModal').classList.remove('hidden');
+}
+
+function closeConvertModal() {
+document.getElementById('convertModal').classList.add('hidden');
+}
+
+async function handleConvertSubmit(e) {
+e.preventDefault();
+
+const id = document.getElementById('convertEnquiryId').value;
+const course = document.getElementById('convertCourse').value;
+const totalFees = document.getElementById('convertFees').value;
+
+if (!course || !totalFees) {
+showToast('error', 'Error', 'All fields required');
+return;
+}
+
+try {
+await apiPost(API_ENDPOINTS.ADMISSIONS.FROM_ENQUIRY(id), {
+course,
+totalFees
 });
 
-async function loadEnquiryDetail(id) {
-    try {
-        const response = await apiGet(API_ENDPOINTS.ENQUIRIES.DETAIL(id));
-        const enquiry = response.data?.enquiry || response.data;
-        currentEnquiry = enquiry;
+```
+showToast('success', 'Converted');
+closeConvertModal();
+loadEnquiries();
+```
 
-        // Check assignment using centralized auth function
-        isAssignedToCurrentUser = canEdit(enquiry);
-
-        renderEnquiryDetail(enquiry);
-        renderTimeline(enquiry.timeline);
-        renderNotes(enquiry.notes);
-        populateStatusDropdown(enquiry.status);
-        checkPermissions();
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to load enquiry details');
-    }
+} catch {
+showToast('error', 'Error', 'Conversion failed');
+}
 }
 
-function renderEnquiryDetail(enquiry) {
-    // Header
-    document.getElementById('enquiryTitle').textContent = enquiry.name || 'Enquiry Details';
-    document.getElementById('enquirySubtitle').textContent = `Enquiry #${enquiry._id || enquiry.id}`;
+/* ===========================
+SEARCH
+=========================== */
 
-    // Info
-    document.getElementById('infoName').textContent = enquiry.name || '-';
-    document.getElementById('infoMobile').textContent = formatPhone(enquiry.mobile) || '-';
-    document.getElementById('infoEmail').textContent = enquiry.email || '-';
-    document.getElementById('infoCourse').textContent = getCourseName(enquiry.course);
-    document.getElementById('infoSource').textContent = enquiry.source || '-';
-    document.getElementById('infoCreated').textContent = formatDate(enquiry.createdAt, true);
+let timeout;
 
-    // Status badge
-    document.getElementById('currentStatus').innerHTML = getStatusBadge(enquiry.status);
-
-    // Assigned info
-    if (enquiry.assignedTo) {
-        document.getElementById('assignedName').textContent = enquiry.assignedTo.name || 'Assigned';
-        document.getElementById('assignedRole').textContent = enquiry.assignedTo.role || 'Counselor';
-    } else {
-        document.getElementById('assignedName').textContent = 'Unassigned';
-        document.getElementById('assignedRole').textContent = 'Not assigned yet';
-    }
-
-    // Follow-up info display
-    const followUpInfo = document.getElementById('followUpInfo');
-    if (enquiry.followUpDate) {
-        const statusUpper = enquiry.status?.toUpperCase();
-        const terminalStatuses = [STATUS.CONVERTED, STATUS.NOT_INTERESTED];
-        const isOverdueFollowUp = new Date(enquiry.followUpDate) < new Date() &&
-            !terminalStatuses.includes(statusUpper);
-        followUpInfo.innerHTML = `
-            <div class="${isOverdueFollowUp ? 'text-red-600' : 'text-gray-600'}">
-                <p class="font-medium">${formatDate(enquiry.followUpDate, true)}</p>
-                ${isOverdueFollowUp ? '<p class="text-xs mt-1 font-medium">Overdue</p>' : ''}
-            </div>
-        `;
-    } else {
-        followUpInfo.innerHTML = '<p class="text-sm text-gray-500">No follow-up scheduled</p>';
-    }
-
-    // Show convert section if in appropriate status (but not yet admitted)
-    const convertSection = document.getElementById('convertSection');
-    const hasAdmission = enquiry.hasAdmission || enquiry.admissionId;
-
-    const convertibleStatuses = [STATUS.INTERESTED, STATUS.FOLLOW_UP, STATUS.ADMISSION_PROCESS];
-    const statusUpper = enquiry.status?.toUpperCase();
-
-    if (convertibleStatuses.includes(statusUpper) && !hasAdmission) {
-        convertSection?.classList.remove('hidden');
-        // Remove admission badge if it exists (in case state changed)
-        const admissionBadge = document.getElementById('admissionCreatedBadge');
-        if (admissionBadge) {
-            admissionBadge.remove();
-        }
-    } else {
-        convertSection?.classList.add('hidden');
-        // Show admission UI if admission exists
-        if (hasAdmission) {
-            updateEnquiryUIForAdmission(enquiry.admissionId);
-        }
-    }
-    
-    // Update convert button text based on status
-    const convertBtn = document.getElementById('convertBtn');
-    if (convertBtn) {
-        const statusUpper = enquiry.status?.toUpperCase();
-        if (statusUpper === STATUS.CONVERTED) {
-            convertBtn.innerHTML = `
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
-                </svg>
-                <span>Complete Admission Setup</span>
-            `;
-        } else {
-            convertBtn.innerHTML = `
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                </svg>
-                <span>Convert Now</span>
-            `;
-        }
-    }
-    
-    // Locked badge
-    if (!isAssignedToCurrentUser && !isAdmin()) {
-        document.getElementById('lockedBadge').classList.remove('hidden');
-    }
+function handleSearch(value) {
+clearTimeout(timeout);
+timeout = setTimeout(() => {
+filters.search = value;
+loadEnquiries();
+}, 300);
 }
 
-function checkPermissions() {
-    const statusSection = document.getElementById('statusSection');
-    const convertBtn = document.getElementById('convertBtn');
+/* ===========================
+UTIL
+=========================== */
 
-    // If user cannot edit, disable the entire status form section
-    if (!isAssignedToCurrentUser && !isAdmin()) {
-        if (statusSection) {
-            setFormDisabled(statusSection, true);
-        }
-        if (convertBtn) convertBtn.disabled = true;
-
-        // Show locked badge
-        const lockedBadge = document.getElementById('lockedBadge');
-        if (lockedBadge) lockedBadge.classList.remove('hidden');
-    } else {
-        // User can edit - enable form but disable Converted if admission exists
-        const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
-
-        // Check if Converted is selected - handle via statusSelect dropdown
-        const statusSelect = document.getElementById('statusSelect');
-        if (statusSelect && hasAdmission) {
-            // Disable Converted option if admission exists
-            const convertedOption = statusSelect.querySelector(`option[value="${STATUS.CONVERTED}"]`);
-            if (convertedOption) {
-                convertedOption.disabled = true;
-                convertedOption.textContent = 'Converted (Admission exists)';
-            }
-        }
-
-        // Disable convert button if admission already exists
-        if (convertBtn && hasAdmission) {
-            convertBtn.disabled = true;
-            convertBtn.title = 'Admission already created';
-        }
-    }
+function formatDate(date) {
+if (!date) return '-';
+return new Date(date).toLocaleDateString();
 }
-
-function renderTimeline(timeline) {
-    const container = document.getElementById('timelineList');
-
-    if (!timeline || !timeline.length) {
-        container.innerHTML = '<p class="text-gray-500 text-center">No activity yet</p>';
-        return;
-    }
-
-    container.innerHTML = timeline.map(item => `
-        <div class="timeline-item">
-            <div class="timeline-dot"></div>
-            <div class="timeline-content">
-                <p class="font-medium text-gray-800">${item.message}</p>
-                ${item.metadata?.notePreview ? `<p class="text-sm text-gray-600">${item.metadata.notePreview}</p>` : ''}
-                ${item.metadata?.previousStatus ? `<p class="text-sm text-gray-600">${item.metadata.previousStatus} → ${item.metadata.newStatus}</p>` : ''}
-                <p class="text-xs text-gray-400 mt-1">${formatRelativeTime(item.timestamp)} by ${item.userName || 'System'}</p>
-            </div>
-        </div>
-    `).join('');
-}
-
-function renderNotes(notesString) {
-    const container = document.getElementById('notesList');
-
-    if (!notesString) {
-        container.innerHTML = '<p class="text-gray-500 text-center">No notes yet</p>';
-        return;
-    }
-
-    // Parse notes string - split by newlines
-    const notes = notesString.split('\n').filter(n => n.trim());
-
-    container.innerHTML = notes.map(note => {
-        // Check if note has format: [timestamp] User: message
-        const match = note.match(/^\[(.+?)\]\s*(.+?):\s*(.+)$/);
-        if (match) {
-            const [, timestamp, user, message] = match;
-            return `
-                <div class="bg-gray-50 rounded-lg p-3">
-                    <p class="text-gray-700">${message}</p>
-                    <p class="text-xs text-gray-400 mt-1">${timestamp} by ${user}</p>
-                </div>
-            `;
-        }
-        // Plain note (initial note)
-        return `
-            <div class="bg-gray-50 rounded-lg p-3">
-                <p class="text-gray-700">${note}</p>
-            </div>
-        `;
-    }).join('');
-}
-
-// Populate status dropdown based on current status and valid transitions
-function populateStatusDropdown(currentStatus) {
-    const statusSelect = document.getElementById('statusSelect');
-    if (!statusSelect) return;
-
-    // Normalize current status to uppercase
-    const normalizedCurrentStatus = currentStatus?.toUpperCase();
-    const validStatuses = getValidNextStatuses(normalizedCurrentStatus);
-
-    // Status display labels
-    const statusLabels = {
-        [STATUS.NEW]: 'New',
-        [STATUS.CONTACTED]: 'Contacted',
-        [STATUS.NO_RESPONSE]: 'No Response',
-        [STATUS.FOLLOW_UP]: 'Follow Up',
-        [STATUS.INTERESTED]: 'Interested',
-        [STATUS.NOT_INTERESTED]: 'Not Interested',
-        [STATUS.ADMISSION_PROCESS]: 'Admission Process',
-        [STATUS.CONVERTED]: 'Converted'
-    };
-
-    statusSelect.innerHTML = '<option value="">Select Status</option>';
-
-    validStatuses.forEach(status => {
-        const option = document.createElement('option');
-        option.value = status;
-        option.textContent = statusLabels[status] || status;
-        statusSelect.appendChild(option);
-    });
-
-    // Add help text about current status
-    const helpText = document.getElementById('statusHelpText');
-    if (helpText) {
-        if (validStatuses.length === 0) {
-            const currentLabel = statusLabels[normalizedCurrentStatus] || normalizedCurrentStatus;
-            helpText.textContent = `Current status "${currentLabel}" is terminal. No further transitions allowed.`;
-            helpText.classList.remove('hidden');
-            statusSelect.disabled = true;
-        } else {
-            helpText.classList.add('hidden');
-            statusSelect.disabled = !isAssignedToCurrentUser && !isAdmin();
-        }
-    }
-}
-
-// Handle status select change - show/hide follow-up date field
-function handleStatusSelectChange() {
-    const statusSelect = document.getElementById('statusSelect');
-    const followUpContainer = document.getElementById('followUpDateContainer');
-    const followUpInput = document.getElementById('statusFollowUpDate');
-
-    if (!statusSelect || !followUpContainer) return;
-
-    const selectedStatus = statusSelect.value;
-
-    // Show follow-up date field for FOLLOW_UP status
-    if (selectedStatus === STATUS.FOLLOW_UP) {
-        followUpContainer.classList.remove('hidden');
-        followUpInput.required = true;
-
-        // Set default to tomorrow at 9 AM
-        const tomorrow = new Date();
-        tomorrow.setDate(tomorrow.getDate() + 1);
-        tomorrow.setHours(9, 0, 0, 0);
-        followUpInput.value = tomorrow.toISOString().slice(0, 16);
-    } else {
-        followUpContainer.classList.add('hidden');
-        followUpInput.required = false;
-        followUpInput.value = '';
-    }
-
-    validateStatusForm();
-}
-
-// Validate status form
-function validateStatusForm() {
-    const statusSelect = document.getElementById('statusSelect');
-    const statusNote = document.getElementById('statusNote');
-    const followUpInput = document.getElementById('statusFollowUpDate');
-    const submitBtn = document.getElementById('updateStatusBtn');
-
-    if (!statusSelect || !statusNote || !submitBtn) return false;
-
-    const status = statusSelect.value;
-    const note = statusNote.value.trim();
-    const isFollowUp = status === STATUS.FOLLOW_UP;
-
-    // Required: status and note always required
-    let isValid = status && note;
-
-    // Additional: follow-up date required for FOLLOW_UP status
-    if (isFollowUp && !followUpInput?.value) {
-        isValid = false;
-    }
-
-    submitBtn.disabled = !isValid;
-    return isValid;
-}
-
-// Handle status update form submission
-async function handleStatusUpdate(e) {
-    e.preventDefault();
-
-    if (!isAssignedToCurrentUser && !isAdmin()) {
-        showToast('error', 'Error', 'You do not have permission to update this enquiry');
-        return;
-    }
-
-    if (!validateStatusForm()) return;
-
-    const statusSelect = document.getElementById('statusSelect');
-    const statusNote = document.getElementById('statusNote');
-    const followUpInput = document.getElementById('statusFollowUpDate');
-    const submitBtn = document.getElementById('updateStatusBtn');
-    const errorDiv = document.getElementById('statusUpdateError');
-
-    const newStatus = statusSelect.value;
-    const note = statusNote.value.trim();
-    const followUpDate = followUpInput?.value || null;
-
-    // Show loading state
-    submitBtn.disabled = true;
-    const originalText = submitBtn.innerHTML;
-    submitBtn.innerHTML = '<span class="spinner mr-2"></span>Updating...';
-
-    try {
-        const urlParams = new URLSearchParams(window.location.search);
-        const enquiryId = urlParams.get('id');
-
-        // Prepare payload
-        const payload = {
-            status: newStatus,
-            note: note
-        };
-
-        // Add follow-up date if status is FOLLOW_UP
-        if (newStatus === STATUS.FOLLOW_UP && followUpDate) {
-            payload.followUpDate = new Date(followUpDate).toISOString();
-        }
-
-        const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), payload);
-
-        // Update local state immediately for responsive UI
-        updateLocalEnquiry(enquiryId, {
-            status: newStatus,
-            followUpDate: newStatus === STATUS.FOLLOW_UP ? payload.followUpDate : currentEnquiry?.followUpDate
-        });
-
-        // Handle CONVERTED status
-        if (newStatus === STATUS.CONVERTED) {
-            if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
-                const admissionId = response.data?.admission?._id || response.data?.enquiry?.admissionId;
-                if (currentEnquiry) {
-                    currentEnquiry.hasAdmission = true;
-                    currentEnquiry.admissionId = admissionId;
-                }
-                updateEnquiryUIForAdmission(admissionId);
-                showToast('info', 'Info', 'Admission already exists for this enquiry');
-            } else if (response.data?.requiresPaymentSetup) {
-                showToast('success', 'Success', 'Status updated to Converted. Please configure payment plan.');
-                openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
-            } else {
-                showToast('success', 'Success', 'Status updated to Converted');
-            }
-        } else {
-            showToast('success', 'Success', `Status updated to ${newStatus}`);
-        }
-
-        // Reset form
-        statusNote.value = '';
-        if (followUpInput) followUpInput.value = '';
-        document.getElementById('followUpDateContainer')?.classList.add('hidden');
-        if (errorDiv) errorDiv.classList.add('hidden');
-
-        // Refresh enquiry data and re-render table
-        await loadEnquiryDetail(enquiryId);
-
-        // If on enquiries list page, refresh it too
-        if (typeof renderEnquiries === 'function' && enquiriesData.length > 0) {
-            renderEnquiries();
-        }
-
-    } catch (error) {
-        const message = error.response?.data?.message || error.message || 'Failed to update status';
-        if (errorDiv) {
-            errorDiv.querySelector('p').textContent = message;
-            errorDiv.classList.remove('hidden');
-        }
-        showToast('error', 'Error', message);
-    } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = originalText;
-    }
-}
-
-function setupDetailPageListeners(enquiryId) {
-    // Status Update Form
-    const statusUpdateForm = document.getElementById('statusUpdateForm');
-    if (statusUpdateForm) {
-        statusUpdateForm.addEventListener('submit', handleStatusUpdate);
-    }
-
-    // Status select change - show/hide follow-up date and update validation
-    const statusSelect = document.getElementById('statusSelect');
-    if (statusSelect) {
-        statusSelect.addEventListener('change', handleStatusSelectChange);
-    }
-
-    // Note input - real-time validation
-    const statusNote = document.getElementById('statusNote');
-    if (statusNote) {
-        statusNote.addEventListener('input', validateStatusForm);
-    }
-
-    // Payment Selection Modal Listeners
-    document.getElementById('closePaymentSelectionModal')?.addEventListener('click', closePaymentSelectionModal);
-    document.getElementById('cancelPaymentSelection')?.addEventListener('click', closePaymentSelectionModal);
-    document.getElementById('paymentSelectionModal')?.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closePaymentSelectionModal();
-    });
-
-    // Total fees input listener to re-validate installments
-    document.getElementById('modalTotalFeesInput')?.addEventListener('input', () => {
-        if (modalSelectedPaymentType === 'INSTALLMENT') {
-            validateModalInstallments();
-        }
-    });
-
-    // Add Installment Sub-Modal Listeners
-    document.getElementById('closeAddInstallmentSubModal')?.addEventListener('click', closeAddInstallmentSubModal);
-    document.getElementById('addInstallmentSubModal')?.addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) closeAddInstallmentSubModal();
-    });
-
-    // Convert to admission - now opens payment selection modal
-    document.getElementById('convertBtn')?.addEventListener('click', async () => {
-        if (!isAssignedToCurrentUser && !isAdmin()) return;
-
-        // Check if admission already exists
-        const hasAdmission = currentEnquiry?.hasAdmission || currentEnquiry?.admissionId;
-        if (hasAdmission) {
-            showToast('info', 'Info', 'Admission already exists for this enquiry');
-            updateEnquiryUIForAdmission(currentEnquiry.admissionId);
-            return;
-        }
-
-        // If already CONVERTED, directly open payment selection modal
-        const statusUpper = currentEnquiry?.status?.toUpperCase();
-        if (statusUpper === STATUS.CONVERTED) {
-            openPaymentSelectionModal(enquiryId, currentEnquiry);
-            return;
-        }
-
-        // First update status to CONVERTED, then check if payment setup is required
-        try {
-            const response = await apiPatch(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), { status: STATUS.CONVERTED });
-
-            if (response.data?.admission?._id || response.data?.enquiry?.hasAdmission) {
-                // Admission already exists - update UI
-                const admissionId = response.data?.admission?._id || response.data?.enquiry?.admissionId;
-                if (currentEnquiry) {
-                    currentEnquiry.hasAdmission = true;
-                    currentEnquiry.admissionId = admissionId;
-                }
-                updateEnquiryUIForAdmission(admissionId);
-                showToast('info', 'Info', 'Admission already exists for this enquiry');
-            } else if (response.data?.requiresPaymentSetup) {
-                showToast('success', 'Success', 'Status updated. Please configure payment plan.');
-                openPaymentSelectionModal(enquiryId, response.data?.enquiry || currentEnquiry);
-            } else {
-                showToast('success', 'Success', 'Status updated to Converted');
-            }
-
-            // Update local state immediately
-            updateLocalEnquiry(enquiryId, { status: STATUS.CONVERTED });
-            loadEnquiryDetail(enquiryId);
-        } catch (error) {
-            const message = error.response?.data?.message || 'Failed to convert enquiry';
-            showToast('error', 'Error', message);
-        }
-    });
-}
-
-// ==================== PAYMENT SELECTION MODAL FUNCTIONS ====================
-
-function openPaymentSelectionModal(enquiryId, enquiryData) {
-    modalEnquiryId = enquiryId;
-    modalSelectedPaymentType = '';
-    modalInstallments = [];
-    
-    // Get course fees from enquiry data
-    const course = STATIC_COURSES.find(c => c._id === enquiryData?.course || c.id === enquiryData?.course);
-    modalTotalFees = course?.fees || 0;
-    
-    // Reset form
-    document.querySelectorAll('input[name="paymentType"]').forEach(radio => {
-        radio.checked = false;
-    });
-    document.getElementById('oneTimeSection')?.classList.add('hidden');
-    document.getElementById('installmentSetupSection')?.classList.add('hidden');
-    document.getElementById('modalValidationError')?.classList.add('hidden');
-    document.getElementById('createAdmissionBtn').disabled = true;
-    
-    // Set total fees input with default from course
-    document.getElementById('modalTotalFeesInput').value = modalTotalFees || '';
-    
-    // Show modal
-    const modal = document.getElementById('paymentSelectionModal');
-    modal.classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-}
-
-function closePaymentSelectionModal() {
-    const modal = document.getElementById('paymentSelectionModal');
-    modal.classList.add('hidden');
-    document.body.style.overflow = '';
-    
-    // Reset state
-    modalEnquiryId = null;
-    modalSelectedPaymentType = '';
-    modalInstallments = [];
-}
-
-function handlePaymentTypeSelection() {
-    const selected = document.querySelector('input[name="paymentType"]:checked');
-    if (!selected) return;
-    
-    modalSelectedPaymentType = selected.value;
-    
-    // Update radio visual state
-    document.querySelectorAll('input[name="paymentType"]').forEach(radio => {
-        const label = radio.closest('label');
-        const dot = label?.querySelector('.radio-dot');
-        if (radio.checked) {
-            label?.classList.add('border-blue-500', 'bg-blue-50');
-            dot?.classList.remove('hidden');
-        } else {
-            label?.classList.remove('border-blue-500', 'bg-blue-50');
-            dot?.classList.add('hidden');
-        }
-    });
-    
-    // Show/hide sections
-    if (modalSelectedPaymentType === 'ONE_TIME') {
-        document.getElementById('oneTimeSection')?.classList.remove('hidden');
-        document.getElementById('installmentSetupSection')?.classList.add('hidden');
-        document.getElementById('createAdmissionBtn').disabled = false;
-    } else if (modalSelectedPaymentType === 'INSTALLMENT') {
-        document.getElementById('oneTimeSection')?.classList.add('hidden');
-        document.getElementById('installmentSetupSection')?.classList.remove('hidden');
-        renderModalInstallments();
-        validateModalInstallments();
-    }
-    
-    document.getElementById('modalValidationError')?.classList.add('hidden');
-}
-
-function renderModalInstallments() {
-    const container = document.getElementById('modalInstallmentList');
-    const summary = document.getElementById('installmentSummary');
-    
-    if (!modalInstallments.length) {
-        container.innerHTML = '<p class="text-sm text-gray-500 text-center py-4">No installments added. Click "Add Installment" to create one.</p>';
-        summary?.classList.add('hidden');
-        return;
-    }
-    
-    container.innerHTML = modalInstallments.map((inst, index) => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg">
-            <div class="flex items-center space-x-3">
-                <span class="w-6 h-6 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-medium">${index + 1}</span>
-                <div>
-                    <p class="font-medium text-gray-800">${formatCurrency(inst.amount)}</p>
-                    <p class="text-xs text-gray-500">Due: ${formatDate(inst.dueDate)}</p>
-                </div>
-            </div>
-            <button type="button" onclick="removeModalInstallment(${index})" class="text-red-500 hover:text-red-700 p-1">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
-                </svg>
-            </button>
-        </div>
-    `).join('');
-    
-    // Show summary
-    summary?.classList.remove('hidden');
-    const total = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-    document.getElementById('modalTotalInstallments').textContent = formatCurrency(total);
-    
-    validateModalInstallments();
-}
-
-function validateModalInstallments() {
-    const createBtn = document.getElementById('createAdmissionBtn');
-    const validationMsg = document.getElementById('installmentValidationMessage');
-    
-    if (modalSelectedPaymentType !== 'INSTALLMENT') {
-        createBtn.disabled = false;
-        return;
-    }
-    
-    if (!modalInstallments.length) {
-        createBtn.disabled = true;
-        validationMsg?.classList.add('hidden');
-        return;
-    }
-    
-    const total = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-    const inputTotalFees = parseInt(document.getElementById('modalTotalFeesInput')?.value) || 0;
-    const difference = inputTotalFees - total;
-    
-    if (Math.abs(difference) < 0.01) {
-        createBtn.disabled = false;
-        if (validationMsg) {
-            validationMsg.innerHTML = '<span class="text-green-600 flex items-center"><svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Total matches course fees</span>';
-            validationMsg.classList.remove('hidden');
-        }
-    } else {
-        createBtn.disabled = true;
-        if (validationMsg) {
-            const msg = difference > 0 
-                ? `Short by ${formatCurrency(difference)}` 
-                : `Exceeds by ${formatCurrency(Math.abs(difference))}`;
-            validationMsg.innerHTML = `<span class="text-red-600">${msg}</span>`;
-            validationMsg.classList.remove('hidden');
-        }
-    }
-}
-
-function addModalInstallment() {
-    // Set default due date to next month
-    const nextMonth = new Date();
-    nextMonth.setMonth(nextMonth.getMonth() + 1);
-    document.getElementById('modalInstallmentDueDate').value = nextMonth.toISOString().split('T')[0];
-    document.getElementById('modalInstallmentAmount').value = '';
-    document.getElementById('modalInstallmentError')?.classList.add('hidden');
-    
-    const subModal = document.getElementById('addInstallmentSubModal');
-    subModal.classList.remove('hidden');
-}
-
-function closeAddInstallmentSubModal() {
-    document.getElementById('addInstallmentSubModal').classList.add('hidden');
-}
-
-function handleAddModalInstallment(e) {
-    e.preventDefault();
-    
-    const amount = parseFloat(document.getElementById('modalInstallmentAmount').value);
-    const dueDate = document.getElementById('modalInstallmentDueDate').value;
-    const errorDiv = document.getElementById('modalInstallmentError');
-    
-    // Validation
-    if (!amount || amount <= 0) {
-        errorDiv.textContent = 'Amount must be greater than 0';
-        errorDiv?.classList.remove('hidden');
-        return;
-    }
-    
-    if (!dueDate) {
-        errorDiv.textContent = 'Due date is required';
-        errorDiv?.classList.remove('hidden');
-        return;
-    }
-    
-    // Check if total would exceed fees
-    const currentTotal = modalInstallments.reduce((sum, inst) => sum + (inst.amount || 0), 0);
-    const inputTotalFees = parseInt(document.getElementById('modalTotalFeesInput')?.value) || 0;
-    if (currentTotal + amount > inputTotalFees * 1.5) {
-        errorDiv.textContent = 'Installment amounts seem too high. Please verify the total.';
-        errorDiv?.classList.remove('hidden');
-        return;
-    }
-    
-    modalInstallments.push({
-        amount: amount,
-        dueDate: dueDate,
-        status: 'Pending',
-        paidAmount: 0
-    });
-    
-    closeAddInstallmentSubModal();
-    renderModalInstallments();
-}
-
-function removeModalInstallment(index) {
-    modalInstallments.splice(index, 1);
-    renderModalInstallments();
-}
-
-async function submitAdmissionWithPayment() {
-    if (!modalEnquiryId || !modalSelectedPaymentType) return;
-
-    const createBtn = document.getElementById('createAdmissionBtn');
-    createBtn.disabled = true;
-    createBtn.innerHTML = '<span class="spinner"></span> Creating...';
-
-    try {
-        const totalFeesInput = document.getElementById('modalTotalFeesInput');
-        const totalFees = parseInt(totalFeesInput?.value) || 0;
-
-        if (!totalFees || totalFees <= 0) {
-            const errorDiv = document.getElementById('modalValidationError');
-            if (errorDiv) {
-                errorDiv.querySelector('p').textContent = 'Total fees must be greater than 0';
-                errorDiv.classList.remove('hidden');
-            }
-            createBtn.disabled = false;
-            createBtn.innerHTML = '<span>Create Admission</span>';
-            return;
-        }
-
-        const payload = {
-            paymentType: modalSelectedPaymentType,
-            totalFees: totalFees,
-            installments: modalSelectedPaymentType === 'INSTALLMENT'
-                ? modalInstallments.map(i => ({
-                    amount: parseInt(i.amount),
-                    dueDate: new Date(i.dueDate).toISOString()
-                }))
-                : []
-        };
-
-        const response = await apiPost(API_ENDPOINTS.ADMISSIONS.FROM_ENQUIRY(modalEnquiryId), payload);
-
-        // Handle idempotent response (alreadyExists)
-        const admissionId = response.data?.admission?._id;
-        const alreadyExists = response.data?.alreadyExists;
-
-        // Update enquiry state
-        if (currentEnquiry) {
-            currentEnquiry.hasAdmission = true;
-            currentEnquiry.admissionId = admissionId;
-        }
-
-        closePaymentSelectionModal();
-
-        if (alreadyExists) {
-            showToast('info', 'Info', 'Admission already exists for this enquiry');
-        } else {
-            showToast('success', 'Success', 'Admission Created Successfully');
-        }
-
-        // Update UI to reflect admission created state
-        updateEnquiryUIForAdmission(admissionId);
-
-        // Refresh enquiry data to get latest state
-        await loadEnquiryDetail(modalEnquiryId);
-
-    } catch (error) {
-        const message = error.response?.data?.message || 'Failed to create admission';
-        const errors = error.response?.data?.errors;
-
-        // Build detailed error message
-        let displayMessage = message;
-        if (errors && errors.length > 0) {
-            displayMessage += ': ' + errors.map(e => `${e.field} - ${e.message}`).join(', ');
-        }
-
-        const errorDiv = document.getElementById('modalValidationError');
-        if (errorDiv) {
-            errorDiv.querySelector('p').textContent = displayMessage;
-            errorDiv.classList.remove('hidden');
-        }
-        showToast('error', 'Error', displayMessage);
-
-        // Keep modal open on error
-        createBtn.disabled = false;
-        createBtn.innerHTML = '<span>Create Admission</span>';
-    }
-}
-
-/**
- * Update enquiry UI after admission is created
- * - Add "Admission Created" badge
- * - Disable "Converted" button
- * - Add "View Admission" button
- */
-function updateEnquiryUIForAdmission(admissionId) {
-    const convertSection = document.getElementById('convertSection');
-    const convertBtn = document.getElementById('convertBtn');
-
-    if (!convertSection) return;
-
-    // Hide the convert button section
-    convertSection.classList.add('hidden');
-
-    // Check if admission badge already exists
-    let admissionBadge = document.getElementById('admissionCreatedBadge');
-    if (!admissionBadge) {
-        // Create admission created badge
-        admissionBadge = document.createElement('div');
-        admissionBadge.id = 'admissionCreatedBadge';
-        admissionBadge.className = 'bg-white rounded-xl shadow-sm p-6';
-        admissionBadge.innerHTML = `
-            <h2 class="text-lg font-semibold text-gray-800 mb-4">Admission Status</h2>
-            <div class="space-y-4">
-                <div class="inline-flex items-center px-4 py-2 bg-green-100 text-green-800 rounded-lg text-sm font-medium">
-                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                    </svg>
-                    Admission Created
-                </div>
-                <button id="viewAdmissionBtn" onclick="viewAdmissionFromEnquiry('${admissionId}')" 
-                    class="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors flex items-center justify-center space-x-2">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                    </svg>
-                    <span>View Admission</span>
-                </button>
-            </div>
-        `;
-
-        // Insert after the followUpSection or at the end of the right column
-        const rightColumn = convertSection.parentElement;
-        const followUpSection = document.getElementById('followUpSection');
-        if (followUpSection && followUpSection.nextSibling) {
-            rightColumn.insertBefore(admissionBadge, followUpSection.nextSibling);
-        } else {
-            rightColumn.appendChild(admissionBadge);
-        }
-    }
-
-    // Disable Converted status button
-    const convertedBtn = document.querySelector('.status-btn[data-status="Converted"]');
-    if (convertedBtn) {
-        convertedBtn.disabled = true;
-        convertedBtn.classList.add('opacity-50', 'cursor-not-allowed');
-        convertedBtn.title = 'Admission already created';
-    }
-}
-
-/**
- * Navigate to view admission from enquiry detail page
- */
-function viewAdmissionFromEnquiry(admissionId) {
-    if (admissionId) {
-        window.open(`admissions.html?id=${admissionId}`, '_blank');
-    }
-}
-
-// Check if admission exists and update UI accordingly
-async function checkAndRedirectToAdmission(enquiryId) {
-    try {
-        const response = await apiGet(API_ENDPOINTS.ADMISSIONS.BY_ENQUIRY(enquiryId));
-
-        if (response.data?.admission?._id) {
-            // Admission exists - update UI to reflect this
-            const admissionId = response.data.admission._id;
-            if (currentEnquiry) {
-                currentEnquiry.hasAdmission = true;
-                currentEnquiry.admissionId = admissionId;
-            }
-            updateEnquiryUIForAdmission(admissionId);
-            showToast('info', 'Info', 'Admission already exists for this enquiry');
-        } else {
-            // No admission yet, open payment modal
-            openPaymentSelectionModal(enquiryId, currentEnquiry);
-        }
-    } catch (error) {
-        // No admission found, open payment modal
-        openPaymentSelectionModal(enquiryId, currentEnquiry);
-    }
-}
-
-// Export for global access
-window.goToPage = goToPage;
-window.loadEnquiryDetail = loadEnquiryDetail;
-window.openPaymentSelectionModal = openPaymentSelectionModal;
-window.closePaymentSelectionModal = closePaymentSelectionModal;
-window.handlePaymentTypeSelection = handlePaymentTypeSelection;
-window.addModalInstallment = addModalInstallment;
-window.closeAddInstallmentSubModal = closeAddInstallmentSubModal;
-window.handleAddModalInstallment = handleAddModalInstallment;
-window.removeModalInstallment = removeModalInstallment;
-window.submitAdmissionWithPayment = submitAdmissionWithPayment;
-window.updateEnquiryUIForAdmission = updateEnquiryUIForAdmission;
-window.viewAdmissionFromEnquiry = viewAdmissionFromEnquiry;
-
-// Export status form functions
-window.populateStatusDropdown = populateStatusDropdown;
-window.handleStatusSelectChange = handleStatusSelectChange;
-window.handleStatusUpdate = handleStatusUpdate;
-window.validateStatusForm = validateStatusForm;
-window.getValidNextStatuses = getValidNextStatuses;
-
-// Delete enquiry (admin only)
-async function deleteEnquiry(id) {
-    if (!isAdmin()) {
-        showToast('error', 'Error', 'Only admin can delete enquiries');
-        return;
-    }
-    if (!confirm('Are you sure you want to delete this enquiry? This action cannot be undone.')) {
-        return;
-    }
-    try {
-        await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(id));
-        showToast('success', 'Success', 'Enquiry deleted successfully');
-        loadEnquiries();
-    } catch (error) {
-        showToast('error', 'Error', 'Failed to delete enquiry');
-    }
-}
-window.deleteEnquiry = deleteEnquiry;
