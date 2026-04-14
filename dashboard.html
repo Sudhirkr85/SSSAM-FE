@@ -83,107 +83,207 @@
 
         <div class="flex-1 flex flex-col">
 
-            ```
             <!-- NAVBAR -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-                <h1 class="text-lg font-semibold">Dashboard</h1>
-                <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600">
-                    <i data-lucide="log-out"></i>
-                    Logout
-                </button>
+                <h1 class="text-lg font-semibold text-gray-800">Dashboard</h1>
+                <div class="flex items-center gap-3">
+                    <button onclick="window.location.href='enquiries.html'" class="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium shadow-sm">
+                        <i data-lucide="plus" class="w-4 h-4"></i>
+                        New Enquiry
+                    </button>
+                    <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium">
+                        <i data-lucide="log-out" class="w-5 h-5"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
             </header>
 
             <!-- CONTENT -->
             <main class="p-6 space-y-6 overflow-y-auto">
 
                 <!-- STATS -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
-                    <div class="bg-white p-5 rounded-xl shadow flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">Total Enquiries</p>
-                            <p id="totalEnquiries" class="text-2xl font-bold">0</p>
+                    <div class="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Total Enquiries</p>
+                                <p id="totalEnquiries" class="text-2xl font-bold text-gray-800">0</p>
+                            </div>
                         </div>
-                        <i data-lucide="users"></i>
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <a href="enquiries.html" class="text-sm text-blue-600 hover:text-blue-700 font-medium flex items-center gap-1">
+                                View all <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </a>
+                        </div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-xl shadow flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">Today Enquiries</p>
-                            <p id="newEnquiries" class="text-2xl font-bold">0</p>
+                    <div class="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="user-plus" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Today's Enquiries</p>
+                                <p id="newEnquiries" class="text-2xl font-bold text-gray-800">0</p>
+                            </div>
                         </div>
-                        <i data-lucide="user-plus"></i>
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <span class="text-sm text-gray-500">New today</span>
+                        </div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-xl shadow flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">Overdue</p>
-                            <p id="overdueEnquiries" class="text-2xl font-bold text-red-600">0</p>
+                    <div class="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="alert-circle" class="w-6 h-6 text-red-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Overdue</p>
+                                <p id="overdueEnquiries" class="text-2xl font-bold text-red-600">0</p>
+                            </div>
                         </div>
-                        <i data-lucide="alert-circle"></i>
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <a href="today.html" class="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1">
+                                View calls <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </a>
+                        </div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-xl shadow flex justify-between">
-                        <div>
-                            <p class="text-sm text-gray-500">Converted</p>
-                            <p id="convertedEnquiries" class="text-2xl font-bold text-green-600">0</p>
+                    <div class="bg-white p-5 rounded-xl shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="check-circle" class="w-6 h-6 text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Converted</p>
+                                <p id="convertedEnquiries" class="text-2xl font-bold text-purple-600">0</p>
+                            </div>
                         </div>
-                        <i data-lucide="check-circle"></i>
+                        <div class="mt-3 pt-3 border-t border-gray-100">
+                            <a href="admissions.html" class="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1">
+                                View admissions <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                            </a>
+                        </div>
                     </div>
 
                 </div>
 
-                <!-- TODAY CALLS QUICK VIEW -->
-                <div class="bg-white p-5 rounded-xl shadow">
+                <!-- QUICK ACTIONS -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <a href="today.html" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02]">
+                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="phone" class="w-5 h-5 text-amber-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800">Today Calls</p>
+                            <p class="text-xs text-gray-500">View & update</p>
+                        </div>
+                    </a>
+                    <a href="enquiries.html" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02]">
+                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="message-square" class="w-5 h-5 text-blue-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800">All Enquiries</p>
+                            <p class="text-xs text-gray-500">Manage leads</p>
+                        </div>
+                    </a>
+                    <a href="admissions.html" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02]">
+                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="graduation-cap" class="w-5 h-5 text-purple-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800">Admissions</p>
+                            <p class="text-xs text-gray-500">Students</p>
+                        </div>
+                    </a>
+                    <a href="payments.html" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all hover:scale-[1.02]">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                            <i data-lucide="wallet" class="w-5 h-5 text-green-600"></i>
+                        </div>
+                        <div>
+                            <p class="font-medium text-gray-800">Payments</p>
+                            <p class="text-xs text-gray-500">Transactions</p>
+                        </div>
+                    </a>
+                </div>
 
-                    <div class="flex justify-between mb-4">
-                        <h2 class="font-semibold">Today Calls</h2>
-                        <a href="today.html" class="text-blue-600 text-sm">View All</a>
+                <!-- TODAY CALLS QUICK VIEW -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="font-semibold text-gray-800 flex items-center gap-2">
+                            <i data-lucide="phone" class="w-5 h-5 text-gray-400"></i>
+                            Today Calls
+                        </h2>
+                        <a href="today.html" class="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center gap-1">
+                            View All <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </a>
                     </div>
 
-                    <table class="w-full text-sm">
-                        <thead class="text-gray-500">
-                            <tr>
-                                <th class="text-left py-2">Name</th>
-                                <th>Course</th>
-                                <th>Status</th>
-                                <th>Follow-Up</th>
-                            </tr>
-                        </thead>
-                        <tbody id="todayTable">
-                            <tr>
-                                <td colspan="4" class="text-center py-4 text-gray-400">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-600 font-medium">
+                                <tr>
+                                    <th class="text-left px-4 py-3 rounded-l-lg">Name</th>
+                                    <th class="px-4 py-3">Course</th>
+                                    <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3 rounded-r-lg">Follow-Up</th>
+                                </tr>
+                            </thead>
+                            <tbody id="todayTable">
+                                <tr>
+                                    <td colspan="4" class="text-center py-8">
+                                        <div class="flex items-center justify-center gap-2 text-gray-400">
+                                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                            <span>Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
                 </div>
 
                 <!-- RECENT -->
-                <div class="bg-white p-5 rounded-xl shadow">
+                <div class="bg-white p-6 rounded-xl shadow-sm">
 
-                    <h2 class="font-semibold mb-4">Recent Enquiries</h2>
+                    <h2 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="clock" class="w-5 h-5 text-gray-400"></i>
+                        Recent Enquiries
+                    </h2>
 
-                    <table class="w-full text-sm">
-                        <thead class="text-gray-500">
-                            <tr>
-                                <th class="text-left py-2">Name</th>
-                                <th>Course</th>
-                                <th>Status</th>
-                                <th>Follow-Up</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentEnquiriesTable">
-                            <tr>
-                                <td colspan="4" class="text-center py-4 text-gray-400">Loading...</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="bg-gray-50 text-gray-600 font-medium">
+                                <tr>
+                                    <th class="text-left px-4 py-3 rounded-l-lg">Name</th>
+                                    <th class="px-4 py-3">Course</th>
+                                    <th class="px-4 py-3">Status</th>
+                                    <th class="px-4 py-3 rounded-r-lg">Follow-Up</th>
+                                </tr>
+                            </thead>
+                            <tbody id="recentEnquiriesTable">
+                                <tr>
+                                    <td colspan="4" class="text-center py-8">
+                                        <div class="flex items-center justify-center gap-2 text-gray-400">
+                                            <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                            <span>Loading...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
 
                 </div>
 
             </main>
-            ```
 
         </div>
 

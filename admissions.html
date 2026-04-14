@@ -75,35 +75,116 @@
 
             <!-- NAVBAR -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-                <h1 class="text-lg font-semibold">Admissions</h1>
+                <h1 class="text-lg font-semibold text-gray-800">Admissions</h1>
+                <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span>Logout</span>
+                </button>
             </header>
 
             <!-- CONTENT -->
             <main class="p-6 space-y-6 overflow-y-auto">
+
+                <!-- STATS -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Total Admissions</p>
+                                <p id="totalAdmissions" class="text-2xl font-bold text-gray-800">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="credit-card" class="w-6 h-6 text-amber-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Pending Payment</p>
+                                <p id="pendingCount" class="text-2xl font-bold text-amber-600">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Completed</p>
+                                <p id="completedCount" class="text-2xl font-bold text-green-600">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
 
                 <!-- TABLE -->
                 <div class="bg-white rounded-xl shadow overflow-hidden">
 
                     <table class="w-full text-sm">
 
-                        <thead class="bg-gray-50 text-gray-500">
+                        <thead class="bg-gray-50 text-gray-600 font-medium">
                             <tr>
                                 <th class="px-6 py-3 text-left">Name</th>
                                 <th class="px-6 py-3">Course</th>
                                 <th class="px-6 py-3">Total Fees</th>
                                 <th class="px-6 py-3">Paid</th>
                                 <th class="px-6 py-3">Pending</th>
-                                <th class="px-6 py-3">Action</th>
+                                <th class="px-6 py-3 text-center">Action</th>
                             </tr>
                         </thead>
 
                         <tbody id="admissionTable">
                             <tr>
-                                <td colspan="6" class="text-center py-6 text-gray-400">Loading...</td>
+                                <td colspan="6" class="text-center py-12">
+                                    <div class="flex flex-col items-center gap-3">
+                                        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                                            <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
+                                        </div>
+                                        <p class="text-gray-500">Loading admissions...</p>
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
 
                     </table>
+
+                    <!-- PAGINATION -->
+                    <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
+
+                        <div class="text-sm text-gray-500">
+                            Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span> admissions
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button id="firstPage" onclick="goToPage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+                            </button>
+                            <button id="prevPage" onclick="changePage(-1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+
+                            <div id="pageNumbers" class="flex items-center gap-1">
+                                <span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
+                            </div>
+
+                            <button id="nextPage" onclick="changePage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                            <button id="lastPage" onclick="goToLastPage()" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                    </div>
 
                 </div>
 
@@ -115,30 +196,63 @@
     </div>
 
     <!-- PAYMENT MODAL -->
+    <div id="paymentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="paymentModalContent">
 
-    <div id="paymentModal" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50">
-
-        <div class="bg-white rounded-xl w-full max-w-md p-6 space-y-4">
-
-
-            <h2 class="font-semibold text-lg">Add Payment</h2>
-
-            <input id="amount" type="number" placeholder="Amount" class="w-full border p-2 rounded" />
-
-            <select id="paymentMode" class="w-full border p-2 rounded">
-                <option value="Cash">Cash</option>
-                <option value="UPI">UPI</option>
-                <option value="Card">Card</option>
-            </select>
-
-            <div class="flex justify-end gap-3 pt-2">
-                <button onclick="closePaymentModal()" class="px-4 py-2 border rounded">Cancel</button>
-                <button onclick="submitPayment()" class="px-4 py-2 bg-blue-600 text-white rounded">Save</button>
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center">
+                    <i data-lucide="credit-card" class="text-white w-5 h-5"></i>
+                </div>
+                <h2 class="text-xl font-semibold text-gray-800">Add Payment</h2>
             </div>
 
+            <input type="hidden" id="paymentAdmissionId">
+
+            <!-- Form -->
+            <div class="space-y-5">
+
+                <!-- Amount -->
+                <div class="relative">
+                    <input type="number" id="amount" required min="1" step="0.01"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all"
+                        placeholder="Amount">
+                    <label for="amount"
+                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-green-600">
+                        Amount (₹) <span class="text-red-500">*</span>
+                    </label>
+                    <p id="amountError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter a valid amount</p>
+                </div>
+
+                <!-- Payment Mode -->
+                <div class="relative">
+                    <select id="paymentMode" required
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all appearance-none bg-white">
+                        <option value="Cash">💵 Cash</option>
+                        <option value="UPI">📱 UPI</option>
+                        <option value="Card">💳 Card</option>
+                        <option value="Bank Transfer">🏦 Bank Transfer</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
+                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+                        Payment Mode <span class="text-red-500">*</span>
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+                <button onclick="closePaymentModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Cancel
+                </button>
+                <button onclick="submitPayment()" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-lg shadow-green-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    Save Payment
+                </button>
+            </div>
 
         </div>
-
     </div>
 
     <!-- TOAST -->

@@ -75,17 +75,79 @@
 
             <!-- NAVBAR -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
-                <h1 class="text-lg font-semibold">Payments</h1>
+                <h1 class="text-lg font-semibold text-gray-800">Payments</h1>
+                <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span>Logout</span>
+                </button>
             </header>
 
             <!-- CONTENT -->
-            <main class="p-6 overflow-y-auto">
+            <main class="p-6 space-y-6 overflow-y-auto">
 
+                <!-- STATS -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="wallet" class="w-5 h-5 text-blue-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Total Payments</p>
+                                <p id="totalPayments" class="text-xl font-bold text-gray-800">0</p>
+                            </div>
+                        </div>
+                        <p id="totalAmount" class="text-sm text-green-600 mt-2 font-medium">₹0</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="banknote" class="w-5 h-5 text-green-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Cash</p>
+                                <p id="cashCount" class="text-xl font-bold text-gray-800">0</p>
+                            </div>
+                        </div>
+                        <p id="cashAmount" class="text-sm text-green-600 mt-2 font-medium">₹0</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="smartphone" class="w-5 h-5 text-purple-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">UPI</p>
+                                <p id="upiCount" class="text-xl font-bold text-gray-800">0</p>
+                            </div>
+                        </div>
+                        <p id="upiAmount" class="text-sm text-green-600 mt-2 font-medium">₹0</p>
+                    </div>
+
+                    <div class="bg-white p-4 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                                <i data-lucide="credit-card" class="w-5 h-5 text-amber-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs text-gray-500">Card</p>
+                                <p id="cardCount" class="text-xl font-bold text-gray-800">0</p>
+                            </div>
+                        </div>
+                        <p id="cardAmount" class="text-sm text-green-600 mt-2 font-medium">₹0</p>
+                    </div>
+
+                </div>
+
+                <!-- TABLE -->
                 <div class="bg-white rounded-xl shadow overflow-hidden">
 
                     <table class="w-full text-sm">
 
-                        <thead class="bg-gray-50 text-gray-500">
+                        <thead class="bg-gray-50 text-gray-600 font-medium">
                             <tr>
                                 <th class="px-6 py-3 text-left">Student</th>
                                 <th class="px-6 py-3">Course</th>
@@ -97,11 +159,47 @@
 
                         <tbody id="paymentTable">
                             <tr>
-                                <td colspan="5" class="text-center py-6 text-gray-400">Loading...</td>
+                                <td colspan="5" class="text-center py-12">
+                                    <div class="flex flex-col items-center gap-3">
+                                        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                                            <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
+                                        </div>
+                                        <p class="text-gray-500">Loading payments...</p>
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
 
                     </table>
+
+                    <!-- PAGINATION -->
+                    <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
+
+                        <div class="text-sm text-gray-500">
+                            Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span> payments
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button id="firstPage" onclick="goToPage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+                            </button>
+                            <button id="prevPage" onclick="changePage(-1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+
+                            <div id="pageNumbers" class="flex items-center gap-1">
+                                <span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
+                            </div>
+
+                            <button id="nextPage" onclick="changePage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                            <button id="lastPage" onclick="goToLastPage()" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                    </div>
 
                 </div>
 

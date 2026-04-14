@@ -115,67 +115,169 @@
 
                     <table class="w-full text-sm">
 
-                        <thead class="bg-gray-50 text-gray-500">
+                        <thead class="bg-gray-50 text-gray-600 font-medium">
                             <tr>
                                 <th class="px-6 py-3 text-left">Name</th>
                                 <th class="px-6 py-3">Course</th>
                                 <th class="px-6 py-3">Status</th>
                                 <th class="px-6 py-3">Follow-Up</th>
-                                <th class="px-6 py-3">Actions</th>
+                                <th class="px-6 py-3 text-center">Actions</th>
                             </tr>
                         </thead>
 
                         <tbody id="todayCallsTable">
                             <tr>
-                                <td colspan="5" class="text-center py-6 text-gray-400">Loading...</td>
+                                <td colspan="5" class="text-center py-12">
+                                    <div class="flex flex-col items-center gap-3">
+                                        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                                            <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
+                                        </div>
+                                        <p class="text-gray-500">Loading calls...</p>
+                                    </div>
+                                </td>
                             </tr>
                         </tbody>
 
                     </table>
 
+                    <!-- PAGINATION -->
+                    <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
+
+                        <div class="text-sm text-gray-500">
+                            Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span> calls
+                        </div>
+
+                        <div class="flex items-center gap-2">
+                            <button id="firstPage" onclick="goToPage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+                            </button>
+                            <button id="prevPage" onclick="changePage(-1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+
+                            <div id="pageNumbers" class="flex items-center gap-1">
+                                <span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
+                            </div>
+
+                            <button id="nextPage" onclick="changePage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
+                            <button id="lastPage" onclick="goToLastPage()" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+
+                    </div>
+
                 </div>
 
             </main>
-            ```
 
         </div>
 
     </div>
 
     <!-- STATUS MODAL -->
+    <div id="statusModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="statusModalContent">
 
-    <div id="statusModal" class="fixed inset-0 bg-black/40 hidden flex items-center justify-center z-50">
-
-        <div class="bg-white rounded-xl w-full max-w-md p-6 space-y-4">
-
-            ```
-            <h2 class="font-semibold text-lg">Update Status</h2>
-
-            <select id="statusSelect" class="w-full border p-2 rounded">
-                <option value="CONTACTED">Contacted</option>
-                <option value="NO_RESPONSE">No Response</option>
-                <option value="FOLLOW_UP">Follow Up</option>
-                <option value="INTERESTED">Interested</option>
-                <option value="NOT_INTERESTED">Not Interested</option>
-                <option value="ADMISSION_PROCESS">Admission Process</option>
-            </select>
-
-            <textarea id="statusNote" placeholder="Enter note..." class="w-full border p-2 rounded"></textarea>
-
-            <input type="date" id="followUpDate" class="w-full border p-2 rounded" />
-
-            <div class="flex justify-end gap-3 pt-2">
-                <button onclick="closeModal()" class="px-4 py-2 border rounded">Cancel</button>
-                <button onclick="confirmUpdate()" class="px-4 py-2 bg-blue-600 text-white rounded">Confirm</button>
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <i data-lucide="refresh-cw" class="text-white w-5 h-5"></i>
+                </div>
+                <h2 class="text-xl font-semibold text-gray-800">Update Status</h2>
             </div>
-            ```
+
+            <!-- Form -->
+            <div class="space-y-5">
+
+                <!-- Status Dropdown -->
+                <div class="relative">
+                    <select id="statusSelect" required
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white">
+                        <option value="CONTACTED">📞 Contacted</option>
+                        <option value="NO_RESPONSE">🔕 No Response</option>
+                        <option value="FOLLOW_UP">📅 Follow Up</option>
+                        <option value="INTERESTED">👍 Interested</option>
+                        <option value="NOT_INTERESTED">👎 Not Interested</option>
+                        <option value="ADMISSION_PROCESS">🎓 Admission Process</option>
+                    </select>
+                    <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
+                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+                        New Status <span class="text-red-500">*</span>
+                    </label>
+                </div>
+
+                <!-- Note (Required) -->
+                <div class="relative">
+                    <textarea id="statusNote" required rows="3"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                        placeholder="Add note"></textarea>
+                    <label for="statusNote"
+                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
+                        Add Note <span class="text-red-500">*</span>
+                    </label>
+                    <p id="statusNoteError" class="hidden text-red-500 text-xs mt-1 ml-1">Note is required</p>
+                </div>
+
+                <!-- Follow-up Date -->
+                <div class="relative">
+                    <input type="date" id="followUpDate"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+                        Follow-up Date (Optional)
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+                <button onclick="closeModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Cancel
+                </button>
+                <button onclick="openConfirmModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    Update Status
+                </button>
+            </div>
 
         </div>
+    </div>
 
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-[60] opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="confirmModalContent">
+
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="alert-triangle" class="text-amber-600 w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Confirm Update</h3>
+                    <p class="text-sm text-gray-500">Are you sure you want to update this status?</p>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-3 mb-5 text-sm">
+                <p><span class="text-gray-500">Status:</span> <span id="confirmStatusText" class="font-medium text-gray-800"></span></p>
+                <p><span class="text-gray-500">Note:</span> <span id="confirmNoteText" class="font-medium text-gray-800 line-clamp-2"></span></p>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Cancel
+                </button>
+                <button onclick="executeUpdate()" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all font-medium">
+                    Yes, Update
+                </button>
+            </div>
+
+        </div>
     </div>
 
     <!-- TOAST -->
-
     <div id="toast" class="fixed top-4 right-4 hidden"></div>
 
     <!-- JS -->

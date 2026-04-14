@@ -6,11 +6,14 @@ ENDPOINTS
 const API_ENDPOINTS = {
     ENQUIRIES: {
         GET_ALL: '/enquiries',
+        GET_BY_ID: (id) => `/enquiries/${id}`,
         CREATE: '/enquiries',
-        UPDATE_STATUS: (id) => `/enquiries/${id}/update`
+        UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
+        BULK_UPLOAD: '/enquiries/bulk-upload'
     },
     ADMISSIONS: {
-        GET_ALL: '/admissions'
+        GET_ALL: '/admissions',
+        CREATE: '/admissions'
     },
     PAYMENTS: {
         CREATE: '/payments',
@@ -51,7 +54,9 @@ async function apiGet(url, params = {}) {
 }
 
 async function apiPost(url, data) {
-    const res = await api.post(url, data);
+    const isFormData = data instanceof FormData;
+    const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+    const res = await api.post(url, data, config);
     return res.data.data || res.data;
 }
 

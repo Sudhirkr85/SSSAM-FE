@@ -26,50 +26,55 @@
     <div class="flex h-screen">
 
         <!-- Sidebar -->
+        <aside class="w-64 bg-gray-900 text-gray-300 flex flex-col">
 
-        <aside class="w-64 bg-gray-900 text-white flex flex-col">
-            <div class="p-6 border-b border-gray-800 flex items-center gap-3">
-                <i data-lucide="building-2" class="text-blue-400"></i>
-                <span class="font-semibold text-lg">CRM</span>
+            <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <i data-lucide="building-2" class="text-white"></i>
+                </div>
+                <span class="text-lg font-semibold text-white">CRM</span>
             </div>
 
-            ```
             <nav class="flex-1 py-4 space-y-1">
-                <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800">
+                <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
                     <i data-lucide="layout-dashboard"></i> Dashboard
                 </a>
-                <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 bg-blue-600">
+                <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg bg-blue-600 text-white">
                     <i data-lucide="message-square"></i> Enquiries
                 </a>
-                <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 text-gray-400 hover:bg-gray-800">
+                <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+                    <i data-lucide="phone"></i> Today Calls
+                </a>
+                <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
                     <i data-lucide="graduation-cap"></i> Admissions
+                </a>
+                <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+                    <i data-lucide="wallet"></i> Payments
                 </a>
             </nav>
 
-            <div class="p-4 border-t border-gray-800 text-sm">
-                <div id="userName"></div>
-                <div id="userRole" class="text-gray-400 text-xs"></div>
+            <div class="p-4 border-t border-gray-800">
+                <p id="userName" class="text-sm text-white"></p>
+                <p id="userRole" class="text-xs text-gray-400"></p>
             </div>
-            ```
 
         </aside>
 
         <!-- Main -->
-
         <div class="flex-1 flex flex-col">
 
-            ```
             <!-- Header -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
                 <div class="flex items-center gap-3">
-                    <a href="enquiries.html">
-                        <i data-lucide="arrow-left"></i>
+                    <a href="enquiries.html" class="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors">
+                        <i data-lucide="arrow-left" class="w-5 h-5 text-gray-600"></i>
                     </a>
-                    <h1 class="text-xl font-semibold">Enquiry Details</h1>
+                    <h1 class="text-xl font-semibold text-gray-800">Enquiry Details</h1>
                 </div>
 
-                <button id="logoutBtn">
-                    <i data-lucide="log-out"></i>
+                <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span>Logout</span>
                 </button>
             </header>
 
@@ -79,10 +84,24 @@
                 <!-- Top Card -->
                 <div class="bg-white p-6 rounded-xl shadow-sm flex justify-between items-center">
 
-                    <div>
-                        <h2 id="detailName" class="text-2xl font-bold"></h2>
-                        <p id="detailMobile" class="text-gray-500"></p>
-                        <p id="detailCourse" class="text-sm text-gray-500"></p>
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                            <i data-lucide="user" class="w-7 h-7 text-white"></i>
+                        </div>
+                        <div>
+                            <h2 id="detailName" class="text-2xl font-bold text-gray-800"></h2>
+                            <div class="flex items-center gap-3 mt-1">
+                                <p id="detailMobile" class="text-gray-500 flex items-center gap-1.5">
+                                    <i data-lucide="phone" class="w-4 h-4"></i>
+                                    <span></span>
+                                </p>
+                                <span class="text-gray-300">|</span>
+                                <p id="detailCourse" class="text-gray-500 flex items-center gap-1.5">
+                                    <i data-lucide="book-open" class="w-4 h-4"></i>
+                                    <span></span>
+                                </p>
+                            </div>
+                        </div>
                     </div>
 
                     <div id="detailStatusBadge"></div>
@@ -92,106 +111,238 @@
                 <!-- ACTION BUTTONS -->
                 <div class="flex gap-3 flex-wrap">
 
-                    <button onclick="openStatusModal(currentId,'CONTACTED')" class="action-btn" title="Contacted">
-                        <i data-lucide="phone"></i>
+                    <button onclick="openStatusModal(currentId,'CONTACTED')"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        <i data-lucide="phone" class="w-4 h-4"></i>
+                        <span>Contacted</span>
                     </button>
 
-                    <button onclick="openStatusModal(currentId,'FOLLOW_UP')" class="action-btn" title="Follow Up">
-                        <i data-lucide="calendar"></i>
+                    <button onclick="openStatusModal(currentId,'FOLLOW_UP')"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                        <span>Follow Up</span>
                     </button>
 
-                    <button onclick="openStatusModal(currentId,'INTERESTED')" class="action-btn" title="Interested">
-                        <i data-lucide="thumbs-up"></i>
+                    <button onclick="openStatusModal(currentId,'INTERESTED')"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        <i data-lucide="thumbs-up" class="w-4 h-4"></i>
+                        <span>Interested</span>
                     </button>
 
-                    <button onclick="openStatusModal(currentId,'NOT_INTERESTED')" class="action-btn"
-                        title="Not Interested">
-                        <i data-lucide="x-circle"></i>
+                    <button onclick="openStatusModal(currentId,'NOT_INTERESTED')"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        <span>Not Interested</span>
                     </button>
 
-                    <button onclick="openConvertModal(currentId)" class="action-btn" title="Convert">
-                        <i data-lucide="graduation-cap"></i>
+                    <button onclick="openConvertModal(currentId)"
+                        class="flex items-center gap-2 px-4 py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl transition-all hover:scale-105 font-medium shadow-sm">
+                        <i data-lucide="graduation-cap" class="w-4 h-4"></i>
+                        <span>Convert</span>
                     </button>
 
                 </div>
 
                 <!-- DETAILS -->
                 <div class="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 class="font-semibold mb-4">Details</h3>
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="info" class="w-5 h-5 text-gray-400"></i>
+                        Details
+                    </h3>
 
-                    <div class="grid grid-cols-2 gap-4 text-sm">
-                        <div><b>Email:</b> <span id="infoEmail"></span></div>
-                        <div><b>Assigned:</b> <span id="infoAssigned"></span></div>
-                        <div><b>Status:</b> <span id="infoStatus"></span></div>
-                        <div><b>Created:</b> <span id="infoCreated"></span></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                        <div class="bg-gray-50 p-4 rounded-xl">
+                            <p class="text-gray-500 text-xs mb-1">Email</p>
+                            <p id="infoEmail" class="font-medium text-gray-800"></p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-xl">
+                            <p class="text-gray-500 text-xs mb-1">Assigned To</p>
+                            <p id="infoAssigned" class="font-medium text-gray-800"></p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-xl">
+                            <p class="text-gray-500 text-xs mb-1">Status</p>
+                            <p id="infoStatus" class="font-medium"></p>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded-xl">
+                            <p class="text-gray-500 text-xs mb-1">Created</p>
+                            <p id="infoCreated" class="font-medium text-gray-800"></p>
+                        </div>
                     </div>
                 </div>
 
                 <!-- TIMELINE -->
                 <div class="bg-white p-6 rounded-xl shadow-sm">
-                    <h3 class="font-semibold mb-4">Activity Timeline</h3>
-                    <div id="timelineList" class="space-y-3 text-sm text-gray-600">
-                        Loading...
+                    <h3 class="font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i data-lucide="clock" class="w-5 h-5 text-gray-400"></i>
+                        Activity Timeline
+                    </h3>
+                    <div id="timelineList" class="space-y-4 text-sm">
+                        <div class="flex items-center justify-center py-8">
+                            <div class="flex items-center gap-2 text-gray-400">
+                                <i data-lucide="loader-2" class="w-5 h-5 animate-spin"></i>
+                                <span>Loading timeline...</span>
+                            </div>
+                        </div>
                     </div>
                 </div>
 
             </main>
-            ```
 
         </div>
 
     </div>
 
     <!-- STATUS MODAL -->
+    <div id="statusModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="statusModalContent">
 
-    <div id="statusModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
-        <form id="statusForm" class="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+                    <i data-lucide="refresh-cw" class="text-white w-5 h-5"></i>
+                </div>
+                <h2 class="text-xl font-semibold text-gray-800">Update Status</h2>
+            </div>
 
-            ```
             <input type="hidden" id="statusEnquiryId">
             <input type="hidden" id="statusTargetStatus">
 
-            <h2 class="text-lg font-semibold">Update Status</h2>
+            <!-- Form -->
+            <div class="space-y-5">
 
-            <textarea id="statusNote" required placeholder="Add note..."
-                class="w-full border px-4 py-2 rounded-lg"></textarea>
+                <!-- Status Display -->
+                <div class="bg-gray-50 p-4 rounded-xl">
+                    <p class="text-xs text-gray-500 mb-1">New Status</p>
+                    <p id="statusDisplay" class="font-medium text-gray-800 flex items-center gap-2"></p>
+                </div>
 
-            <input type="date" id="statusFollowUpDate" class="w-full border px-4 py-2 rounded-lg">
+                <!-- Note (Required) -->
+                <div class="relative">
+                    <textarea id="statusNote" required rows="3"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
+                        placeholder="Add note"></textarea>
+                    <label for="statusNote"
+                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
+                        Add Note <span class="text-red-500">*</span>
+                    </label>
+                    <p id="statusNoteError" class="hidden text-red-500 text-xs mt-1 ml-1">Note is required</p>
+                </div>
 
-            <div class="flex justify-end gap-3">
-                <button type="button" onclick="closeStatusModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save</button>
+                <!-- Follow-up Date -->
+                <div class="relative">
+                    <input type="date" id="statusFollowUpDate"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
+                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+                        Follow-up Date (Optional)
+                    </label>
+                </div>
+
             </div>
-            ```
 
-        </form>
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+                <button onclick="closeStatusModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Cancel
+                </button>
+                <button onclick="submitStatusUpdate()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    Update Status
+                </button>
+            </div>
+
+        </div>
     </div>
 
     <!-- CONVERT MODAL -->
+    <div id="convertModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="convertModalContent">
 
-    <div id="convertModal" class="hidden fixed inset-0 bg-black/40 flex items-center justify-center">
-        <form id="convertForm" class="bg-white rounded-xl p-6 w-full max-w-md space-y-4">
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center">
+                    <i data-lucide="graduation-cap" class="text-white w-5 h-5"></i>
+                </div>
+                <h2 class="text-xl font-semibold text-gray-800">Convert to Admission</h2>
+            </div>
 
-            ```
             <input type="hidden" id="convertEnquiryId">
 
-            <h2 class="text-lg font-semibold">Convert</h2>
+            <!-- Form -->
+            <div class="space-y-5">
 
-            <input id="convertCourse" placeholder="Course" class="w-full border px-4 py-2 rounded-lg">
-            <input id="convertFees" placeholder="Fees" type="number" class="w-full border px-4 py-2 rounded-lg">
+                <!-- Course -->
+                <div class="relative">
+                    <input type="text" id="convertCourse" required
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+                        placeholder="Course">
+                    <label for="convertCourse"
+                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-purple-600">
+                        Course Name <span class="text-red-500">*</span>
+                    </label>
+                    <p id="convertCourseError" class="hidden text-red-500 text-xs mt-1 ml-1">Course is required</p>
+                </div>
 
-            <div class="flex justify-end gap-3">
-                <button type="button" onclick="closeConvertModal()" class="px-4 py-2 border rounded-lg">Cancel</button>
-                <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg">Convert</button>
+                <!-- Fees -->
+                <div class="relative">
+                    <input type="number" id="convertFees" required min="0"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
+                        placeholder="Fees">
+                    <label for="convertFees"
+                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-purple-600">
+                        Course Fees (₹) <span class="text-red-500">*</span>
+                    </label>
+                    <p id="convertFeesError" class="hidden text-red-500 text-xs mt-1 ml-1">Valid fee amount required</p>
+                </div>
+
             </div>
-            ```
 
-        </form>
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+                <button onclick="closeConvertModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Cancel
+                </button>
+                <button onclick="submitConvert()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    Convert
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- CUSTOM CONFIRM MODAL -->
+    <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-[60] opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="confirmModalContent">
+
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="alert-triangle" class="text-amber-600 w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Confirm Action</h3>
+                    <p class="text-sm text-gray-500">Are you sure you want to proceed?</p>
+                </div>
+            </div>
+
+            <div class="bg-gray-50 rounded-lg p-3 mb-5 text-sm">
+                <p><span class="text-gray-500">Action:</span> <span id="confirmActionText" class="font-medium text-gray-800"></span></p>
+                <p><span class="text-gray-500">Details:</span> <span id="confirmDetailsText" class="font-medium text-gray-800 line-clamp-2"></span></p>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Cancel
+                </button>
+                <button onclick="executeConfirmAction()" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all font-medium">
+                    Yes, Proceed
+                </button>
+            </div>
+
+        </div>
     </div>
 
     <!-- Toast -->
-
-    <div id="toast" class="fixed top-4 right-4 hidden bg-white shadow-lg rounded-lg px-4 py-2"></div>
+    <div id="toast" class="fixed top-4 right-4 hidden"></div>
 
     <!-- Scripts -->
 
@@ -201,27 +352,31 @@
 
     <script src="js/auth.js"></script>
 
-    <script src="js/enquiry.js"></script>
+    <script src="js/enquiry-detail.js"></script>
 
     <script>
         lucide.createIcons();
     </script>
 
     <style>
-        .action-btn {
-            width: 40px;
-            height: 40px;
-            background: #f3f4f6;
-            border-radius: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: 0.2s;
+        /* Timeline styles */
+        .timeline-item {
+            position: relative;
+            padding-left: 1.5rem;
+            border-left: 2px solid #e5e7eb;
         }
-
-        .action-btn:hover {
-            background: #e5e7eb;
-            transform: scale(1.1);
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: -5px;
+            top: 0.5rem;
+            width: 8px;
+            height: 8px;
+            background: #3b82f6;
+            border-radius: 50%;
+        }
+        .timeline-item:last-child {
+            border-left-color: transparent;
         }
     </style>
 
