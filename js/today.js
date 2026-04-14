@@ -73,10 +73,7 @@ function renderTable() {
                 ${isOverdue(e.followUpDate) ? '<span class="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Overdue</span>' : ''}
             </td>
             <td class="px-6 py-4 text-center">
-                <button onclick="openModal('${e._id}')"
-                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm">
-                    Update
-                </button>
+                ${getActionButtons(e._id, e.status)}
             </td>
         </tr>
     `).join('');
@@ -296,6 +293,158 @@ async function executeUpdate() {
 }
 
 /* ======================
+ACTION BUTTONS
+====================== */
+function getActionButtons(id, status) {
+    // For today calls, only show next logical action + follow up
+    const nextActions = {
+        'NEW': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
+        'CONTACTED': { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
+        'FOLLOW_UP': { status: 'INTERESTED', label: 'Interested', color: 'green' },
+        'INTERESTED': { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
+        'ADMISSION_PROCESS': { convert: true, label: 'Convert', color: 'purple' },
+        'NO_RESPONSE': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
+        'NOT_INTERESTED': null,
+        'CONVERTED': null
+    };
+
+    const action = nextActions[status];
+
+    // Always show Add Follow Up button (opens simple modal)
+    const followUpBtn = `
+        <button onclick="event.stopPropagation(); openFollowUpModal('${id}')"
+            class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
+            Add Follow Up
+        </button>
+    `;
+
+    if (!action) {
+        return followUpBtn;
+    }
+
+    if (action.convert) {
+        return `
+            <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
+                class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
+                Convert
+            </button>
+            ${followUpBtn}
+        `;
+    } else {
+        return `
+            <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}', '${status}')"
+                class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
+                ${action.label}
+            </button>
+            ${followUpBtn}
+        `;
+    }
+}
+
+/* ======================
+SIMPLE FOLLOW UP MODAL (No Status Change)
+====================== */
+let followUpId = null;
+
+function openFollowUpModal(id) {
+    followUpId = id;
+    const modal = document.getElementById('followUpModal');
+    const modalContent = document.getElementById('followUpModalContent');
+
+    // Reset form
+    document.getElementById('followUpNote').value = '';
+    document.getElementById('followUpDateInput').value = '';
+    clearFollowUpErrors();
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function closeFollowUpModal() {
+    const modal = document.getElementById('followUpModal');
+    const modalContent = document.getElementById('followUpModalContent');
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function clearFollowUpErrors() {
+    const noteError = document.getElementById('followUpNoteError');
+    const noteInput = document.getElementById('followUpNote');
+    const apiError = document.getElementById('followUpApiError');
+
+    noteError.classList.add('hidden');
+    noteInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+    noteInput.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+
+    if (apiError) {
+        apiError.classList.add('hidden');
+    }
+}
+
+function validateFollowUpNote() {
+    const note = document.getElementById('followUpNote');
+    const error = document.getElementById('followUpNoteError');
+    if (!note.value.trim()) {
+        error.classList.remove('hidden');
+        note.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+        note.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        return false;
+    }
+    error.classList.add('hidden');
+    note.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+    note.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+    return true;
+}
+
+async function submitFollowUp() {
+    if (!validateFollowUpNote()) {
+        showToast('error', 'Please add a note');
+        return;
+    }
+
+    const note = document.getElementById('followUpNote').value;
+    const followUpDate = document.getElementById('followUpDateInput').value;
+
+    try {
+        // Use FOLLOW_UP status and only update note + date
+        await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(followUpId), {
+            status: 'FOLLOW_UP',
+            note,
+            followUpDate
+        });
+
+        showToast('success', 'Follow up added successfully');
+        closeFollowUpModal();
+        loadTodayCalls();
+    } catch (err) {
+        // Show error in modal
+        const errorDiv = document.getElementById('followUpApiError');
+        const errorText = document.getElementById('followUpErrorText');
+
+        if (errorDiv && errorText) {
+            let message = 'Failed to add follow up';
+            if (err.response?.data?.message) {
+                message = err.response.data.message;
+            } else if (err.message) {
+                message = err.message;
+            }
+            errorText.textContent = message;
+            errorDiv.classList.remove('hidden');
+        } else {
+            showToast('error', 'Failed to add follow up');
+        }
+    }
+}
+
+/* ======================
 HELPERS
 ====================== */
 function isOverdue(date) {
@@ -314,3 +463,7 @@ window.executeUpdate = executeUpdate;
 window.changePage = changePage;
 window.goToPage = goToPage;
 window.goToLastPage = goToLastPage;
+window.openFollowUpModal = openFollowUpModal;
+window.closeFollowUpModal = closeFollowUpModal;
+window.submitFollowUp = submitFollowUp;
+window.getActionButtons = getActionButtons;

@@ -1,5 +1,6 @@
 let enquiries = [];
 let selectedId = null;
+let selectedCurrentStatus = ''; // Track current status for quick update modal
 let allEnquiries = []; // Store all for client-side filtering
 let filteredEnquiries = []; // After filters applied
 
@@ -499,10 +500,26 @@ async function executeUpdate() {
 /* ======================
 QUICK UPDATE MODAL (Direct Notes)
 ====================== */
-function openQuickUpdateModal(id, defaultStatus = 'CONTACTED') {
+function openQuickUpdateModal(id, defaultStatus = 'CONTACTED', currentStatus = '') {
   selectedId = id;
   const modal = document.getElementById('quickUpdateModal');
   const modalContent = document.getElementById('quickUpdateModalContent');
+
+  // Store current status for reference
+  selectedCurrentStatus = currentStatus;
+
+  // Update header with current status
+  const statusLabels = {
+    'NEW': 'New',
+    'CONTACTED': 'Contacted',
+    'NO_RESPONSE': 'No Response',
+    'FOLLOW_UP': 'Follow Up',
+    'INTERESTED': 'Interested',
+    'NOT_INTERESTED': 'Not Interested',
+    'ADMISSION_PROCESS': 'Admission Process',
+    'CONVERTED': 'Converted'
+  };
+  document.getElementById('quickCurrentStatus').textContent = statusLabels[currentStatus] || currentStatus || '-';
 
   // Reset form with default status
   document.getElementById('quickStatusSelect').value = defaultStatus;
@@ -533,9 +550,16 @@ function closeQuickUpdateModal() {
 function clearQuickStatusErrors() {
   const noteError = document.getElementById('quickNoteError');
   const noteInput = document.getElementById('quickNote');
+  const apiError = document.getElementById('quickErrorMessage');
+
   noteError.classList.add('hidden');
   noteInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
   noteInput.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+
+  // Hide API error message
+  if (apiError) {
+    apiError.classList.add('hidden');
+  }
 }
 
 function validateQuickNote() {
@@ -575,11 +599,23 @@ async function submitQuickUpdate() {
     closeQuickUpdateModal();
     loadEnquiries();
   } catch (err) {
-    showToast('error', 'Failed to update status');
-    // Show error popup
-    setTimeout(() => {
-      alert('Update failed: ' + (err.message || 'Please try again'));
-    }, 100);
+    // Show error in modal instead of toast
+    const errorDiv = document.getElementById('quickErrorMessage');
+    const errorText = document.getElementById('quickErrorText');
+
+    if (errorDiv && errorText) {
+      // Extract error message from response
+      let message = 'Failed to update status';
+      if (err.response?.data?.message) {
+        message = err.response.data.message;
+      } else if (err.message) {
+        message = err.message;
+      }
+      errorText.textContent = message;
+      errorDiv.classList.remove('hidden');
+    } else {
+      showToast('error', 'Failed to update status');
+    }
   }
 }
 
@@ -750,8 +786,9 @@ async function submitBulkUpload() {
     progressBar.style.width = '100%';
     progressPercent.textContent = '100%';
 
-    // Show results
-    showUploadResults(res);
+    // Show results - extract data from API response
+    const resultData = res.data || res;
+    showUploadResults(resultData);
 
     // Refresh enquiries list
     loadEnquiries();
@@ -874,7 +911,7 @@ function getActionButtons(id, status) {
   // Define next actions based on current status
   const nextActions = {
     'NEW': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-    'CONTACTED': { status: 'FOLLOW_UP', label: 'Interested', color: 'green' },
+    'CONTACTED': { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
     'FOLLOW_UP': { status: 'INTERESTED', label: 'Interested', color: 'green' },
     'INTERESTED': { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
     'ADMISSION_PROCESS': { convert: true, label: 'Convert', color: 'purple' },
@@ -885,9 +922,9 @@ function getActionButtons(id, status) {
 
   const action = nextActions[status];
 
-  // Always show Follow Up button
+  // Always show Follow Up button - pass current status so modal knows context
   const followUpBtn = `
-    <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', 'FOLLOW_UP')"
+    <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', 'FOLLOW_UP', '${status}')"
       class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
       Follow Up
     </button>
@@ -908,9 +945,9 @@ function getActionButtons(id, status) {
       ${followUpBtn}
     `;
   } else {
-    // For other statuses, show Next Status + Follow Up
+    // For other statuses, show Next Status + Follow Up - pass current status
     return `
-      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}')"
+      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}', '${status}')"
         class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
         ${action.label}
       </button>

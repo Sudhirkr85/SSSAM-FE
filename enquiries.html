@@ -320,6 +320,15 @@
       <!-- Header -->
       <div class="mb-6">
         <h2 class="text-xl font-semibold text-gray-800">Quick Update</h2>
+        <p class="text-sm text-gray-500 mt-1">Status: <span id="quickCurrentStatus" class="font-medium text-gray-700">-</span></p>
+      </div>
+
+      <!-- Error Message -->
+      <div id="quickErrorMessage" class="hidden bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
+        <p class="text-red-600 text-sm flex items-center gap-2">
+          <span class="font-medium">Error:</span>
+          <span id="quickErrorText">Something went wrong</span>
+        </p>
       </div>
 
       <!-- Form -->
