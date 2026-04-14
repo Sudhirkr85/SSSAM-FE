@@ -59,12 +59,33 @@ document.addEventListener('DOMContentLoaded', () => {
 /* ======================
 LOAD DATA
 ====================== */
+let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
+
 async function loadEnquiries() {
   try {
-    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL);
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const status = document.getElementById('statusFilter').value;
+    const course = document.getElementById('courseFilter').value;
+
+    const params = {
+      page: currentPage,
+      limit: ITEMS_PER_PAGE
+    };
+
+    if (search) params.search = search;
+    if (status) params.status = status;
+    if (course) params.course = course;
+
+    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
+
+    // API returns { enquiries: [...], pagination: {...} }
     allEnquiries = res.enquiries || [];
-    filterData(); // Apply any active filters and render
-  } catch {
+    paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
+    totalPages = paginationData.totalPages || 1;
+
+    renderTable(allEnquiries);
+    updatePaginationInfoFromServer(paginationData);
+  } catch (err) {
     showToast('error', 'Failed to load enquiries');
     renderEmptyState();
   }
@@ -74,38 +95,9 @@ async function loadEnquiries() {
 FILTER
 ====================== */
 function filterData() {
-  const search = document.getElementById('searchInput').value.toLowerCase().trim();
-  const status = document.getElementById('statusFilter').value;
-  const course = document.getElementById('courseFilter').value;
-
-  filteredEnquiries = allEnquiries.filter(e => {
-    // Search filter (name or mobile)
-    if (search) {
-      const nameMatch = e.name && e.name.toLowerCase().includes(search);
-      const mobileMatch = e.mobile && e.mobile.includes(search);
-      if (!nameMatch && !mobileMatch) return false;
-    }
-
-    // Status filter
-    if (status && e.status !== status) return false;
-
-    // Course filter
-    if (course && e.courseInterested !== course) return false;
-
-    return true;
-  });
-
-  // Calculate pagination
-  totalPages = Math.ceil(filteredEnquiries.length / ITEMS_PER_PAGE) || 1;
-  if (currentPage > totalPages) currentPage = totalPages;
-
-  // Get page slice
-  const start = (currentPage - 1) * ITEMS_PER_PAGE;
-  const end = start + ITEMS_PER_PAGE;
-  enquiries = filteredEnquiries.slice(start, end);
-
-  renderTable(enquiries);
-  updatePaginationInfo(start, end, filteredEnquiries.length);
+  // Server-side filtering - just reset to page 1 and reload
+  currentPage = 1;
+  loadEnquiries();
 }
 
 function resetFilters() {
@@ -123,33 +115,37 @@ function changePage(direction) {
   const newPage = currentPage + direction;
   if (newPage >= 1 && newPage <= totalPages) {
     currentPage = newPage;
-    filterData();
+    loadEnquiries();
   }
 }
 
 function goToPage(page) {
   if (page >= 1 && page <= totalPages) {
     currentPage = page;
-    filterData();
+    loadEnquiries();
   }
 }
 
 function goToLastPage() {
   currentPage = totalPages;
-  filterData();
+  loadEnquiries();
 }
 
-function updatePaginationInfo(start, end, total) {
+function updatePaginationInfoFromServer(pagination) {
+  const total = pagination.totalCount || 0;
+  const start = total > 0 ? ((pagination.page - 1) * ITEMS_PER_PAGE) + 1 : 0;
+  const end = Math.min(start + ITEMS_PER_PAGE - 1, total);
+
   // Update showing text
-  document.getElementById('showingFrom').textContent = total > 0 ? start + 1 : 0;
-  document.getElementById('showingTo').textContent = Math.min(end, total);
+  document.getElementById('showingFrom').textContent = start;
+  document.getElementById('showingTo').textContent = end;
   document.getElementById('totalItems').textContent = total;
 
   // Update button states
   document.getElementById('firstPage').disabled = currentPage === 1;
   document.getElementById('prevPage').disabled = currentPage === 1;
-  document.getElementById('nextPage').disabled = currentPage === totalPages;
-  document.getElementById('lastPage').disabled = currentPage === totalPages;
+  document.getElementById('nextPage').disabled = currentPage >= totalPages;
+  document.getElementById('lastPage').disabled = currentPage >= totalPages;
 
   // Update page numbers display
   const pageNumbers = document.getElementById('pageNumbers');

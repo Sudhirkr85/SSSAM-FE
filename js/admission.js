@@ -1,11 +1,11 @@
 let admissions = [];
-let allAdmissions = [];
 let selectedAdmissionId = null;
 
 // Pagination state
 let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
+let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
 
 /* ======================
 INIT
@@ -25,21 +25,19 @@ LOAD DATA
 ====================== */
 async function loadAdmissions() {
     try {
-        const res = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL);
-        allAdmissions = res.admissions || [];
+        const res = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, {
+            page: currentPage,
+            limit: ITEMS_PER_PAGE
+        });
 
-        // Calculate pagination
-        totalPages = Math.ceil(allAdmissions.length / ITEMS_PER_PAGE) || 1;
-
-        // Get current page slice
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        const end = start + ITEMS_PER_PAGE;
-        admissions = allAdmissions.slice(start, end);
+        admissions = res.admissions || [];
+        paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
+        totalPages = paginationData.totalPages || 1;
 
         renderTable();
         renderStats();
-        updatePaginationInfo(start, end, allAdmissions.length);
-    } catch {
+        updatePaginationInfoFromServer(paginationData);
+    } catch (err) {
         showToast('error', 'Failed to load admissions');
         renderEmptyState();
     }
@@ -112,9 +110,9 @@ function renderEmptyState() {
 STATS
 ====================== */
 function renderStats() {
-    const total = allAdmissions.length;
-    const completed = allAdmissions.filter(a => (a.totalFees || 0) - (a.paidAmount || 0) <= 0).length;
-    const pending = total - completed;
+    const total = paginationData.totalCount || 0;
+    const completed = admissions.filter(a => (a.paidAmount || 0) >= (a.totalFees || 0)).length;
+    const pending = admissions.length - completed;
 
     document.getElementById('totalAdmissions').textContent = total;
     document.getElementById('pendingCount').textContent = pending;
@@ -144,17 +142,21 @@ function goToLastPage() {
     loadAdmissions();
 }
 
-function updatePaginationInfo(start, end, total) {
+function updatePaginationInfoFromServer(pagination) {
+    const total = pagination.totalCount || 0;
+    const start = total > 0 ? ((pagination.page - 1) * ITEMS_PER_PAGE) + 1 : 0;
+    const end = Math.min(start + ITEMS_PER_PAGE - 1, total);
+
     // Update showing text
-    document.getElementById('showingFrom').textContent = total > 0 ? start + 1 : 0;
-    document.getElementById('showingTo').textContent = Math.min(end, total);
+    document.getElementById('showingFrom').textContent = start;
+    document.getElementById('showingTo').textContent = end;
     document.getElementById('totalItems').textContent = total;
 
     // Update button states
     document.getElementById('firstPage').disabled = currentPage === 1;
     document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = currentPage === totalPages;
-    document.getElementById('lastPage').disabled = currentPage === totalPages;
+    document.getElementById('nextPage').disabled = currentPage >= totalPages;
+    document.getElementById('lastPage').disabled = currentPage >= totalPages;
 
     // Update page numbers display
     const pageNumbers = document.getElementById('pageNumbers');

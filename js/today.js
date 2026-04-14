@@ -1,11 +1,11 @@
 let enquiries = [];
-let allEnquiries = [];
 let selectedId = null;
 
 // Pagination state
 let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
+let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
 
 /* ======================
 INIT
@@ -21,23 +21,19 @@ async function loadTodayCalls() {
     try {
         const today = new Date().toISOString().split('T')[0];
         const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
-            followUpDate: today
+            followUpDate: today,
+            page: currentPage,
+            limit: ITEMS_PER_PAGE
         });
 
-        allEnquiries = res.enquiries || [];
-
-        // Calculate pagination
-        totalPages = Math.ceil(allEnquiries.length / ITEMS_PER_PAGE) || 1;
-
-        // Get current page slice
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        const end = start + ITEMS_PER_PAGE;
-        enquiries = allEnquiries.slice(start, end);
+        enquiries = res.enquiries || [];
+        paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
+        totalPages = paginationData.totalPages || 1;
 
         renderTable();
         renderStats();
-        updatePaginationInfo(start, end, allEnquiries.length);
-    } catch {
+        updatePaginationInfoFromServer(paginationData);
+    } catch (err) {
         showToast('error', 'Failed to load data');
         renderEmptyState();
     }
@@ -118,17 +114,21 @@ function goToLastPage() {
     loadTodayCalls();
 }
 
-function updatePaginationInfo(start, end, total) {
+function updatePaginationInfoFromServer(pagination) {
+    const total = pagination.totalCount || 0;
+    const start = total > 0 ? ((pagination.page - 1) * ITEMS_PER_PAGE) + 1 : 0;
+    const end = Math.min(start + ITEMS_PER_PAGE - 1, total);
+
     // Update showing text
-    document.getElementById('showingFrom').textContent = total > 0 ? start + 1 : 0;
-    document.getElementById('showingTo').textContent = Math.min(end, total);
+    document.getElementById('showingFrom').textContent = start;
+    document.getElementById('showingTo').textContent = end;
     document.getElementById('totalItems').textContent = total;
 
     // Update button states
     document.getElementById('firstPage').disabled = currentPage === 1;
     document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = currentPage === totalPages;
-    document.getElementById('lastPage').disabled = currentPage === totalPages;
+    document.getElementById('nextPage').disabled = currentPage >= totalPages;
+    document.getElementById('lastPage').disabled = currentPage >= totalPages;
 
     // Update page numbers display
     const pageNumbers = document.getElementById('pageNumbers');
@@ -157,13 +157,13 @@ function updatePaginationInfo(start, end, total) {
 STATS
 ====================== */
 function renderStats() {
-    const total = enquiries.length;
+    const total = paginationData.totalCount || 0;
 
     const pending = enquiries.filter(e =>
         e.status !== 'CONVERTED' && e.status !== 'NOT_INTERESTED'
     ).length;
 
-    const done = total - pending;
+    const done = enquiries.length - pending;
 
     document.getElementById('totalCalls').textContent = total;
     document.getElementById('pendingCalls').textContent = pending;

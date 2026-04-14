@@ -9,21 +9,42 @@ const API_ENDPOINTS = {
         GET_BY_ID: (id) => `/enquiries/${id}`,
         CREATE: '/enquiries',
         UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
-        BULK_UPLOAD: '/enquiries/bulk-upload'
+        BULK_UPLOAD: '/upload/enquiries'
     },
     ADMISSIONS: {
         GET_ALL: '/admissions',
-        CREATE: '/admissions'
+        GET_BY_ID: (id) => `/admissions/${id}`,
+        GET_BY_ENQUIRY: (enquiryId) => `/admissions/by-enquiry/${enquiryId}`,
+        CREATE: '/admissions',
+        UPDATE_FEES: (id) => `/admissions/${id}/fees`,
+        LOCK: (id) => `/admissions/${id}/lock`,
+        PAYMENT_PLAN: (id) => `/admissions/${id}/payment-plan`
     },
     PAYMENTS: {
         CREATE: '/payments',
-        GET_ALL: '/payments'
+        GET_ALL: '/payments',
+        GET_BY_ADMISSION: (admissionId) => `/payments/admission/${admissionId}`,
+        GET_BY_ID: (id) => `/payments/${id}`,
+        UPDATE: (id) => `/payments/${id}`,
+        CHECK_OVERDUE: '/payments/check-overdue'
     },
     REPORTS: {
-        GET: '/reports'
+        ADMISSIONS: '/reports/admissions',
+        FEES: '/reports/fees',
+        INSTALLMENT_ALERTS: '/reports/installments/alerts',
+        COUNSELOR_PERFORMANCE: '/reports/counselor-performance',
+        COURSE_PERFORMANCE: '/reports/course-performance'
+    },
+    DASHBOARD: {
+        GET: '/dashboard',
+        REVENUE: '/dashboard/revenue',
+        ENQUIRIES: '/dashboard/enquiries',
+        FOLLOWUPS: '/dashboard/followups',
+        COUNSELOR: '/dashboard/counselor'
     },
     AUTH: {
-        LOGIN: '/auth/login'
+        LOGIN: '/auth/login',
+        REGISTER: '/auth/register'
     }
 };
 
@@ -50,7 +71,21 @@ METHODS
 ====================== */
 async function apiGet(url, params = {}) {
     const res = await api.get(url, { params });
-    return res.data.data || res.data;
+    const responseData = res.data;
+
+    // If response has pagination, return full data object with mapped array
+    if (responseData.pagination) {
+        const dataArray = responseData.data || [];
+        return {
+            ...responseData,
+            enquiries: dataArray,
+            admissions: dataArray,
+            payments: dataArray
+        };
+    }
+
+    // For non-paginated responses, return data directly
+    return responseData.data || responseData;
 }
 
 async function apiPost(url, data) {
