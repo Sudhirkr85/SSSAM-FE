@@ -350,9 +350,8 @@ async function submitSetupFees() {
     const paymentMode = document.getElementById('paymentMode').value;
 
     try {
-        // Step 1: Create Admission
-        const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, {
-            enquiryId: id,
+        // Step 1: Create Admission using correct endpoint
+        const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(id), {
             totalFees: totalFees,
             finalStatus: 'JOINED'
         });

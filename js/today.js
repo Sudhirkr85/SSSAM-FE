@@ -19,23 +19,33 @@ LOAD DATA
 ====================== */
 async function loadTodayCalls() {
     try {
-        const today = new Date().toISOString().split('T')[0];
-        const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
-            followUpDate: today,
-            page: currentPage,
-            limit: ITEMS_PER_PAGE
-        });
+        // Use dashboard today-calls endpoint (returns { summary: {...}, calls: [...] })
+        const res = await apiGet(API_ENDPOINTS.DASHBOARD.TODAY_CALLS);
+        const data = res.data || res;
 
-        enquiries = res.enquiries || [];
-        paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
+        enquiries = data.todayCalls?.calls || data.calls || data || [];
+        paginationData = data.pagination || { page: 1, totalPages: 1, totalCount: enquiries.length };
         totalPages = paginationData.totalPages || 1;
 
         renderTable();
         renderStats();
         updatePaginationInfoFromServer(paginationData);
     } catch (err) {
-        showToast('error', 'Failed to load data');
-        renderEmptyState();
+        // Fallback to followups endpoint
+        try {
+            const res = await apiGet(API_ENDPOINTS.DASHBOARD.FOLLOWUPS);
+
+            enquiries = res.data || res.enquiries || res || [];
+            paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: enquiries.length };
+            totalPages = paginationData.totalPages || 1;
+
+            renderTable();
+            renderStats();
+            updatePaginationInfoFromServer(paginationData);
+        } catch {
+            showToast('error', 'Failed to load data');
+            renderEmptyState();
+        }
     }
 }
 

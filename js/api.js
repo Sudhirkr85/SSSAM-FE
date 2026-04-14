@@ -39,11 +39,12 @@ const API_ENDPOINTS = {
         COURSE_PERFORMANCE: '/reports/course-performance'
     },
     DASHBOARD: {
-        GET: '/dashboard',
-        REVENUE: '/dashboard/revenue',
-        ENQUIRIES: '/dashboard/enquiries',
-        FOLLOWUPS: '/dashboard/followups',
-        COUNSELOR: '/dashboard/counselor'
+        GET: '/dashboard',                    // Full dashboard stats
+        REVENUE: '/dashboard/revenue',        // Admin only
+        ENQUIRIES: '/dashboard/enquiries',    // Admin only
+        FOLLOWUPS: '/dashboard/followups',    // Overdue & today followups
+        TODAY_CALLS: '/dashboard/today-calls', // Today's calls with summary
+        COUNSELOR: '/dashboard/counselor'     // Counselor only
     },
     AUTH: {
         LOGIN: '/auth/login',
