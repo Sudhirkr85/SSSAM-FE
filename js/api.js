@@ -29,6 +29,7 @@ const API_ENDPOINTS = {
         CHECK_OVERDUE: '/payments/check-overdue'
     },
     REPORTS: {
+        SUMMARY: '/reports/summary',
         ADMISSIONS: '/reports/admissions',
         FEES: '/reports/fees',
         INSTALLMENT_ALERTS: '/reports/installments/alerts',

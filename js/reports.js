@@ -10,16 +10,18 @@ LOAD REPORT DATA
 ====================== */
 async function loadReports() {
     try {
-        const res = await apiGet(API_ENDPOINTS.REPORTS.GET);
+        // Fetch all report data from separate endpoints
+        const [summaryRes, counselorRes, courseRes] = await Promise.all([
+            apiGet(API_ENDPOINTS.REPORTS.SUMMARY).catch(() => ({})),
+            apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE).catch(() => ({})),
+            apiGet(API_ENDPOINTS.REPORTS.COURSE_PERFORMANCE).catch(() => ({}))
+        ]);
 
-
-        renderStats(res);
-        renderCounselor(res);
-        renderCourse(res);
-
-
+        renderStats(summaryRes);
+        renderCounselor(counselorRes);
+        renderCourse(courseRes);
     } catch {
-        showToast('error', 'Error', 'Failed to load reports');
+        showToast('error', 'Failed to load reports');
     }
 }
 

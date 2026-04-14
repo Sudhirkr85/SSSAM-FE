@@ -1,10 +1,10 @@
 let payments = [];
+let allPayments = [];
 
 // Pagination state
 let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
-let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
 
 // Payment mode badge styles
 const paymentModeStyles = {
@@ -26,18 +26,41 @@ LOAD DATA
 ====================== */
 async function loadPayments() {
     try {
-        const res = await apiGet(API_ENDPOINTS.PAYMENTS.GET_ALL, {
-            page: currentPage,
-            limit: ITEMS_PER_PAGE
+        // Since GET /payments doesn't exist, we need to fetch all admissions
+        // and then get payments for each admission
+        const admissionsRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, {
+            page: 1,
+            limit: 1000 // Get all admissions
         });
 
-        payments = res.payments || [];
-        paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
-        totalPages = paginationData.totalPages || 1;
+        const admissions = admissionsRes.admissions || [];
+
+        // Fetch payments for each admission
+        const paymentPromises = admissions.map(a =>
+            apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(a._id))
+                .then(res => res.payments || [])
+                .catch(() => [])
+        );
+
+        const paymentArrays = await Promise.all(paymentPromises);
+        allPayments = paymentArrays.flat().map(p => ({
+            ...p,
+            admissionId: p.admissionId?._id || p.admissionId,
+            studentName: admissions.find(a => a._id === (p.admissionId?._id || p.admissionId))?.enquiryId?.name || 'Unknown'
+        }));
+
+        // Calculate pagination
+        totalPages = Math.ceil(allPayments.length / ITEMS_PER_PAGE) || 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+
+        // Get page slice
+        const start = (currentPage - 1) * ITEMS_PER_PAGE;
+        const end = start + ITEMS_PER_PAGE;
+        payments = allPayments.slice(start, end);
 
         renderTable();
         renderStats();
-        updatePaginationInfoFromServer(paginationData);
+        updatePaginationInfo(start, end, allPayments.length);
     } catch (err) {
         showToast('error', 'Failed to load payments');
         renderEmptyState();
@@ -102,10 +125,10 @@ function renderEmptyState() {
 STATS
 ====================== */
 function renderStats() {
-    const total = paginationData.totalCount || 0;
-    const totalAmount = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    const total = allPayments.length;
+    const totalAmount = allPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
 
-    // By payment mode (from current page data)
+    // By payment mode
     const byMode = {
         'Cash': { count: 0, amount: 0 },
         'UPI': { count: 0, amount: 0 },
@@ -115,7 +138,7 @@ function renderStats() {
         'CHEQUE': { count: 0, amount: 0 }
     };
 
-    payments.forEach(p => {
+    allPayments.forEach(p => {
         const mode = p.paymentMode || 'Cash';
         if (byMode[mode]) {
             byMode[mode].count++;
@@ -160,21 +183,17 @@ function goToLastPage() {
     loadPayments();
 }
 
-function updatePaginationInfoFromServer(pagination) {
-    const total = pagination.totalCount || 0;
-    const start = total > 0 ? ((pagination.page - 1) * ITEMS_PER_PAGE) + 1 : 0;
-    const end = Math.min(start + ITEMS_PER_PAGE - 1, total);
-
+function updatePaginationInfo(start, end, total) {
     // Update showing text
-    document.getElementById('showingFrom').textContent = start;
-    document.getElementById('showingTo').textContent = end;
+    document.getElementById('showingFrom').textContent = total > 0 ? start + 1 : 0;
+    document.getElementById('showingTo').textContent = Math.min(end, total);
     document.getElementById('totalItems').textContent = total;
 
     // Update button states
     document.getElementById('firstPage').disabled = currentPage === 1;
     document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = currentPage >= totalPages;
-    document.getElementById('lastPage').disabled = currentPage >= totalPages;
+    document.getElementById('nextPage').disabled = currentPage === totalPages;
+    document.getElementById('lastPage').disabled = currentPage === totalPages;
 
     // Update page numbers display
     const pageNumbers = document.getElementById('pageNumbers');
