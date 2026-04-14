@@ -5,19 +5,21 @@ ENDPOINTS
 ====================== */
 const API_ENDPOINTS = {
     ENQUIRIES: {
-        GET_ALL: '/enquiries',
+        GET_ALL: '/enquiries',                           // Counselor: assigned + unassigned only
+        GET_ALL_ADMIN: '/enquiries/all',                 // Admin: all enquiries (read-only for counselor)
         GET_BY_ID: (id) => `/enquiries/${id}`,
         CREATE: '/enquiries',
         UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
-        BULK_UPLOAD: '/upload/enquiries'
+        DELETE: (id) => `/enquiries/${id}`,               // Admin only
+        BULK_UPLOAD: '/bulk-upload/enquiries'            // Admin only
     },
     ADMISSIONS: {
         GET_ALL: '/admissions',
         GET_BY_ID: (id) => `/admissions/${id}`,
         GET_BY_ENQUIRY: (enquiryId) => `/admissions/by-enquiry/${enquiryId}`,
-        CREATE: '/admissions',
+        CREATE_FROM_ENQUIRY: (enquiryId) => `/admissions/from-enquiry/${enquiryId}`, // Correct endpoint
         UPDATE_FEES: (id) => `/admissions/${id}/fees`,
-        LOCK: (id) => `/admissions/${id}/lock`,
+        LOCK: (id) => `/admissions/${id}/lock`,           // Admin only
         PAYMENT_PLAN: (id) => `/admissions/${id}/payment-plan`
     },
     PAYMENTS: {
@@ -25,8 +27,8 @@ const API_ENDPOINTS = {
         GET_ALL: '/payments',
         GET_BY_ADMISSION: (admissionId) => `/payments/admission/${admissionId}`,
         GET_BY_ID: (id) => `/payments/${id}`,
-        UPDATE: (id) => `/payments/${id}`,
-        CHECK_OVERDUE: '/payments/check-overdue'
+        UPDATE: (id) => `/payments/${id}`,               // Admin only
+        CHECK_OVERDUE: '/payments/check-overdue'         // Admin only
     },
     REPORTS: {
         SUMMARY: '/reports/summary',

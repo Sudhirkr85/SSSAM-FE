@@ -499,13 +499,13 @@ async function executeUpdate() {
 /* ======================
 QUICK UPDATE MODAL (Direct Notes)
 ====================== */
-function openQuickUpdateModal(id) {
+function openQuickUpdateModal(id, defaultStatus = 'CONTACTED') {
   selectedId = id;
   const modal = document.getElementById('quickUpdateModal');
   const modalContent = document.getElementById('quickUpdateModalContent');
 
-  // Reset form
-  document.getElementById('quickStatusSelect').value = 'CONTACTED';
+  // Reset form with default status
+  document.getElementById('quickStatusSelect').value = defaultStatus;
   document.getElementById('quickNote').value = '';
   document.getElementById('quickFollowUpDate').value = '';
   clearQuickStatusErrors();
@@ -887,7 +887,7 @@ function getActionButtons(id, status) {
 
   // Always show Follow Up button
   const followUpBtn = `
-    <button onclick="openQuickUpdateModal('${id}', 'FOLLOW_UP')"
+    <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', 'FOLLOW_UP')"
       class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
       Follow Up
     </button>
@@ -899,9 +899,9 @@ function getActionButtons(id, status) {
   }
 
   if (action.convert) {
-    // For admission process, show Convert + Follow Up
+    // For admission process, show Convert (navigate to detail) + Follow Up
     return `
-      <button onclick="openConvertModal('${id}')"
+      <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
         class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
         Convert
       </button>
@@ -910,7 +910,7 @@ function getActionButtons(id, status) {
   } else {
     // For other statuses, show Next Status + Follow Up
     return `
-      <button onclick="openQuickUpdateModal('${id}', '${action.status}')"
+      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}')"
         class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
         ${action.label}
       </button>
@@ -944,3 +944,4 @@ window.showFormatGuide = showFormatGuide;
 window.openQuickUpdateModal = openQuickUpdateModal;
 window.closeQuickUpdateModal = closeQuickUpdateModal;
 window.submitQuickUpdate = submitQuickUpdate;
+window.getActionButtons = getActionButtons;
