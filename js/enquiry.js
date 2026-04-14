@@ -191,10 +191,7 @@ function renderTable(data) {
       <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
       <td class="px-6 py-4 text-gray-600">${e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
       <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-        <button onclick="openQuickUpdateModal('${e._id}')"
-          class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm">
-          Update
-        </button>
+        ${getActionButtons(e._id, e.status)}
       </td>
     </tr>
   `).join('');
@@ -868,6 +865,58 @@ Notes:
   `;
 
   alert(guide);
+}
+
+/* ======================
+ACTION BUTTONS HELPER
+====================== */
+function getActionButtons(id, status) {
+  // Define next actions based on current status
+  const nextActions = {
+    'NEW': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
+    'CONTACTED': { status: 'FOLLOW_UP', label: 'Interested', color: 'green' },
+    'FOLLOW_UP': { status: 'INTERESTED', label: 'Interested', color: 'green' },
+    'INTERESTED': { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
+    'ADMISSION_PROCESS': { convert: true, label: 'Convert', color: 'purple' },
+    'NO_RESPONSE': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
+    'NOT_INTERESTED': null,
+    'CONVERTED': null
+  };
+
+  const action = nextActions[status];
+
+  // Always show Follow Up button
+  const followUpBtn = `
+    <button onclick="openQuickUpdateModal('${id}', 'FOLLOW_UP')"
+      class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
+      Follow Up
+    </button>
+  `;
+
+  if (!action) {
+    // For terminal statuses, only show Follow Up
+    return followUpBtn;
+  }
+
+  if (action.convert) {
+    // For admission process, show Convert + Follow Up
+    return `
+      <button onclick="openConvertModal('${id}')"
+        class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
+        Convert
+      </button>
+      ${followUpBtn}
+    `;
+  } else {
+    // For other statuses, show Next Status + Follow Up
+    return `
+      <button onclick="openQuickUpdateModal('${id}', '${action.status}')"
+        class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
+        ${action.label}
+      </button>
+      ${followUpBtn}
+    `;
+  }
 }
 
 /* ======================
