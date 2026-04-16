@@ -500,7 +500,7 @@ async function executeUpdate() {
 /* ======================
 QUICK UPDATE MODAL (Direct Notes)
 ====================== */
-function openQuickUpdateModal(id, defaultStatus = 'CONTACTED', currentStatus = '') {
+function openQuickUpdateModal(id, targetStatus, currentStatus = '') {
   selectedId = id;
   const modal = document.getElementById('quickUpdateModal');
   const modalContent = document.getElementById('quickUpdateModalContent');
@@ -508,7 +508,7 @@ function openQuickUpdateModal(id, defaultStatus = 'CONTACTED', currentStatus = '
   // Store current status for reference
   selectedCurrentStatus = currentStatus;
 
-  // Update header with current status
+  // Update header to show target status
   const statusLabels = {
     'NEW': 'New',
     'CONTACTED': 'Contacted',
@@ -519,12 +519,25 @@ function openQuickUpdateModal(id, defaultStatus = 'CONTACTED', currentStatus = '
     'ADMISSION_PROCESS': 'Admission Process',
     'CONVERTED': 'Converted'
   };
-  document.getElementById('quickCurrentStatus').textContent = statusLabels[currentStatus] || currentStatus || '-';
+  const targetLabel = statusLabels[targetStatus] || targetStatus;
+  document.getElementById('quickCurrentStatus').textContent = `Update to: ${targetLabel}`;
 
-  // Reset form with default status
-  document.getElementById('quickStatusSelect').value = defaultStatus;
+  // Set target status in hidden field
+  document.getElementById('quickTargetStatus').value = targetStatus;
+
+  // Show/hide date field based on target status
+  const dateContainer = document.getElementById('quickFollowUpDateContainer');
+  if (targetStatus === 'FOLLOW_UP') {
+    dateContainer.classList.remove('hidden');
+    document.getElementById('quickFollowUpDate').required = true;
+  } else {
+    dateContainer.classList.add('hidden');
+    document.getElementById('quickFollowUpDate').required = false;
+    document.getElementById('quickFollowUpDate').value = '';
+  }
+
+  // Reset form
   document.getElementById('quickNote').value = '';
-  document.getElementById('quickFollowUpDate').value = '';
   clearQuickStatusErrors();
 
   modal.classList.remove('hidden');
@@ -584,27 +597,29 @@ async function submitQuickUpdate() {
     return;
   }
 
-  const status = document.getElementById('quickStatusSelect').value;
+  // Read status from hidden field
+  const status = document.getElementById('quickTargetStatus').value;
   const note = document.getElementById('quickNote').value;
   const followUpDate = document.getElementById('quickFollowUpDate').value;
 
+  // Build payload
+  const payload = { status, note };
+  if (status === 'FOLLOW_UP' && followUpDate) {
+    payload.followUpDate = followUpDate;
+  }
+
   try {
-    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), {
-      status,
-      note,
-      followUpDate
-    });
+    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), payload);
 
     showToast('success', 'Status updated successfully');
     closeQuickUpdateModal();
     loadEnquiries();
   } catch (err) {
-    // Show error in modal instead of toast
+    // Show error in modal
     const errorDiv = document.getElementById('quickErrorMessage');
     const errorText = document.getElementById('quickErrorText');
 
     if (errorDiv && errorText) {
-      // Extract error message from response
       let message = 'Failed to update status';
       if (err.response?.data?.message) {
         message = err.response.data.message;
@@ -936,11 +951,11 @@ function getActionButtons(id, status) {
   }
 
   if (action.convert) {
-    // For admission process, show Convert (navigate to detail) + Follow Up
+    // For admission process, show Setup Admission (navigate to detail) + Follow Up
     return `
       <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
         class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
-        Convert
+        Setup Admission
       </button>
       ${followUpBtn}
     `;

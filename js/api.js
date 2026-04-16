@@ -71,6 +71,23 @@ api.interceptors.request.use(config => {
 });
 
 /* ======================
+RESPONSE INTERCEPTOR (Error Handling)
+====================== */
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        // Handle specific error cases
+        if (error.response?.status === 401) {
+            // Unauthorized - redirect to login
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+        // Return the error so individual handlers can show appropriate messages
+        return Promise.reject(error);
+    }
+);
+
+/* ======================
 METHODS
 ====================== */
 async function apiGet(url, params = {}) {
@@ -101,5 +118,10 @@ async function apiPost(url, data) {
 
 async function apiPut(url, data) {
     const res = await api.put(url, data);
+    return res.data.data || res.data;
+}
+
+async function apiDelete(url) {
+    const res = await api.delete(url);
     return res.data.data || res.data;
 }

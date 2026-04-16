@@ -39,7 +39,7 @@ LOAD DATA
 async function loadEnquiryDetail(id) {
     try {
         const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_BY_ID(id));
-        const enquiry = res.enquiry;
+        const enquiry = res.data?.enquiry || res.enquiry;
 
         if (!enquiry) {
             showToast('error', 'Enquiry not found');
@@ -47,7 +47,7 @@ async function loadEnquiryDetail(id) {
         }
 
         renderEnquiry(enquiry);
-        renderTimeline(enquiry.timeline || []);
+        renderTimeline(enquiry.timeline || [], enquiry.notes || []);
     } catch {
         showToast('error', 'Failed to load enquiry details');
     }
@@ -70,7 +70,7 @@ function renderEnquiry(e) {
     document.getElementById('infoCreated').textContent = formatDate(e.createdAt);
 }
 
-function renderTimeline(timeline) {
+function renderTimeline(timeline, notes = []) {
     const container = document.getElementById('timelineList');
 
     if (!timeline.length) {
@@ -84,17 +84,148 @@ function renderTimeline(timeline) {
         return;
     }
 
-    container.innerHTML = timeline.map(item => `
-        <div class="timeline-item pb-4">
-            <div class="flex items-start justify-between">
-                <div>
-                    <p class="font-medium text-gray-800">${item.action || 'Status Update'}</p>
-                    <p class="text-gray-500 text-xs mt-0.5">${item.note || ''}</p>
+    // Create a map of notes by timestamp for quick lookup
+    const notesByTimestamp = {};
+    notes.forEach(note => {
+        const key = new Date(note.createdAt).getTime();
+        notesByTimestamp[key] = note.text;
+    });
+
+    // Status labels mapping
+    const statusLabels = {
+        'NEW': 'New',
+        'CONTACTED': 'Contacted',
+        'NO_RESPONSE': 'No Response',
+        'FOLLOW_UP': 'Follow Up',
+        'INTERESTED': 'Interested',
+        'NOT_INTERESTED': 'Not Interested',
+        'ADMISSION_PROCESS': 'Admission Process',
+        'CONVERTED': 'Converted'
+    };
+
+    // Status colors
+    const statusColors = {
+        'NEW': 'bg-gray-100 text-gray-700',
+        'CONTACTED': 'bg-blue-100 text-blue-700',
+        'NO_RESPONSE': 'bg-red-100 text-red-700',
+        'FOLLOW_UP': 'bg-amber-100 text-amber-700',
+        'INTERESTED': 'bg-green-100 text-green-700',
+        'NOT_INTERESTED': 'bg-gray-100 text-gray-600',
+        'ADMISSION_PROCESS': 'bg-purple-100 text-purple-700',
+        'CONVERTED': 'bg-emerald-100 text-emerald-700'
+    };
+
+    // Type icons and colors
+    const typeConfig = {
+        'created': { icon: 'user-plus', color: 'bg-blue-500', label: 'Created' },
+        'status_change': { icon: 'refresh-cw', color: 'bg-amber-500', label: 'Status' },
+        'note': { icon: 'message-square', color: 'bg-green-500', label: 'Note' },
+        'assigned': { icon: 'user-check', color: 'bg-purple-500', label: 'Assigned' }
+    };
+
+    // Sort timeline by timestamp descending (most recent first)
+    const sortedTimeline = [...timeline].sort((a, b) => {
+        const dateA = new Date(a.timestamp || a.createdAt);
+        const dateB = new Date(b.timestamp || b.createdAt);
+        return dateB - dateA;
+    });
+
+    container.innerHTML = sortedTimeline.map((item, index) => {
+        const type = item.type || 'note';
+        const config = typeConfig[type] || typeConfig['note'];
+
+        // Format date with time
+        const dateObj = new Date(item.timestamp || item.createdAt);
+        const dateStr = dateObj.toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+        });
+        const timeStr = dateObj.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+
+        // User info
+        const userName = item.userName || 'System';
+
+        const isLast = index === sortedTimeline.length - 1;
+
+        // Build content based on type
+        let contentHtml = '';
+
+        if (type === 'status_change' && item.metadata) {
+            const prevStatus = item.metadata.previousStatus || '-';
+            const newStatus = item.metadata.newStatus || '-';
+            const prevLabel = statusLabels[prevStatus] || prevStatus;
+            const newLabel = statusLabels[newStatus] || newStatus;
+            const prevColor = statusColors[prevStatus] || 'bg-gray-100 text-gray-700';
+            const newColor = statusColors[newStatus] || 'bg-gray-100 text-gray-700';
+
+            contentHtml = `
+                <div class="flex items-center gap-2 flex-wrap">
+                    ${prevStatus !== '-' ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${prevColor}">${prevLabel}</span>` : `<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Created</span>`}
+                    <span class="text-gray-400">→</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-medium ${newColor}">${newLabel}</span>
                 </div>
-                <span class="text-xs text-gray-400 whitespace-nowrap">${formatDate(item.date)}</span>
+            `;
+        } else if (type === 'note') {
+            // Get note text from notes array by matching timestamp
+            const itemTime = new Date(item.timestamp).getTime();
+            const noteText = notesByTimestamp[itemTime] || item.message || 'Note added';
+            contentHtml = `
+                <div class="bg-gray-50 rounded-lg p-2.5">
+                    <p class="text-sm text-gray-700 leading-relaxed">${noteText}</p>
+                </div>
+            `;
+        } else if (item.message) {
+            contentHtml = `
+                <div class="bg-gray-50 rounded-lg p-2.5">
+                    <p class="text-sm text-gray-700 leading-relaxed">${item.message}</p>
+                </div>
+            `;
+        } else {
+            contentHtml = `
+                <p class="text-sm text-gray-700">${config.label}</p>
+            `;
+        }
+
+        return `
+            <div class="relative pl-6 ${isLast ? '' : 'pb-6'}">
+                <!-- Timeline connector line -->
+                ${!isLast ? '<div class="absolute left-2 top-2 bottom-0 w-0.5 bg-gray-200"></div>' : ''}
+
+                <!-- Timeline dot -->
+                <div class="absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-white shadow-sm ${config.color} ring-2 ${config.color.replace('bg-', 'ring-')}"></div>
+
+                <!-- Content -->
+                <div class="flex flex-col gap-1.5">
+                    <!-- Header: Type -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs font-medium text-gray-500">${config.label}</span>
+                    </div>
+
+                    <!-- Content -->
+                    ${contentHtml}
+
+                    <!-- Footer: User & Date -->
+                    <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-semibold">
+                                ${userName.charAt(0).toUpperCase()}
+                            </div>
+                            <span class="font-medium text-gray-700">${userName}</span>
+                        </div>
+                        <div class="flex items-center gap-1 text-gray-400">
+                            <span>${dateStr}</span>
+                            <span class="text-gray-300">|</span>
+                            <span>${timeStr}</span>
+                        </div>
+                    </div>
+                </div>
             </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 
     lucide.createIcons();
 }
@@ -118,6 +249,14 @@ function openStatusModal(id, status) {
     document.getElementById('statusNote').value = '';
     document.getElementById('statusFollowUpDate').value = '';
     clearStatusNoteError();
+
+    // Show/hide follow-up date based on status
+    const followUpDateContainer = document.getElementById('statusFollowUpDate').closest('.relative');
+    if (status === 'FOLLOW_UP') {
+        followUpDateContainer.classList.remove('hidden');
+    } else {
+        followUpDateContainer.classList.add('hidden');
+    }
 
     // Show modal with animation
     const modal = document.getElementById('statusModal');
@@ -213,45 +352,69 @@ CONVERT TO ADMISSION FLOW
 ====================== */
 let pendingConvertData = null;
 
-// Step 1: Show Convert Confirmation
+// Step 1: Open Setup Fees Modal directly (skip confirmation)
 function openConvertModal(id) {
+    console.log('openConvertModal called with id:', id);
     currentId = id;
     pendingConvertData = null;
-
-    // Show confirmation modal directly
-    document.getElementById('confirmActionText').textContent = 'Convert to Admission';
-    document.getElementById('confirmDetailsText').textContent = 'Are you sure you want to convert this enquiry to admission?';
-
-    confirmCallback = () => {
-        closeConfirmModal();
-        // After confirmation, show Setup Fees modal
-        openSetupFeesModal(id);
-    };
-
-    const modal = document.getElementById('confirmModal');
-    const modalContent = document.getElementById('confirmModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
+    // Open Setup Fees modal directly
+    openSetupFeesModal(id);
 }
 
 // Step 2: Setup Fees Modal
 function openSetupFeesModal(id) {
-    document.getElementById('setupFeesEnquiryId').value = id;
+    console.log('Opening setup fees modal for enquiry:', id);
+
+    const enquiryIdField = document.getElementById('setupFeesEnquiryId');
+    const totalFeesField = document.getElementById('totalFees');
+    const paymentDateField = document.getElementById('paymentDate');
+    const paymentModeField = document.getElementById('paymentMode');
+    const paymentTypeField = document.getElementById('paymentType');
+
+    if (!enquiryIdField || !totalFeesField) {
+        console.error('Required form fields not found');
+        showToast('error', 'Form error - please refresh');
+        return;
+    }
+
+    enquiryIdField.value = id;
 
     // Reset form
-    document.getElementById('totalFees').value = '';
-    document.getElementById('installmentAmount').value = '';
-    document.getElementById('paymentDate').value = '';
-    document.getElementById('paymentMode').value = 'CASH';
+    totalFeesField.value = '';
+    if (paymentDateField) paymentDateField.value = '';
+    if (paymentModeField) paymentModeField.value = 'CASH';
+    if (paymentTypeField) paymentTypeField.value = 'ONE_TIME';
+
+    // Reset installments - remove extra rows, keep only one
+    const container = document.getElementById('installmentRows');
+    if (container) {
+        while (container.children.length > 1) {
+            container.removeChild(container.lastChild);
+        }
+        // Clear the first row values
+        const firstRow = container.querySelector('.installment-row');
+        if (firstRow) {
+            const amountInput = firstRow.querySelector('.installment-amount');
+            const dateInput = firstRow.querySelector('.installment-date');
+            if (amountInput) amountInput.value = '';
+            if (dateInput) dateInput.value = '';
+        }
+    }
+
+    // Show/hide sections based on default ONE_TIME
+    onPaymentTypeChange();
     clearSetupFeesErrors();
 
     // Show modal with animation
     const modal = document.getElementById('setupFeesModal');
     const modalContent = document.getElementById('setupFeesModalContent');
+
+    if (!modal || !modalContent) {
+        console.error('Modal elements not found');
+        showToast('error', 'Modal error - please refresh');
+        return;
+    }
+
     modal.classList.remove('hidden');
     setTimeout(() => {
         modal.classList.remove('opacity-0');
@@ -259,6 +422,8 @@ function openSetupFeesModal(id) {
         modalContent.classList.add('scale-100');
         lucide.createIcons();
     }, 10);
+
+    console.log('Modal opened successfully');
 }
 
 function closeSetupFeesModal() {
@@ -273,26 +438,113 @@ function closeSetupFeesModal() {
 }
 
 function clearSetupFeesErrors() {
-    const fields = ['totalFees', 'installmentAmount', 'paymentDate'];
-    fields.forEach(field => {
-        const error = document.getElementById(field + 'Error');
-        const input = document.getElementById(field);
-        if (error) error.classList.add('hidden');
-        if (input) {
-            input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-            input.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+    const totalFees = document.getElementById('totalFees');
+    const totalFeesError = document.getElementById('totalFeesError');
+    if (totalFeesError) totalFeesError.classList.add('hidden');
+    if (totalFees) {
+        totalFees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+    }
+    // Also clear installments errors
+    const instError = document.getElementById('installmentsError');
+    if (instError) instError.classList.add('hidden');
+    const instTotalError = document.getElementById('installmentsTotalError');
+    if (instTotalError) instTotalError.classList.add('hidden');
+    // Clear red borders from installment inputs
+    document.querySelectorAll('.installment-amount').forEach(input => {
+        input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        input.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+    });
+}
+
+// Handle Payment Type Change
+function onPaymentTypeChange() {
+    const paymentType = document.getElementById('paymentType').value;
+    const installmentsSection = document.getElementById('installmentsSection');
+
+    if (paymentType === 'INSTALLMENT') {
+        installmentsSection.classList.remove('hidden');
+    } else {
+        installmentsSection.classList.add('hidden');
+    }
+}
+
+// Add Installment Row
+function addInstallmentRow() {
+    const container = document.getElementById('installmentRows');
+    const row = document.createElement('div');
+    row.className = 'installment-row grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl';
+    row.innerHTML = `
+        <div class="relative">
+            <input type="number" class="installment-amount w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
+                placeholder="Amount" min="0" step="0.01" required oninput="onInstallmentAmountChange()">
+        </div>
+        <div class="relative flex gap-2">
+            <input type="date" class="installment-date w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
+                required>
+            <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2">
+                <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+        </div>
+    `;
+    container.appendChild(row);
+    lucide.createIcons();
+}
+
+// Remove Installment Row
+function removeInstallmentRow(btn) {
+    const row = btn.closest('.installment-row');
+    const container = document.getElementById('installmentRows');
+    if (container.children.length > 1) {
+        row.remove();
+    }
+}
+
+// Get Installments Data
+function getInstallmentsData() {
+    const rows = document.querySelectorAll('.installment-row');
+    const installments = [];
+    rows.forEach(row => {
+        const amount = row.querySelector('.installment-amount').value;
+        const date = row.querySelector('.installment-date').value;
+        if (amount && date) {
+            installments.push({ amount: parseFloat(amount), dueDate: date });
         }
     });
+    return installments;
+}
+
+// Handle installment amount change - re-validate totals
+function onInstallmentAmountChange() {
+    const paymentType = document.getElementById('paymentType').value;
+    if (paymentType !== 'INSTALLMENT') return;
+
+    const totalFees = document.getElementById('totalFees');
+    const installments = getInstallmentsData();
+    const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
+    const feeValue = parseFloat(totalFees.value) || 0;
+    const totalMismatchError = document.getElementById('installmentsTotalError');
+    const allInstallmentInputs = document.querySelectorAll('.installment-amount');
+
+    if (Math.abs(totalInstallments - feeValue) < 0.01 && totalMismatchError) {
+        // Totals match - clear errors
+        totalMismatchError.classList.add('hidden');
+        totalFees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        allInstallmentInputs.forEach(input => {
+            input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+            input.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        });
+    }
 }
 
 function validateSetupFeesForm() {
     let valid = true;
 
     const totalFees = document.getElementById('totalFees');
-    const installmentAmount = document.getElementById('installmentAmount');
-    const paymentDate = document.getElementById('paymentDate');
+    const paymentType = document.getElementById('paymentType').value;
 
-    // Validate Total Fees
+    // Validate Total Fees (always required)
     if (!totalFees.value || parseFloat(totalFees.value) <= 0) {
         document.getElementById('totalFeesError').classList.remove('hidden');
         totalFees.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
@@ -304,34 +556,48 @@ function validateSetupFeesForm() {
         totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
     }
 
-    // Validate Installment Amount
-    if (!installmentAmount.value || parseFloat(installmentAmount.value) <= 0) {
-        document.getElementById('installmentAmountError').classList.remove('hidden');
-        installmentAmount.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-        installmentAmount.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        valid = false;
-    } else if (parseFloat(installmentAmount.value) > parseFloat(totalFees.value || 0)) {
-        document.getElementById('installmentAmountError').textContent = 'Cannot exceed total fees';
-        document.getElementById('installmentAmountError').classList.remove('hidden');
-        installmentAmount.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-        installmentAmount.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        valid = false;
-    } else {
-        document.getElementById('installmentAmountError').classList.add('hidden');
-        installmentAmount.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        installmentAmount.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-    }
+    if (paymentType === 'INSTALLMENT') {
+        // For INSTALLMENT, validate installments
+        const installments = getInstallmentsData();
+        if (installments.length === 0) {
+            document.getElementById('installmentsError').classList.remove('hidden');
+            valid = false;
+        } else {
+            document.getElementById('installmentsError').classList.add('hidden');
+        }
 
-    // Validate Payment Date
-    if (!paymentDate.value) {
-        document.getElementById('paymentDateError').classList.remove('hidden');
-        paymentDate.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-        paymentDate.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        valid = false;
-    } else {
-        document.getElementById('paymentDateError').classList.add('hidden');
-        paymentDate.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        paymentDate.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        // Check if total installments equals total fees
+        const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
+        const totalMismatchError = document.getElementById('installmentsTotalError');
+        const feeValue = parseFloat(totalFees.value);
+        const allInstallmentInputs = document.querySelectorAll('.installment-amount');
+
+        if (Math.abs(totalInstallments - feeValue) > 0.01) {
+            const errorMsg = `Installments total must equal total fees (₹${feeValue})`;
+            if (totalMismatchError) {
+                totalMismatchError.textContent = errorMsg;
+                totalMismatchError.classList.remove('hidden');
+            }
+            // Add red border to total fees field
+            totalFees.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+            totalFees.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+            // Add red border to all installment amount inputs
+            allInstallmentInputs.forEach(input => {
+                input.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+                input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+            });
+            showToast('error', errorMsg);
+            valid = false;
+        } else {
+            if (totalMismatchError) totalMismatchError.classList.add('hidden');
+            // Clear red borders
+            totalFees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+            totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+            allInstallmentInputs.forEach(input => {
+                input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+                input.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+            });
+        }
     }
 
     return valid;
@@ -345,40 +611,48 @@ async function submitSetupFees() {
 
     const id = document.getElementById('setupFeesEnquiryId').value;
     const totalFees = parseFloat(document.getElementById('totalFees').value);
-    const installmentAmount = parseFloat(document.getElementById('installmentAmount').value);
-    const paymentDate = document.getElementById('paymentDate').value;
-    const paymentMode = document.getElementById('paymentMode').value;
+    const paymentType = document.getElementById('paymentType').value;
 
     try {
-        // Step 1: Create Admission using correct endpoint
-        const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(id), {
+        // Build request payload based on payment type
+        const payload = {
             totalFees: totalFees,
-            finalStatus: 'JOINED'
-        });
+            paymentType: paymentType
+        };
 
-        const admissionId = admissionRes.admission?._id || admissionRes._id;
+        // For INSTALLMENT, add installments array; for ONE_TIME, explicitly exclude it
+        if (paymentType === 'INSTALLMENT') {
+            payload.installments = getInstallmentsData();
+        }
+        // ONE_TIME: do NOT include installments field at all
 
-        // Step 2: Create First Payment
-        if (admissionId && installmentAmount > 0) {
-            await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, {
-                admissionId: admissionId,
-                amount: installmentAmount,
-                paymentDate: paymentDate,
-                paymentMode: paymentMode,
-                paymentType: 'INSTALLMENT',
-                notes: 'First installment payment'
-            });
+        // DEBUG: Log exact payload being sent
+        console.log('Sending payload:', JSON.stringify(payload, null, 2));
+
+        // Create Admission with payment plan in one call
+        const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(id), payload);
+
+        // Handle response: { success: true, data: { admission: {...} } }
+        const admission = admissionRes.data?.admission || admissionRes.admission || admissionRes;
+        const admissionId = admission?._id;
+
+        if (!admissionId) {
+            throw new Error('Failed to create admission');
         }
 
-        showToast('success', 'Admission created with payment successfully');
+        showToast('success', 'Admission created successfully');
         closeSetupFeesModal();
         loadEnquiryDetail(id);
     } catch (err) {
-        showToast('error', 'Failed to create admission');
-        // Show error popup
-        setTimeout(() => {
-            alert('Failed to create admission: ' + (err.message || 'Please try again'));
-        }, 100);
+        // Extract specific error message from backend response
+        const backendMessage = err.response?.data?.message || err.message || 'Please try again';
+        const backendErrors = err.response?.data?.errors;
+        let errorMsg = backendMessage;
+        if (backendErrors && backendErrors.length > 0) {
+            errorMsg = backendErrors.map(e => e.message).join(', ');
+        }
+        showToast('error', errorMsg);
+        console.error('Error:', err);
     }
 }
 
@@ -412,5 +686,9 @@ window.submitStatusUpdate = submitStatusUpdate;
 window.openConvertModal = openConvertModal;
 window.closeSetupFeesModal = closeSetupFeesModal;
 window.submitSetupFees = submitSetupFees;
+window.onPaymentTypeChange = onPaymentTypeChange;
+window.onInstallmentAmountChange = onInstallmentAmountChange;
+window.addInstallmentRow = addInstallmentRow;
+window.removeInstallmentRow = removeInstallmentRow;
 window.closeConfirmModal = closeConfirmModal;
 window.executeConfirmAction = executeConfirmAction;

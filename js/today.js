@@ -326,7 +326,7 @@ function getActionButtons(id, status) {
         return `
             <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
                 class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
-                Convert
+                Setup Admission
             </button>
             ${followUpBtn}
         `;
@@ -445,6 +445,138 @@ async function submitFollowUp() {
 }
 
 /* ======================
+QUICK UPDATE MODAL (for action buttons)
+====================== */
+let quickUpdateId = null;
+let quickTargetStatus = '';
+
+function openQuickUpdateModal(id, targetStatus, currentStatus = '') {
+    quickUpdateId = id;
+    quickTargetStatus = targetStatus;
+
+    const modal = document.getElementById('quickUpdateModal');
+    const modalContent = document.getElementById('quickUpdateModalContent');
+
+    // Update header to show target status
+    const statusLabels = {
+        'NEW': 'New',
+        'CONTACTED': 'Contacted',
+        'NO_RESPONSE': 'No Response',
+        'FOLLOW_UP': 'Follow Up',
+        'INTERESTED': 'Interested',
+        'NOT_INTERESTED': 'Not Interested',
+        'ADMISSION_PROCESS': 'Admission Process',
+        'CONVERTED': 'Converted'
+    };
+    const targetLabel = statusLabels[targetStatus] || targetStatus;
+    document.getElementById('quickCurrentStatus').textContent = targetLabel;
+
+    // Set target status in hidden field
+    document.getElementById('quickTargetStatus').value = targetStatus;
+
+    // Show/hide date field based on target status
+    const dateContainer = document.getElementById('quickFollowUpDateContainer');
+    if (targetStatus === 'FOLLOW_UP') {
+        dateContainer.classList.remove('hidden');
+    } else {
+        dateContainer.classList.add('hidden');
+        document.getElementById('quickFollowUpDate').value = '';
+    }
+
+    // Reset form
+    document.getElementById('quickNote').value = '';
+    clearQuickUpdateErrors();
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function closeQuickUpdateModal() {
+    const modal = document.getElementById('quickUpdateModal');
+    const modalContent = document.getElementById('quickUpdateModalContent');
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function clearQuickUpdateErrors() {
+    const noteError = document.getElementById('quickNoteError');
+    const noteInput = document.getElementById('quickNote');
+    const apiError = document.getElementById('quickErrorMessage');
+
+    noteError.classList.add('hidden');
+    noteInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+    noteInput.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+
+    if (apiError) {
+        apiError.classList.add('hidden');
+    }
+}
+
+function validateQuickUpdateNote() {
+    const note = document.getElementById('quickNote');
+    const error = document.getElementById('quickNoteError');
+    if (!note.value.trim()) {
+        error.classList.remove('hidden');
+        note.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+        note.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        return false;
+    }
+    error.classList.add('hidden');
+    note.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+    note.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+    return true;
+}
+
+async function submitQuickUpdate() {
+    if (!validateQuickUpdateNote()) {
+        showToast('error', 'Please add a note');
+        return;
+    }
+
+    const status = document.getElementById('quickTargetStatus').value;
+    const note = document.getElementById('quickNote').value;
+    const followUpDate = document.getElementById('quickFollowUpDate').value;
+
+    // Build payload
+    const payload = { status, note };
+    if (status === 'FOLLOW_UP' && followUpDate) {
+        payload.followUpDate = followUpDate;
+    }
+
+    try {
+        await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(quickUpdateId), payload);
+
+        showToast('success', 'Status updated successfully');
+        closeQuickUpdateModal();
+        loadTodayCalls();
+    } catch (err) {
+        const errorDiv = document.getElementById('quickErrorMessage');
+        const errorText = document.getElementById('quickErrorText');
+
+        if (errorDiv && errorText) {
+            let message = 'Failed to update status';
+            if (err.response?.data?.message) {
+                message = err.response.data.message;
+            } else if (err.message) {
+                message = err.message;
+            }
+            errorText.textContent = message;
+            errorDiv.classList.remove('hidden');
+        } else {
+            showToast('error', 'Failed to update status');
+        }
+    }
+}
+
+/* ======================
 HELPERS
 ====================== */
 function isOverdue(date) {
@@ -466,4 +598,7 @@ window.goToLastPage = goToLastPage;
 window.openFollowUpModal = openFollowUpModal;
 window.closeFollowUpModal = closeFollowUpModal;
 window.submitFollowUp = submitFollowUp;
+window.openQuickUpdateModal = openQuickUpdateModal;
+window.closeQuickUpdateModal = closeQuickUpdateModal;
+window.submitQuickUpdate = submitQuickUpdate;
 window.getActionButtons = getActionButtons;

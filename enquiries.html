@@ -331,25 +331,11 @@
         </p>
       </div>
 
+      <!-- Target Status (Hidden) -->
+      <input type="hidden" id="quickTargetStatus" value="">
+
       <!-- Form -->
       <div class="space-y-5">
-
-        <!-- Status Dropdown -->
-        <div class="relative">
-          <select id="quickStatusSelect" required
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white">
-            <option value="CONTACTED">Contacted</option>
-            <option value="NO_RESPONSE">No Response</option>
-            <option value="FOLLOW_UP">Follow Up</option>
-            <option value="INTERESTED">Interested</option>
-            <option value="NOT_INTERESTED">Not Interested</option>
-            <option value="ADMISSION_PROCESS">Admission Process</option>
-          </select>
-          <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
-          <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-            New Status <span class="text-red-500">*</span>
-          </label>
-        </div>
 
         <!-- Note (Required) -->
         <div class="relative">
@@ -363,12 +349,12 @@
           <p id="quickNoteError" class="hidden text-red-500 text-xs mt-1 ml-1">Note is required</p>
         </div>
 
-        <!-- Follow-up Date -->
-        <div class="relative">
+        <!-- Follow-up Date (Only for FOLLOW_UP status) -->
+        <div id="quickFollowUpDateContainer" class="relative hidden">
           <input type="date" id="quickFollowUpDate"
             class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
           <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-            Follow-up Date (Optional)
+            Follow-up Date <span class="text-red-500">*</span>
           </label>
         </div>
 
