@@ -13,6 +13,24 @@ let totalPages = 1;
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
+  // Set initial view based on role
+  if (isCounselor()) {
+    currentView = 'my-leads';
+    // Show view tabs for counselors
+    const viewTabs = document.getElementById('viewTabs');
+    if (viewTabs) {
+      viewTabs.classList.remove('hidden');
+    }
+    // Show "All (Read-Only)" tab only for counselors
+    const allReadonlyTab = document.querySelector('[data-view-tab="all-readonly"]');
+    if (allReadonlyTab) {
+      allReadonlyTab.classList.remove('hidden');
+    }
+  } else {
+    // Admin sees all enquiries by default
+    currentView = 'all';
+  }
+
   loadEnquiries();
 
   document.getElementById('searchInput').addEventListener('input', () => {
@@ -23,7 +41,14 @@ document.addEventListener('DOMContentLoaded', () => {
     currentPage = 1;
     filterData();
   });
-  document.getElementById('resetFilters').addEventListener('click', resetFilters);
+  document.getElementById('resetFilters').addEventListener('click', () => {
+    // Reset to default view based on role
+    if (isCounselor()) {
+      currentView = 'my-leads';
+      updateViewTabs();
+    }
+    resetFilters();
+  });
 
   // Course dropdown change handler (create modal)
   const courseSelect = document.getElementById('course');
@@ -54,9 +79,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 /* ======================
-LOAD DATA
+LOAD DATA - ROLE BASED
 ====================== */
 let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
+let currentView = 'my-leads'; // 'my-leads', 'unassigned', 'all'
 
 async function loadEnquiries() {
   try {
@@ -71,7 +97,24 @@ async function loadEnquiries() {
     if (search) params.search = search;
     if (status) params.status = status;
 
-    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
+    // Role-based endpoint selection
+    let endpoint;
+    if (isCounselor()) {
+      // Counselor: use assignedTo filter based on current view
+      if (currentView === 'unassigned') {
+        params.assignedTo = 'null';
+      } else if (currentView === 'my-leads') {
+        params.assignedTo = 'me';
+      }
+      endpoint = API_ENDPOINTS.ENQUIRIES.GET_ALL;
+    } else {
+      // Admin: can view all or use GET_ALL_ADMIN for read-only view
+      endpoint = currentView === 'all-readonly' 
+        ? API_ENDPOINTS.ENQUIRIES.GET_ALL_ADMIN 
+        : API_ENDPOINTS.ENQUIRIES.GET_ALL;
+    }
+
+    const res = await apiGet(endpoint, params);
 
     // API returns { enquiries: [...], pagination: {...} }
     allEnquiries = res.enquiries || [];
@@ -81,9 +124,148 @@ async function loadEnquiries() {
     renderTable(allEnquiries);
     updatePaginationInfoFromServer(paginationData);
   } catch (err) {
-    showToast('error', 'Failed to load enquiries');
+    handleEnquiryError(err, 'Failed to load enquiries');
     renderEmptyState();
   }
+}
+
+/* ======================
+ERROR HANDLING - PRODUCTION READY
+====================== */
+function handleEnquiryError(error, defaultMessage = 'An error occurred') {
+  const status = error.response?.status;
+  const message = error.response?.data?.message || defaultMessage;
+
+  switch (status) {
+    case 403:
+      // Access denied - show proper popup
+      showErrorPopup(
+        'Access Denied',
+        message,
+        'You do not have permission to perform this action. Only admins or assigned counselors can modify enquiries.'
+      );
+      break;
+
+    case 400:
+      // Validation error
+      showErrorPopup(
+        'Validation Error',
+        message,
+        'Please check your input and try again. Ensure all required fields are filled correctly.'
+      );
+      break;
+
+    case 404:
+      showErrorPopup(
+        'Not Found',
+        'Enquiry not found',
+        'The enquiry you are looking for may have been deleted or does not exist.'
+      );
+      break;
+
+    case 409:
+      // Conflict - already converted or invalid status transition
+      showErrorPopup(
+        'Action Not Allowed',
+        message,
+        'This enquiry may already be converted or in a terminal state that cannot be modified.'
+      );
+      break;
+
+    default:
+      // Network or server error
+      showErrorPopup(
+        'Error',
+        message,
+        'Please check your internet connection and try again. If the problem persists, contact support.'
+      );
+  }
+}
+
+function showErrorPopup(title, message, description = '') {
+  // Create and show a proper error modal for production
+  const modal = document.createElement('div');
+  modal.id = 'errorPopup';
+  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-100 animate-in fade-in zoom-in duration-200">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-circle" class="text-red-600 w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
+          <p class="text-sm text-red-600 font-medium">${message}</p>
+        </div>
+      </div>
+      ${description ? `<p class="text-sm text-gray-500 mb-5 bg-gray-50 p-3 rounded-lg">${description}</p>` : ''}
+      <div class="flex gap-3">
+        <button onclick="closeErrorPopup()" class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium">
+          Dismiss
+        </button>
+        ${status === 403 && isCounselor() ? `
+        <button onclick="closeErrorPopup(); window.location.href='dashboard.html'" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium">
+          Go to Dashboard
+        </button>
+        ` : ''}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  lucide.createIcons();
+}
+
+function closeErrorPopup() {
+  const modal = document.getElementById('errorPopup');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+/* ======================
+VIEW SWITCHERS (Role Based)
+====================== */
+function switchToMyLeads() {
+  currentView = 'my-leads';
+  currentPage = 1;
+  loadEnquiries();
+  updateViewTabs();
+}
+
+function switchToUnassigned() {
+  if (!isCounselor() && !isAdmin()) {
+    showErrorPopup('Access Denied', 'You do not have permission to view unassigned leads');
+    return;
+  }
+  currentView = 'unassigned';
+  currentPage = 1;
+  loadEnquiries();
+  updateViewTabs();
+}
+
+function switchToAllReadonly() {
+  if (!isCounselor()) {
+    showErrorPopup('Access Denied', 'This view is only available for counselors');
+    return;
+  }
+  currentView = 'all-readonly';
+  currentPage = 1;
+  loadEnquiries();
+  updateViewTabs();
+}
+
+function updateViewTabs() {
+  // Update tab styling based on current view
+  document.querySelectorAll('[data-view-tab]').forEach(tab => {
+    const view = tab.dataset.viewTab;
+    if (view === currentView) {
+      tab.classList.add('bg-blue-600', 'text-white');
+      tab.classList.remove('bg-gray-100', 'text-gray-600');
+    } else {
+      tab.classList.remove('bg-blue-600', 'text-white');
+      tab.classList.add('bg-gray-100', 'text-gray-600');
+    }
+  });
 }
 
 /* ======================
@@ -346,7 +528,11 @@ async function createEnquiry() {
   const isCourseValid = validateCourse();
 
   if (!isNameValid || !isMobileValid || !isEmailValid || !isCourseValid) {
-    showToast('error', 'Please fix the errors');
+    showErrorPopup(
+      'Validation Required',
+      'Please fill in all required fields correctly',
+      'Name, mobile number (10 digits), email, and course selection are required.'
+    );
     return;
   }
 
@@ -361,7 +547,7 @@ async function createEnquiry() {
   }
 
   try {
-    await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, {
+    const response = await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, {
       name,
       mobile,
       email: email || undefined,
@@ -371,8 +557,8 @@ async function createEnquiry() {
     showToast('success', 'Enquiry created successfully');
     closeCreateModal();
     loadEnquiries();
-  } catch {
-    showToast('error', 'Failed to create enquiry');
+  } catch (err) {
+    handleEnquiryError(err, 'Failed to create enquiry');
   }
 }
 
@@ -476,19 +662,142 @@ async function executeUpdate() {
   const note = document.getElementById('statusNote').value;
   const followUpDate = document.getElementById('followUpDate').value;
 
+  // Validate follow-up date if status is FOLLOW_UP
+  if (status === 'FOLLOW_UP' && !followUpDate) {
+    showErrorPopup(
+      'Follow-up Date Required',
+      'Please select a follow-up date',
+      'When setting status to "Follow Up", a follow-up date is mandatory.'
+    );
+    return;
+  }
+
   try {
-    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), {
+    const response = await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), {
       status,
       note,
       followUpDate
     });
 
+    // Handle auto-assignment response
+    const responseData = response.data || response;
+    if (responseData?.autoAssigned) {
+      showSuccessPopup(
+        'Lead Assigned!',
+        'This lead has been auto-assigned to you',
+        'You are now the assigned counselor for this enquiry. You can track it in your "My Leads" section.'
+      );
+    }
+
+    // Handle conversion requiring payment setup
+    if (responseData?.requiresPaymentSetup) {
+      showConfirmPopup(
+        'Student Converted!',
+        'The student has been marked as converted. Set up payment details now?',
+        'This will create an admission record and allow you to collect fees.',
+        () => {
+          // Navigate to admission creation
+          window.location.href = `admission-detail.html?enquiryId=${selectedId}`;
+        },
+        () => {
+          // User declined, just close and refresh
+          closeConfirmModal();
+          closeModal();
+          loadEnquiries();
+        }
+      );
+      return;
+    }
+
     showToast('success', 'Status updated successfully');
     closeConfirmModal();
     closeModal();
     loadEnquiries();
-  } catch {
-    showToast('error', 'Failed to update status');
+  } catch (err) {
+    handleEnquiryError(err, 'Failed to update status');
+  }
+}
+
+/* ======================
+SUCCESS & CONFIRM POPUPS
+====================== */
+function showSuccessPopup(title, message, description = '') {
+  const modal = document.createElement('div');
+  modal.id = 'successPopup';
+  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-100 animate-in fade-in zoom-in duration-200">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="text-green-600 w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
+          <p class="text-sm text-green-600 font-medium">${message}</p>
+        </div>
+      </div>
+      ${description ? `<p class="text-sm text-gray-500 mb-5 bg-gray-50 p-3 rounded-lg">${description}</p>` : ''}
+      <button onclick="closeSuccessPopup()" class="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium">
+        Great!
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  lucide.createIcons();
+}
+
+function closeSuccessPopup() {
+  const modal = document.getElementById('successPopup');
+  if (modal) {
+    modal.remove();
+  }
+}
+
+function showConfirmPopup(title, message, description, onConfirm, onCancel) {
+  const modal = document.createElement('div');
+  modal.id = 'confirmActionPopup';
+  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-100 animate-in fade-in zoom-in duration-200">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <i data-lucide="help-circle" class="text-blue-600 w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
+          <p class="text-sm text-blue-600 font-medium">${message}</p>
+        </div>
+      </div>
+      ${description ? `<p class="text-sm text-gray-500 mb-5 bg-gray-50 p-3 rounded-lg">${description}</p>` : ''}
+      <div class="flex gap-3">
+        <button id="confirmActionBtn" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium">
+          Yes, Proceed
+        </button>
+        <button id="cancelActionBtn" class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium">
+          Not Now
+        </button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  // Attach event listeners
+  document.getElementById('confirmActionBtn').addEventListener('click', () => {
+    closeConfirmActionPopup();
+    if (onConfirm) onConfirm();
+  });
+  document.getElementById('cancelActionBtn').addEventListener('click', () => {
+    closeConfirmActionPopup();
+    if (onCancel) onCancel();
+  });
+
+  lucide.createIcons();
+}
+
+function closeConfirmActionPopup() {
+  const modal = document.getElementById('confirmActionPopup');
+  if (modal) {
+    modal.remove();
   }
 }
 
@@ -588,7 +897,11 @@ function validateQuickNote() {
 async function submitQuickUpdate() {
   // Validate note
   if (!validateQuickNote()) {
-    showToast('error', 'Please add a note');
+    showErrorPopup(
+      'Note Required',
+      'Please add a note before updating',
+      'A note is mandatory when updating enquiry status for tracking purposes.'
+    );
     return;
   }
 
@@ -597,6 +910,16 @@ async function submitQuickUpdate() {
   const note = document.getElementById('quickNote').value;
   const followUpDate = document.getElementById('quickFollowUpDate').value;
 
+  // Validate follow-up date if required
+  if (status === 'FOLLOW_UP' && !followUpDate) {
+    showErrorPopup(
+      'Follow-up Date Required',
+      'Please select a follow-up date',
+      'When setting status to "Follow Up", a follow-up date is mandatory.'
+    );
+    return;
+  }
+
   // Build payload
   const payload = { status, note };
   if (status === 'FOLLOW_UP' && followUpDate) {
@@ -604,27 +927,69 @@ async function submitQuickUpdate() {
   }
 
   try {
-    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), payload);
+    const response = await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), payload);
+    const responseData = response.data || response;
+
+    // Handle auto-assignment response
+    if (responseData?.autoAssigned) {
+      showSuccessPopup(
+        'Lead Assigned!',
+        'This lead has been auto-assigned to you',
+        'You are now the assigned counselor for this enquiry. Track it in your "My Leads" section.'
+      );
+    }
+
+    // Handle conversion requiring payment setup
+    if (responseData?.requiresPaymentSetup) {
+      closeQuickUpdateModal();
+      showConfirmPopup(
+        'Student Converted!',
+        'The student has been marked as converted. Set up payment details now?',
+        'This will create an admission record and allow you to collect fees.',
+        () => {
+          window.location.href = `admission-detail.html?enquiryId=${selectedId}`;
+        },
+        () => {
+          loadEnquiries();
+        }
+      );
+      return;
+    }
 
     showToast('success', 'Status updated successfully');
     closeQuickUpdateModal();
     loadEnquiries();
   } catch (err) {
-    // Show error in modal
+    // Show specific error in modal
     const errorDiv = document.getElementById('quickErrorMessage');
     const errorText = document.getElementById('quickErrorText');
 
     if (errorDiv && errorText) {
       let message = 'Failed to update status';
-      if (err.response?.data?.message) {
+      let description = '';
+
+      if (err.response?.status === 403) {
+        message = 'Access Denied';
+        description = 'You can only modify enquiries assigned to you. Unassigned enquiries will be auto-assigned on your first action.';
+      } else if (err.response?.status === 400) {
+        message = 'Invalid Action';
+        description = err.response?.data?.message || 'Please check your input and try again.';
+      } else if (err.response?.status === 409) {
+        message = 'Action Not Allowed';
+        description = err.response?.data?.message || 'This enquiry may already be converted.';
+      } else if (err.response?.data?.message) {
         message = err.response.data.message;
-      } else if (err.message) {
-        message = err.message;
       }
+
       errorText.textContent = message;
       errorDiv.classList.remove('hidden');
+
+      // Also show popup for critical errors
+      if (err.response?.status === 403 || err.response?.status === 409) {
+        showErrorPopup(message, description);
+      }
     } else {
-      showToast('error', 'Failed to update status');
+      handleEnquiryError(err, 'Failed to update status');
     }
   }
 }
@@ -760,8 +1125,23 @@ function formatFileSize(bytes) {
 }
 
 async function submitBulkUpload() {
+  // Check admin access first
+  if (!isAdmin()) {
+    showErrorPopup(
+      'Access Denied',
+      'Bulk upload is restricted to administrators only',
+      'Counselors can create individual enquiries using the "Add Enquiry" button.'
+    );
+    closeBulkUploadModal();
+    return;
+  }
+
   if (!selectedBulkFile) {
-    showToast('error', 'Please select a file');
+    showErrorPopup(
+      'File Required',
+      'Please select a file to upload',
+      'Choose an Excel (.xlsx) or CSV (.csv) file containing enquiry data.'
+    );
     return;
   }
 
@@ -805,10 +1185,35 @@ async function submitBulkUpload() {
 
   } catch (err) {
     clearInterval(progressInterval);
-    showToast('error', err?.message || 'Upload failed');
 
-    // Show error in results
-    showUploadResults({ success: 0, failed: 1, total: 1, errors: [err?.message || 'Upload failed'] });
+    // Handle specific error cases
+    let errorTitle = 'Upload Failed';
+    let errorMessage = err?.message || 'Failed to upload enquiries';
+    let errorDescription = '';
+
+    if (err.response?.status === 403) {
+      errorTitle = 'Access Denied';
+      errorMessage = err.response?.data?.message || 'You do not have permission to perform bulk uploads';
+      errorDescription = 'Only administrators can perform bulk uploads. Please contact your admin if you need to add multiple enquiries.';
+    } else if (err.response?.status === 400) {
+      errorTitle = 'Invalid File';
+      errorMessage = err.response?.data?.message || 'The file format is invalid';
+      errorDescription = 'Please ensure your file is a valid Excel (.xlsx) or CSV (.csv) file with the correct column headers.';
+    }
+
+    // Show error popup for critical errors
+    if (err.response?.status === 403) {
+      showErrorPopup(errorTitle, errorMessage, errorDescription);
+      closeBulkUploadModal();
+    } else {
+      // Show error in results area for file-related errors
+      showUploadResults({
+        success: 0,
+        failed: 1,
+        total: 1,
+        errors: [errorMessage]
+      });
+    }
   }
 }
 
@@ -997,3 +1402,13 @@ window.openQuickUpdateModal = openQuickUpdateModal;
 window.closeQuickUpdateModal = closeQuickUpdateModal;
 window.submitQuickUpdate = submitQuickUpdate;
 window.getActionButtons = getActionButtons;
+
+// Error handling exports
+window.closeErrorPopup = closeErrorPopup;
+window.closeSuccessPopup = closeSuccessPopup;
+window.closeConfirmActionPopup = closeConfirmActionPopup;
+
+// View switcher exports
+window.switchToMyLeads = switchToMyLeads;
+window.switchToUnassigned = switchToUnassigned;
+window.switchToAllReadonly = switchToAllReadonly;

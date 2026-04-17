@@ -89,6 +89,22 @@
       <!-- CONTENT -->
       <main class="p-6 space-y-6 overflow-y-auto">
 
+        <!-- VIEW TABS (Role Based) -->
+        <div id="viewTabs" class="hidden bg-white p-2 rounded-xl shadow flex gap-2">
+          <button data-view-tab="my-leads" onclick="switchToMyLeads()"
+            class="px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-blue-600 text-white">
+            <i data-lucide="user-check" class="w-4 h-4 inline mr-1"></i> My Leads
+          </button>
+          <button data-view-tab="unassigned" onclick="switchToUnassigned()"
+            class="px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
+            <i data-lucide="users" class="w-4 h-4 inline mr-1"></i> Unassigned
+          </button>
+          <button data-view-tab="all-readonly" onclick="switchToAllReadonly()"
+            class="hidden px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
+            <i data-lucide="eye" class="w-4 h-4 inline mr-1"></i> All (Read-Only)
+          </button>
+        </div>
+
         <!-- FILTERS -->
         <div class="bg-white p-4 rounded-xl shadow flex flex-wrap gap-4 items-center">
 
