@@ -131,7 +131,21 @@ function renderAdmissionDetails() {
 
     // Student Info
     document.getElementById('studentName').textContent = enquiry.name || '-';
-    document.getElementById('studentMobile').textContent = enquiry.mobile || '-';
+
+    // Mobile with WhatsApp icon
+    const mobile = enquiry.mobile || '-';
+    const mobileEl = document.getElementById('studentMobile');
+    if (mobileEl && mobile !== '-') {
+        mobileEl.innerHTML = `
+            <span class="text-gray-700">${mobile}</span>
+            <button id="studentMobileBtn" class="ml-2 inline-flex items-center justify-center w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full transition-colors" title="Chat on WhatsApp">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
+            </button>
+        `;
+    } else if (mobileEl) {
+        mobileEl.textContent = mobile;
+    }
+
     document.getElementById('studentCourse').querySelector('span').textContent = currentAdmission.course || enquiry.courseInterested || '-';
 
     // Counselor Info
@@ -220,6 +234,9 @@ function renderAdmissionDetails() {
             payFullBtn.style.display = remaining > 0 ? 'flex' : 'none';
         }
     }
+
+    // Re-attach WhatsApp event listener since button was dynamically created
+    setupWhatsAppIntegration();
 }
 
 /* ======================
