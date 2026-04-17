@@ -91,10 +91,41 @@
                         <div>
                             <h2 id="detailName" class="text-2xl font-bold text-gray-800"></h2>
                             <div class="flex items-center gap-3 mt-1">
-                                <p id="detailMobile" class="text-gray-500 flex items-center gap-1.5">
-                                    <i data-lucide="phone" class="w-4 h-4"></i>
-                                    <span></span>
-                                </p>
+                                <!-- WhatsApp Button Only -->
+                                <div class="relative inline-block" id="whatsappContainer">
+                                    <button id="whatsappBtn" type="button" class="cursor-pointer text-gray-500 hover:text-green-600 hover:bg-green-50 flex items-center gap-1.5 px-2 py-1 rounded-lg transition-all border border-transparent hover:border-green-200 bg-transparent" title="Send WhatsApp message">
+                                        <i data-lucide="message-circle" class="w-4 h-4 text-green-500"></i>
+                                        <span class="hidden" id="detailMobile"></span>
+                                    </button>
+
+                                    <!-- WhatsApp Dropdown -->
+                                    <div id="whatsappMenu" class="hidden absolute top-full left-0 mt-1 w-72 bg-white rounded-xl shadow-2xl border border-gray-100 overflow-hidden" style="z-index: 9999;">
+                                        <div class="p-3 border-b border-gray-100 bg-green-50 flex justify-between items-center">
+                                            <div>
+                                                <p class="text-xs font-medium text-green-800">📱 Send WhatsApp Message</p>
+                                                <p id="whatsappMobileDisplay" class="text-xs text-green-600 font-mono mt-0.5"></p>
+                                            </div>
+                                            <button onclick="document.getElementById('whatsappMenu').classList.add('hidden')" class="text-green-600 hover:text-green-800 p-1">
+                                                <i data-lucide="x" class="w-4 h-4"></i>
+                                            </button>
+                                        </div>
+                                        <div class="p-3 space-y-2">
+                                            <label class="text-xs text-gray-500 font-medium">Template:</label>
+                                            <select id="whatsappTemplate" class="w-full px-2 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-2 focus:ring-green-500">
+                                                <option value="enquiry" selected>1. First Response</option>
+                                                <option value="followup">2. Follow Up</option>
+                                                <option value="interested">3. Interested</option>
+                                                <option value="notinterested">4. Not Interested</option>
+                                                <option value="custom">5. Custom</option>
+                                            </select>
+                                            <textarea id="whatsappMessage" rows="3" class="w-full px-2 py-1.5 text-xs border border-gray-200 rounded-lg resize-none focus:ring-2 focus:ring-green-500" placeholder="Message..."></textarea>
+                                            <button id="sendWhatsappBtn" class="w-full px-3 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg text-sm font-medium flex items-center justify-center gap-2">
+                                                <i data-lucide="send" class="w-4 h-4"></i> Open WhatsApp
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <span class="text-gray-300">|</span>
                                 <p id="detailCourse" class="text-gray-500 flex items-center gap-1.5">
                                     <i data-lucide="book-open" class="w-4 h-4"></i>

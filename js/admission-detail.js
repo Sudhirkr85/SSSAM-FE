@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     loadAdmissionDetails();
     checkAdminAccess();
+    setupWhatsAppIntegration();
 
     // Amount validation on input
     const amountInput = document.getElementById('amount');
@@ -130,7 +131,7 @@ function renderAdmissionDetails() {
 
     // Student Info
     document.getElementById('studentName').textContent = enquiry.name || '-';
-    document.getElementById('studentMobile').querySelector('span').textContent = enquiry.mobile || '-';
+    document.getElementById('studentMobile').textContent = enquiry.mobile || '-';
     document.getElementById('studentCourse').querySelector('span').textContent = currentAdmission.course || enquiry.courseInterested || '-';
 
     // Counselor Info
@@ -557,6 +558,157 @@ async function submitEdit() {
     } catch (err) {
         showToast('error', err?.message || 'Failed to update admission');
     }
+}
+
+/* ======================
+WHATSAPP INTEGRATION
+====================== */
+const WHATSAPP_TEMPLATES = {
+    enquiry: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. You enquired about ${course}. Can I help?`,
+    confirm: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Your ${course} admission confirmed! 🎉`,
+    payment: (name, course, amount, date, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. ₹${amount} pending for ${course}. Please pay by ${date}.`,
+    installment: (name, amount, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Installment ₹${amount} due. Pay now?`,
+    followup: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Following up on ${course}. Any questions?`,
+    custom: (name, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. `
+};
+
+function setupWhatsAppIntegration() {
+    const mobileBtn = document.getElementById('studentMobileBtn');
+    const whatsappMenu = document.getElementById('whatsappMenu');
+    const templateSelect = document.getElementById('whatsappTemplate');
+    const messageTextarea = document.getElementById('whatsappMessage');
+    const sendBtn = document.getElementById('sendWhatsappBtn');
+
+    if (!mobileBtn || !whatsappMenu) {
+        console.warn('WhatsApp elements not found');
+        return;
+    }
+
+    console.log('WhatsApp integration setup complete');
+
+    // Toggle menu on button click
+    mobileBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log('Mobile button clicked');
+
+        const isHidden = whatsappMenu.classList.contains('hidden');
+
+        // Hide all other menus first
+        document.querySelectorAll('.whatsapp-menu').forEach(m => m.classList.add('hidden'));
+
+        if (isHidden) {
+            whatsappMenu.classList.remove('hidden');
+            generateWhatsAppMessage();
+        } else {
+            whatsappMenu.classList.add('hidden');
+        }
+    });
+
+    // Prevent menu from closing when clicking inside it
+    whatsappMenu.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Close menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (!whatsappMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
+            whatsappMenu.classList.add('hidden');
+        }
+    });
+
+    // Generate message when template changes
+    templateSelect?.addEventListener('change', generateWhatsAppMessage);
+
+    // Send WhatsApp
+    sendBtn?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openWhatsApp();
+    });
+}
+
+function generateWhatsAppMessage() {
+    const templateSelect = document.getElementById('whatsappTemplate');
+    const messageTextarea = document.getElementById('whatsappMessage');
+    const mobileDisplay = document.getElementById('whatsappMobileDisplay');
+
+    if (!currentAdmission || !templateSelect || !messageTextarea) return;
+
+    const enquiry = currentAdmission.enquiryId || {};
+    const counselor = getCurrentUser();
+    const counselorName = counselor.name?.split(' ')[0] || 'Counselor';
+
+    const name = enquiry.name || 'Student';
+    const mobile = enquiry.mobile || '-';
+    const course = currentAdmission.course || enquiry.courseInterested || 'Course';
+    const remaining = currentAdmission.pendingAmount || 0;
+    const dueDate = currentAdmission.installments?.[0]?.dueDate || new Date();
+    const formattedDate = new Date(dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
+
+    // Show mobile number in menu header
+    if (mobileDisplay) {
+        mobileDisplay.textContent = mobile !== '-' ? `📞 ${mobile}` : '';
+    }
+
+    const template = templateSelect.value;
+    let message = '';
+
+    switch (template) {
+        case 'enquiry':
+            message = WHATSAPP_TEMPLATES.enquiry(name, course, counselorName);
+            break;
+        case 'confirm':
+            message = WHATSAPP_TEMPLATES.confirm(name, course, counselorName);
+            break;
+        case 'payment':
+            message = WHATSAPP_TEMPLATES.payment(name, course, remaining, formattedDate, counselorName);
+            break;
+        case 'installment':
+            message = WHATSAPP_TEMPLATES.installment(name, remaining, counselorName);
+            break;
+        case 'followup':
+            message = WHATSAPP_TEMPLATES.followup(name, course, counselorName);
+            break;
+        case 'custom':
+            message = WHATSAPP_TEMPLATES.custom(name, counselorName);
+            break;
+    }
+
+    messageTextarea.value = message;
+}
+
+function openWhatsApp() {
+    const messageTextarea = document.getElementById('whatsappMessage');
+    const mobileSpan = document.getElementById('studentMobile');
+
+    if (!messageTextarea || !mobileSpan) return;
+
+    const message = messageTextarea.value.trim();
+    const mobile = mobileSpan.textContent.trim().replace(/\D/g, ''); // Remove non-digits
+
+    if (!mobile || mobile === '-') {
+        showToast('error', 'No mobile number available');
+        return;
+    }
+
+    if (!message) {
+        showToast('error', 'Please enter a message');
+        return;
+    }
+
+    // Format mobile for WhatsApp (add country code if needed)
+    const formattedMobile = mobile.startsWith('91') ? mobile : '91' + mobile;
+
+    // Encode message for URL
+    const encodedMessage = encodeURIComponent(message);
+
+    // Open WhatsApp
+    const whatsappUrl = `https://wa.me/${formattedMobile}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+
+    // Hide menu
+    document.getElementById('whatsappMenu')?.classList.add('hidden');
+    showToast('success', 'WhatsApp opened');
 }
 
 /* ======================

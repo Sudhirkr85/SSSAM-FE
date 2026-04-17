@@ -19,33 +19,39 @@ LOAD DATA
 ====================== */
 async function loadTodayCalls() {
     try {
-        // Use dashboard today-calls endpoint (returns { summary: {...}, calls: [...] })
-        const res = await apiGet(API_ENDPOINTS.DASHBOARD.TODAY_CALLS);
-        const data = res.data || res;
+        // Fetch both today's calls and new enquiries
+        const [todayCallsRes, newEnquiriesRes] = await Promise.allSettled([
+            apiGet(API_ENDPOINTS.DASHBOARD.TODAY_CALLS).catch(() => ({})),
+            apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { status: 'NEW', limit: 100 }).catch(() => ({}))
+        ]);
 
-        enquiries = data.todayCalls?.calls || data.calls || data || [];
-        paginationData = data.pagination || { page: 1, totalPages: 1, totalCount: enquiries.length };
-        totalPages = paginationData.totalPages || 1;
+        // Extract today's calls
+        const todayCallsData = todayCallsRes.status === 'fulfilled' ? todayCallsRes.value : {};
+        const todayCalls = todayCallsData.todayCalls?.calls || todayCallsData.calls || [];
+
+        // Extract new enquiries
+        const newEnquiriesData = newEnquiriesRes.status === 'fulfilled' ? newEnquiriesRes.value : {};
+        const newEnquiries = newEnquiriesData.enquiries || [];
+
+        // Combine and remove duplicates (by _id)
+        const combined = [...todayCalls, ...newEnquiries];
+        const uniqueIds = new Set();
+        enquiries = combined.filter(e => {
+            if (!e._id || uniqueIds.has(e._id)) return false;
+            uniqueIds.add(e._id);
+            return true;
+        });
+
+        paginationData = { page: 1, totalPages: 1, totalCount: enquiries.length };
+        totalPages = 1;
 
         renderTable();
         renderStats();
         updatePaginationInfoFromServer(paginationData);
     } catch (err) {
-        // Fallback to followups endpoint
-        try {
-            const res = await apiGet(API_ENDPOINTS.DASHBOARD.FOLLOWUPS);
-
-            enquiries = res.data || res.enquiries || res || [];
-            paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: enquiries.length };
-            totalPages = paginationData.totalPages || 1;
-
-            renderTable();
-            renderStats();
-            updatePaginationInfoFromServer(paginationData);
-        } catch {
-            showToast('error', 'Failed to load data');
-            renderEmptyState();
-        }
+        console.error('Error loading today calls:', err);
+        showToast('error', 'Failed to load data');
+        renderEmptyState();
     }
 }
 
@@ -61,7 +67,7 @@ function renderTable() {
     }
 
     table.innerHTML = enquiries.map(e => `
-        <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+        <tr onclick="window.location.href='enquiry-detail.html?id=${e._id}'" class="cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
             <td class="px-6 py-4">
                 <div class="font-medium text-gray-900">${e.name || '-'}</div>
                 <div class="text-xs text-gray-500">${e.mobile || ''}</div>
@@ -72,7 +78,7 @@ function renderTable() {
                 ${formatDate(e.followUpDate)}
                 ${isOverdue(e.followUpDate) ? '<span class="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Overdue</span>' : ''}
             </td>
-            <td class="px-6 py-4 text-center">
+            <td class="px-6 py-4 text-center" onclick="event.stopPropagation();">
                 ${getActionButtons(e._id, e.status)}
             </td>
         </tr>

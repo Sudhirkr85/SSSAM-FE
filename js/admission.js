@@ -203,7 +203,7 @@ function renderTable() {
                         <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
                         ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
                     </td>
-                    <td class="px-6 py-4 text-gray-700">${a.enquiryId?.courseInterested || '-'}</td>
+                    <td class="px-6 py-4 text-gray-700 max-w-[150px] truncate" title="${a.course || '-'}">${a.course || '-'}</td>
                     <td class="px-6 py-4">
                         <div class="text-sm text-gray-800">${counselor?.name || 'Unassigned'}</div>
                         ${counselor?.email ? `<div class="text-xs text-gray-500">${counselor.email}</div>` : ''}
@@ -226,7 +226,7 @@ function renderTable() {
                     <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
                     ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 text-gray-700">${a.enquiryId?.courseInterested || '-'}</td>
+                <td class="px-6 py-4 text-gray-700 max-w-[150px] truncate" title="${a.course || '-'}">${a.course || '-'}</td>
                 <td class="px-6 py-4 font-medium text-gray-800">${formatCurrency(total)}</td>
                 <td class="px-6 py-4 text-green-600 font-medium">${formatCurrency(paid)}</td>
                 <td class="px-6 py-4 ${pending <= 0 ? 'text-green-600' : 'text-red-600'} font-medium">

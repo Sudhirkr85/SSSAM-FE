@@ -50,6 +50,9 @@ document.addEventListener('DOMContentLoaded', () => {
     if (noteInput) {
         noteInput.addEventListener('input', clearStatusNoteError);
     }
+
+    // Setup WhatsApp integration
+    setupWhatsAppForEnquiry();
 });
 
 /* ======================
@@ -73,9 +76,12 @@ async function loadEnquiryDetail(id) {
 }
 
 function renderEnquiry(e) {
+    // Store enquiry data for WhatsApp
+    window.currentEnquiryData = e;
+
     // Header info
     document.getElementById('detailName').textContent = e.name || '-';
-    document.getElementById('detailMobile').querySelector('span').textContent = e.mobile || '-';
+    document.getElementById('detailMobile').textContent = e.mobile || '-';
     document.getElementById('detailCourse').querySelector('span').textContent = e.courseInterested || '-';
 
     // Status badge
@@ -863,6 +869,120 @@ function executeConfirmAction() {
     if (confirmCallback) {
         confirmCallback();
     }
+}
+
+/* ======================
+WHATSAPP INTEGRATION
+====================== */
+const ENQUIRY_WHATSAPP_TEMPLATES = {
+    enquiry: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. You enquired about ${course}. Can I help?`,
+    followup: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Following up on ${course}. Any questions?`,
+    interested: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Glad you're interested in ${course}! Next steps?`,
+    notinterested: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Thanks for considering ${course}. Let us know if things change!`,
+    custom: (name, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. `
+};
+
+function setupWhatsAppForEnquiry() {
+    const btn = document.getElementById('whatsappBtn');
+    const menu = document.getElementById('whatsappMenu');
+    const templateSelect = document.getElementById('whatsappTemplate');
+    const sendBtn = document.getElementById('sendWhatsappBtn');
+
+    if (!btn || !menu) {
+        console.log('WhatsApp elements not found');
+        return;
+    }
+
+    btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        menu.classList.toggle('hidden');
+        if (!menu.classList.contains('hidden')) {
+            generateEnquiryWhatsAppMessage();
+        }
+    });
+
+    menu.addEventListener('click', (e) => e.stopPropagation());
+
+    document.addEventListener('click', (e) => {
+        if (!menu.contains(e.target) && !btn.contains(e.target)) {
+            menu.classList.add('hidden');
+        }
+    });
+
+    templateSelect?.addEventListener('change', generateEnquiryWhatsAppMessage);
+    sendBtn?.addEventListener('click', openEnquiryWhatsApp);
+}
+
+function generateEnquiryWhatsAppMessage() {
+    const templateSelect = document.getElementById('whatsappTemplate');
+    const textarea = document.getElementById('whatsappMessage');
+    const mobileDisplay = document.getElementById('whatsappMobileDisplay');
+    const enquiry = window.currentEnquiryData;
+
+    if (!enquiry || !templateSelect || !textarea) return;
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const counselorName = user.name?.split(' ')[0] || 'Counselor';
+    const name = enquiry.name || 'Student';
+    const mobile = enquiry.mobile || '-';
+    const course = enquiry.courseInterested || 'Course';
+
+    // Show mobile number in menu header
+    if (mobileDisplay) {
+        mobileDisplay.textContent = mobile !== '-' ? `📞 ${mobile}` : '';
+    }
+
+    const template = templateSelect.value;
+    let message = '';
+
+    switch (template) {
+        case 'enquiry':
+            message = ENQUIRY_WHATSAPP_TEMPLATES.enquiry(name, course, counselorName);
+            break;
+        case 'followup':
+            message = ENQUIRY_WHATSAPP_TEMPLATES.followup(name, course, counselorName);
+            break;
+        case 'interested':
+            message = ENQUIRY_WHATSAPP_TEMPLATES.interested(name, course, counselorName);
+            break;
+        case 'notinterested':
+            message = ENQUIRY_WHATSAPP_TEMPLATES.notinterested(name, course, counselorName);
+            break;
+        case 'custom':
+            message = ENQUIRY_WHATSAPP_TEMPLATES.custom(name, counselorName);
+            break;
+    }
+
+    textarea.value = message;
+}
+
+function openEnquiryWhatsApp() {
+    const textarea = document.getElementById('whatsappMessage');
+    const mobileSpan = document.getElementById('detailMobile');
+
+    if (!textarea || !mobileSpan) return;
+
+    const message = textarea.value.trim();
+    const mobile = mobileSpan.textContent.trim().replace(/\D/g, '');
+
+    if (!mobile || mobile === '-') {
+        showToast('error', 'No mobile number');
+        return;
+    }
+
+    if (!message) {
+        showToast('error', 'Please enter message');
+        return;
+    }
+
+    const formattedMobile = mobile.startsWith('91') ? mobile : '91' + mobile;
+    const encodedMessage = encodeURIComponent(message);
+    const url = `https://wa.me/${formattedMobile}?text=${encodedMessage}`;
+
+    window.open(url, '_blank');
+    document.getElementById('whatsappMenu')?.classList.add('hidden');
+    showToast('success', 'WhatsApp opened');
 }
 
 /* ======================
