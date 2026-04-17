@@ -1337,9 +1337,18 @@ function getActionButtons(id, status) {
 
   const action = nextActions[status];
 
-  // For CONVERTED status, don't show any actions
+  // Admin-only delete button
+  const deleteBtn = isAdmin() ? `
+    <button onclick="event.stopPropagation(); confirmDeleteEnquiry('${id}')"
+      class="p-1 hover:bg-red-100 text-gray-400 hover:text-red-600 rounded transition-colors ml-1"
+      title="Delete">
+      <i data-lucide="trash-2" class="w-4 h-4"></i>
+    </button>
+  ` : '';
+
+  // For CONVERTED status, only show delete for admin
   if (status === 'CONVERTED') {
-    return '';
+    return deleteBtn;
   }
 
   // Always show Follow Up button - pass current status so modal knows context
@@ -1351,28 +1360,63 @@ function getActionButtons(id, status) {
   `;
 
   if (!action) {
-    // For other terminal statuses, only show Follow Up
-    return followUpBtn;
+    // For other terminal statuses, only show Follow Up + delete for admin
+    return followUpBtn + deleteBtn;
   }
 
   if (action.convert) {
-    // For admission process, show Setup Admission (navigate to detail) + Follow Up
+    // For admission process, show Setup Admission (navigate to detail) + Follow Up + delete for admin
     return `
       <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
         class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
         Setup Admission
       </button>
       ${followUpBtn}
+      ${deleteBtn}
     `;
   } else {
-    // For other statuses, show Next Status + Follow Up - pass current status
+    // For other statuses, show Next Status + Follow Up + delete for admin
     return `
       <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}', '${status}')"
         class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
         ${action.label}
       </button>
       ${followUpBtn}
+      ${deleteBtn}
     `;
+  }
+}
+
+/* ======================
+DELETE ENQUIRY
+====================== */
+function confirmDeleteEnquiry(id) {
+  const enquiry = allEnquiries.find(e => e._id === id);
+  const name = enquiry?.name || 'this enquiry';
+
+  showConfirmPopup(
+    'Delete Enquiry?',
+    `Are you sure you want to delete "${name}"?`,
+    'This action cannot be undone. The enquiry will be permanently removed from the system.',
+    () => {
+      executeDeleteEnquiry(id);
+    },
+    () => {
+      // User cancelled, do nothing
+      closeConfirmActionPopup();
+    }
+  );
+}
+
+async function executeDeleteEnquiry(id) {
+  try {
+    await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(id));
+
+    showToast('success', 'Enquiry deleted successfully');
+    closeConfirmActionPopup();
+    loadEnquiries();
+  } catch (err) {
+    handleEnquiryError(err, 'Failed to delete enquiry');
   }
 }
 
@@ -1402,6 +1446,8 @@ window.openQuickUpdateModal = openQuickUpdateModal;
 window.closeQuickUpdateModal = closeQuickUpdateModal;
 window.submitQuickUpdate = submitQuickUpdate;
 window.getActionButtons = getActionButtons;
+window.confirmDeleteEnquiry = confirmDeleteEnquiry;
+window.executeDeleteEnquiry = executeDeleteEnquiry;
 
 // Error handling exports
 window.closeErrorPopup = closeErrorPopup;
