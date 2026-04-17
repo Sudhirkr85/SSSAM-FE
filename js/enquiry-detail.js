@@ -764,6 +764,9 @@ async function submitSetupFees() {
     const totalFees = parseFloat(document.getElementById('totalFees').value);
     const paymentType = document.getElementById('paymentType').value;
 
+    // Get payment mode (required for ONE_TIME)
+    const paymentMode = document.getElementById('paymentMode')?.value || 'CASH';
+
     try {
         // Build request payload based on payment type
         const payload = {
@@ -771,11 +774,13 @@ async function submitSetupFees() {
             paymentType: paymentType
         };
 
-        // For INSTALLMENT, add installments array; for ONE_TIME, explicitly exclude it
+        // For INSTALLMENT, add installments array
         if (paymentType === 'INSTALLMENT') {
             payload.installments = getInstallmentsData();
+        } else {
+            // ONE_TIME: add paymentMethod (required by backend API)
+            payload.paymentMethod = paymentMode;
         }
-        // ONE_TIME: do NOT include installments field at all
 
         // DEBUG: Log exact payload being sent
         console.log('Sending payload:', JSON.stringify(payload, null, 2));

@@ -1,17 +1,17 @@
 let payments = [];
-let allPayments = [];
 
 // Pagination state
 let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
 
-// Payment mode badge styles
+// Payment mode badge styles (match API uppercase format)
 const paymentModeStyles = {
-    'Cash': { bg: 'bg-green-100', text: 'text-green-700', icon: '💵' },
+    'CASH': { bg: 'bg-green-100', text: 'text-green-700', icon: '💵' },
     'UPI': { bg: 'bg-purple-100', text: 'text-purple-700', icon: '📱' },
-    'Card': { bg: 'bg-amber-100', text: 'text-amber-700', icon: '💳' },
-    'Bank Transfer': { bg: 'bg-blue-100', text: 'text-blue-700', icon: '🏦' }
+    'CARD': { bg: 'bg-amber-100', text: 'text-amber-700', icon: '💳' },
+    'ONLINE': { bg: 'bg-blue-100', text: 'text-blue-700', icon: '🏦' },
+    'CHEQUE': { bg: 'bg-gray-100', text: 'text-gray-700', icon: '📝' }
 };
 
 /* ======================
@@ -26,45 +26,20 @@ LOAD DATA
 ====================== */
 async function loadPayments() {
     try {
-        // Since GET /payments doesn't exist, we need to fetch all admissions
-        // and then get payments for each admission
-        const admissionsRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, {
-            page: 1,
-            limit: 1000 // Get all admissions
+        // Use the correct endpoint: GET /api/payments with pagination
+        const res = await apiGet(API_ENDPOINTS.PAYMENTS.GET_ALL, {
+            page: currentPage,
+            limit: ITEMS_PER_PAGE
         });
 
-        const admissions = admissionsRes.admissions || [];
-
-        // Fetch payments for each admission
-        const paymentPromises = admissions.map(a =>
-            apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(a._id))
-                .then(res => res.payments || [])
-                .catch(() => [])
-        );
-
-        const paymentArrays = await Promise.all(paymentPromises);
-        allPayments = paymentArrays.flat().map(p => {
-            const admission = admissions.find(a => a._id === (p.admissionId?._id || p.admissionId));
-            return {
-                ...p,
-                admissionId: admission || p.admissionId,  // Keep full admission with enquiryId
-                studentName: admission?.enquiryId?.name || 'Unknown',
-                courseName: admission?.enquiryId?.courseInterested || '-'
-            };
-        });
-
-        // Calculate pagination
-        totalPages = Math.ceil(allPayments.length / ITEMS_PER_PAGE) || 1;
-        if (currentPage > totalPages) currentPage = totalPages;
-
-        // Get page slice
-        const start = (currentPage - 1) * ITEMS_PER_PAGE;
-        const end = start + ITEMS_PER_PAGE;
-        payments = allPayments.slice(start, end);
+        // Response: { payments: [...], pagination: {...} }
+        payments = res.payments || [];
+        const pagination = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
+        totalPages = pagination.totalPages || 1;
 
         renderTable();
-        renderStats();
-        updatePaginationInfo(start, end, allPayments.length);
+        renderStatsFromDashboard(); // Get stats from dashboard API
+        updatePaginationInfoFromServer(pagination);
     } catch (err) {
         showToast('error', 'Failed to load payments');
         renderEmptyState();
@@ -83,16 +58,21 @@ function renderTable() {
     }
 
     table.innerHTML = payments.map(p => {
-        const mode = p.paymentMode || 'Cash';
-        const style = paymentModeStyles[mode] || paymentModeStyles['Cash'];
+        const mode = p.paymentMode || 'CASH';
+        const style = paymentModeStyles[mode] || paymentModeStyles['CASH'];
+
+        // API returns populated admissionId with enquiryId
+        const studentName = p.admissionId?.enquiryId?.name || 'Unknown';
+        const mobile = p.admissionId?.enquiryId?.mobile || '';
+        const course = p.admissionId?.enquiryId?.courseInterested || '-';
 
         return `
             <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
                 <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">${p.studentName}</div>
-                    ${p.admissionId?.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${p.admissionId.enquiryId.mobile}</div>` : ''}
+                    <div class="font-medium text-gray-900">${studentName}</div>
+                    ${mobile ? `<div class="text-xs text-gray-500">${mobile}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 text-gray-700">${p.courseName}</td>
+                <td class="px-6 py-4 text-gray-700">${course}</td>
                 <td class="px-6 py-4 text-green-600 font-semibold">${formatCurrency(p.amount)}</td>
                 <td class="px-6 py-4">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${style.bg} ${style.text}">
@@ -100,7 +80,7 @@ function renderTable() {
                         ${mode}
                     </span>
                 </td>
-                <td class="px-6 py-4 text-gray-600">${formatDate(p.createdAt)}</td>
+                <td class="px-6 py-4 text-gray-600">${formatDate(p.paymentDate || p.createdAt)}</td>
             </tr>
         `;
     }).join('');
@@ -126,42 +106,38 @@ function renderEmptyState() {
 }
 
 /* ======================
-STATS
+STATS (from Dashboard API)
 ====================== */
-function renderStats() {
-    const total = allPayments.length;
-    const totalAmount = allPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+async function renderStatsFromDashboard() {
+    try {
+        const res = await apiGet(API_ENDPOINTS.DASHBOARD.GET);
+        const data = res.data || res;
 
-    // By payment mode
-    const byMode = {
-        'Cash': { count: 0, amount: 0 },
-        'UPI': { count: 0, amount: 0 },
-        'Card': { count: 0, amount: 0 },
-        'Bank Transfer': { count: 0, amount: 0 },
-        'ONLINE': { count: 0, amount: 0 },
-        'CHEQUE': { count: 0, amount: 0 }
-    };
+        // Use dashboard payment stats
+        const paymentStats = data.payments || {};
+        const totalPayments = paymentStats.totalPayments || 0;
 
-    allPayments.forEach(p => {
-        const mode = p.paymentMode || 'Cash';
-        if (byMode[mode]) {
-            byMode[mode].count++;
-            byMode[mode].amount += p.amount || 0;
-        }
-    });
+        // Calculate total amount from all modes
+        let totalAmount = 0;
+        ['CASH', 'UPI', 'CARD', 'ONLINE', 'CHEQUE'].forEach(mode => {
+            totalAmount += paymentStats[mode]?.amount || 0;
+        });
 
-    // Update stats display
-    document.getElementById('totalPayments').textContent = total;
-    document.getElementById('totalAmount').textContent = formatCurrency(totalAmount);
+        // Update stats display
+        document.getElementById('totalPayments').textContent = totalPayments;
+        document.getElementById('totalAmount').textContent = formatCurrency(totalAmount);
 
-    document.getElementById('cashCount').textContent = byMode['Cash'].count;
-    document.getElementById('cashAmount').textContent = formatCurrency(byMode['Cash'].amount);
+        document.getElementById('cashCount').textContent = paymentStats.CASH?.count || 0;
+        document.getElementById('cashAmount').textContent = formatCurrency(paymentStats.CASH?.amount || 0);
 
-    document.getElementById('upiCount').textContent = byMode['UPI'].count;
-    document.getElementById('upiAmount').textContent = formatCurrency(byMode['UPI'].amount);
+        document.getElementById('upiCount').textContent = paymentStats.UPI?.count || 0;
+        document.getElementById('upiAmount').textContent = formatCurrency(paymentStats.UPI?.amount || 0);
 
-    document.getElementById('cardCount').textContent = byMode['Card'].count;
-    document.getElementById('cardAmount').textContent = formatCurrency(byMode['Card'].amount);
+        document.getElementById('cardCount').textContent = paymentStats.CARD?.count || 0;
+        document.getElementById('cardAmount').textContent = formatCurrency(paymentStats.CARD?.amount || 0);
+    } catch (err) {
+        console.error('Failed to load payment stats:', err);
+    }
 }
 
 /* ======================
@@ -187,17 +163,21 @@ function goToLastPage() {
     loadPayments();
 }
 
-function updatePaginationInfo(start, end, total) {
+function updatePaginationInfoFromServer(pagination) {
+    const total = pagination.totalCount || 0;
+    const start = total > 0 ? ((pagination.page - 1) * ITEMS_PER_PAGE) + 1 : 0;
+    const end = Math.min(start + ITEMS_PER_PAGE - 1, total);
+
     // Update showing text
-    document.getElementById('showingFrom').textContent = total > 0 ? start + 1 : 0;
-    document.getElementById('showingTo').textContent = Math.min(end, total);
+    document.getElementById('showingFrom').textContent = start;
+    document.getElementById('showingTo').textContent = end;
     document.getElementById('totalItems').textContent = total;
 
     // Update button states
     document.getElementById('firstPage').disabled = currentPage === 1;
     document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = currentPage === totalPages;
-    document.getElementById('lastPage').disabled = currentPage === totalPages;
+    document.getElementById('nextPage').disabled = currentPage >= totalPages;
+    document.getElementById('lastPage').disabled = currentPage >= totalPages;
 
     // Update page numbers display
     const pageNumbers = document.getElementById('pageNumbers');
