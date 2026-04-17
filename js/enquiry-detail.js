@@ -84,7 +84,12 @@ function renderEnquiry(e) {
 
     // Details grid
     document.getElementById('infoEmail').textContent = e.email || '-';
-    document.getElementById('infoAssigned').textContent = e.assignedTo?.name || '-';
+
+    // Get assigned counselor name from various possible fields
+    const counselor = e.assignedTo || e.counselorId || e.counselor;
+    const counselorName = typeof counselor === 'string' ? counselor : (counselor?.name || counselor?.fullName || '-');
+    document.getElementById('infoAssigned').textContent = counselorName;
+
     document.getElementById('infoStatus').innerHTML = getStatusBadge(e.status);
     document.getElementById('infoCreated').textContent = formatDate(e.createdAt);
 }
@@ -122,24 +127,65 @@ function renderTimeline(timeline, notes = []) {
         'CONVERTED': 'Converted'
     };
 
-    // Status colors
+    // Status colors for badges
     const statusColors = {
-        'NEW': 'bg-gray-100 text-gray-700',
-        'CONTACTED': 'bg-blue-100 text-blue-700',
-        'NO_RESPONSE': 'bg-red-100 text-red-700',
-        'FOLLOW_UP': 'bg-amber-100 text-amber-700',
-        'INTERESTED': 'bg-green-100 text-green-700',
-        'NOT_INTERESTED': 'bg-gray-100 text-gray-600',
-        'ADMISSION_PROCESS': 'bg-purple-100 text-purple-700',
-        'CONVERTED': 'bg-emerald-100 text-emerald-700'
+        'NEW': 'bg-gray-100 text-gray-700 border-gray-200',
+        'CONTACTED': 'bg-blue-50 text-blue-700 border-blue-200',
+        'NO_RESPONSE': 'bg-red-50 text-red-700 border-red-200',
+        'FOLLOW_UP': 'bg-amber-50 text-amber-700 border-amber-200',
+        'INTERESTED': 'bg-green-50 text-green-700 border-green-200',
+        'NOT_INTERESTED': 'bg-slate-100 text-slate-700 border-slate-200',
+        'ADMISSION_PROCESS': 'bg-purple-50 text-purple-700 border-purple-200',
+        'CONVERTED': 'bg-emerald-50 text-emerald-700 border-emerald-200'
     };
 
-    // Type icons and colors
-    const typeConfig = {
-        'created': { icon: 'user-plus', color: 'bg-blue-500', label: 'Created' },
-        'status_change': { icon: 'refresh-cw', color: 'bg-amber-500', label: 'Status' },
-        'note': { icon: 'message-square', color: 'bg-green-500', label: 'Note' },
-        'assigned': { icon: 'user-check', color: 'bg-purple-500', label: 'Assigned' }
+    // Activity type configuration with icons and colors
+    const activityConfig = {
+        'created': {
+            icon: 'user-plus',
+            iconBg: 'bg-blue-500',
+            iconColor: 'text-white',
+            cardBorder: 'border-l-4 border-blue-500',
+            bgColor: 'bg-white',
+            label: 'Enquiry Created',
+            labelColor: 'text-blue-600'
+        },
+        'status_change': {
+            icon: 'refresh-cw',
+            iconBg: 'bg-amber-500',
+            iconColor: 'text-white',
+            cardBorder: 'border-l-4 border-amber-500',
+            bgColor: 'bg-white',
+            label: 'Status Updated',
+            labelColor: 'text-amber-600'
+        },
+        'note': {
+            icon: 'message-square',
+            iconBg: 'bg-green-500',
+            iconColor: 'text-white',
+            cardBorder: 'border-l-4 border-green-500',
+            bgColor: 'bg-white',
+            label: 'Note Added',
+            labelColor: 'text-green-600'
+        },
+        'assigned': {
+            icon: 'user-check',
+            iconBg: 'bg-purple-500',
+            iconColor: 'text-white',
+            cardBorder: 'border-l-4 border-purple-500',
+            bgColor: 'bg-white',
+            label: 'Assigned',
+            labelColor: 'text-purple-600'
+        },
+        'follow_up': {
+            icon: 'calendar-clock',
+            iconBg: 'bg-cyan-500',
+            iconColor: 'text-white',
+            cardBorder: 'border-l-4 border-cyan-500',
+            bgColor: 'bg-white',
+            label: 'Follow-up Updated',
+            labelColor: 'text-cyan-600'
+        }
     };
 
     // Sort timeline by timestamp descending (most recent first)
@@ -149,103 +195,203 @@ function renderTimeline(timeline, notes = []) {
         return dateB - dateA;
     });
 
-    container.innerHTML = sortedTimeline.map((item, index) => {
-        const type = item.type || 'note';
-        const config = typeConfig[type] || typeConfig['note'];
-
-        // Format date with time
+    // Group by date
+    const groupedByDate = {};
+    sortedTimeline.forEach(item => {
         const dateObj = new Date(item.timestamp || item.createdAt);
-        const dateStr = dateObj.toLocaleDateString('en-IN', {
+        const dateKey = dateObj.toDateString();
+        if (!groupedByDate[dateKey]) {
+            groupedByDate[dateKey] = [];
+        }
+        groupedByDate[dateKey].push(item);
+    });
+
+    let html = '';
+
+    Object.entries(groupedByDate).forEach(([dateKey, items]) => {
+        const dateObj = new Date(dateKey);
+        const today = new Date();
+        const isToday = dateObj.toDateString() === today.toDateString();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+        const isYesterday = dateObj.toDateString() === yesterday.toDateString();
+
+        const dateLabel = isToday ? 'Today' : isYesterday ? 'Yesterday' : dateObj.toLocaleDateString('en-IN', {
             day: '2-digit',
-            month: 'short',
+            month: 'long',
             year: 'numeric'
         });
-        const timeStr = dateObj.toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit'
+
+        html += `
+            <div class="mb-4">
+                <!-- Date Header -->
+                <div class="flex items-center gap-3 mb-3">
+                    <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider bg-gray-100 px-3 py-1 rounded-full">
+                        ${dateLabel}
+                    </span>
+                    <div class="flex-1 h-px bg-gray-200"></div>
+                </div>
+
+                <!-- Activity Cards -->
+                <div class="space-y-3">
+        `;
+
+        items.forEach((item) => {
+            const type = item.type || 'note';
+            const config = activityConfig[type] || activityConfig['note'];
+
+            const dateObj = new Date(item.timestamp || item.createdAt);
+            const dateStr = dateObj.toLocaleDateString('en-IN', {
+                day: '2-digit',
+                month: 'short'
+            });
+            const timeStr = dateObj.toLocaleTimeString('en-IN', {
+                hour: '2-digit',
+                minute: '2-digit',
+                hour12: true
+            });
+
+            const userName = item.userName || 'System';
+            const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+
+            // Build card content based on type
+            let cardContent = '';
+
+            if (type === 'created') {
+                cardContent = `
+                    <p class="text-sm text-gray-600">
+                        New enquiry created by <span class="font-medium text-gray-800">${userName}</span>
+                    </p>
+                `;
+            } else if (type === 'status_change' && item.metadata) {
+                const prevStatus = item.metadata.previousStatus || item.metadata.from;
+                const newStatus = item.metadata.newStatus || item.metadata.to;
+                const prevLabel = statusLabels[prevStatus] || prevStatus || 'New';
+                const newLabel = statusLabels[newStatus] || newStatus || 'Updated';
+                const prevColor = statusColors[prevStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
+                const newColor = statusColors[newStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
+
+                cardContent = `
+                    <div class="flex flex-col gap-2">
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <span class="px-3 py-1 rounded-lg text-xs font-semibold border ${prevColor}">
+                                ${prevLabel}
+                            </span>
+                            <div class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100">
+                                <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-gray-500"></i>
+                            </div>
+                            <span class="px-3 py-1 rounded-lg text-xs font-semibold border ${newColor}">
+                                ${newLabel}
+                            </span>
+                        </div>
+                        ${item.metadata.note ? `
+                            <div class="bg-gray-50 rounded-lg p-2.5 mt-1">
+                                <p class="text-xs text-gray-500 mb-1">Note:</p>
+                                <p class="text-sm text-gray-700">${item.metadata.note}</p>
+                            </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else if (type === 'note') {
+                const itemTime = new Date(item.timestamp || item.createdAt).getTime();
+                const noteText = notesByTimestamp[itemTime] || item.message || item.note || 'Note added';
+                cardContent = `
+                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <p class="text-sm text-gray-700 leading-relaxed">${noteText}</p>
+                    </div>
+                `;
+            } else if (type === 'assigned') {
+                const assignedTo = item.metadata?.assignedToName || item.metadata?.to || item.message || 'Someone';
+                cardContent = `
+                    <p class="text-sm text-gray-600">
+                        Assigned to <span class="font-semibold text-purple-600">${assignedTo}</span>
+                    </p>
+                `;
+            } else if (type === 'follow_up') {
+                const prevDate = item.metadata?.previousDate || item.metadata?.from;
+                const newDate = item.metadata?.newDate || item.metadata?.to;
+
+                if (prevDate && !newDate) {
+                    cardContent = `
+                        <p class="text-sm text-gray-600">
+                            Follow-up date <span class="font-medium text-gray-800">${formatDate(prevDate)}</span> cleared
+                        </p>
+                    `;
+                } else if (!prevDate && newDate) {
+                    cardContent = `
+                        <p class="text-sm text-gray-600">
+                            Follow-up scheduled for <span class="font-semibold text-cyan-600">${formatDate(newDate)}</span>
+                        </p>
+                    `;
+                } else {
+                    cardContent = `
+                        <div class="flex flex-col gap-1">
+                            <p class="text-sm text-gray-600">Follow-up date changed:</p>
+                            <div class="flex items-center gap-2">
+                                <span class="text-sm text-gray-500 line-through">${formatDate(prevDate)}</span>
+                                <i data-lucide="arrow-right" class="w-3 h-3 text-gray-400"></i>
+                                <span class="text-sm font-medium text-cyan-600">${formatDate(newDate)}</span>
+                            </div>
+                        </div>
+                    `;
+                }
+            } else if (item.message) {
+                cardContent = `
+                    <div class="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <p class="text-sm text-gray-700 leading-relaxed">${item.message}</p>
+                    </div>
+                `;
+            }
+
+            html += `
+                <!-- Activity Card -->
+                <div class="${config.bgColor} rounded-xl shadow-sm border border-gray-100 ${config.cardBorder} p-4 hover:shadow-md transition-shadow">
+                    <div class="flex gap-3">
+                        <!-- Icon -->
+                        <div class="flex-shrink-0">
+                            <div class="w-10 h-10 ${config.iconBg} rounded-xl flex items-center justify-center shadow-sm">
+                                <i data-lucide="${config.icon}" class="w-5 h-5 ${config.iconColor}"></i>
+                            </div>
+                        </div>
+
+                        <!-- Content -->
+                        <div class="flex-1 min-w-0">
+                            <!-- Header -->
+                            <div class="flex items-start justify-between gap-2 mb-2">
+                                <div>
+                                    <span class="text-xs font-semibold ${config.labelColor} uppercase tracking-wider">
+                                        ${config.label}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-gray-400 font-medium whitespace-nowrap flex items-center gap-1">
+                                    <i data-lucide="calendar" class="w-3 h-3"></i>
+                                    ${dateStr}, ${timeStr}
+                                </span>
+                            </div>
+
+                            <!-- Body -->
+                            ${cardContent}
+
+                            <!-- Footer - User -->
+                            <div class="flex items-center gap-2 mt-3 pt-2 border-t border-gray-100">
+                                <div class="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">
+                                    ${userInitials}
+                                </div>
+                                <span class="text-xs text-gray-500">by <span class="font-medium text-gray-700">${userName}</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
         });
 
-        // User info
-        const userName = item.userName || 'System';
-
-        const isLast = index === sortedTimeline.length - 1;
-
-        // Build content based on type
-        let contentHtml = '';
-
-        if (type === 'status_change' && item.metadata) {
-            const prevStatus = item.metadata.previousStatus || '-';
-            const newStatus = item.metadata.newStatus || '-';
-            const prevLabel = statusLabels[prevStatus] || prevStatus;
-            const newLabel = statusLabels[newStatus] || newStatus;
-            const prevColor = statusColors[prevStatus] || 'bg-gray-100 text-gray-700';
-            const newColor = statusColors[newStatus] || 'bg-gray-100 text-gray-700';
-
-            contentHtml = `
-                <div class="flex items-center gap-2 flex-wrap">
-                    ${prevStatus !== '-' ? `<span class="px-2 py-0.5 rounded text-xs font-medium ${prevColor}">${prevLabel}</span>` : `<span class="px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">Created</span>`}
-                    <span class="text-gray-400">→</span>
-                    <span class="px-2 py-0.5 rounded text-xs font-medium ${newColor}">${newLabel}</span>
-                </div>
-            `;
-        } else if (type === 'note') {
-            // Get note text from notes array by matching timestamp
-            const itemTime = new Date(item.timestamp).getTime();
-            const noteText = notesByTimestamp[itemTime] || item.message || 'Note added';
-            contentHtml = `
-                <div class="bg-gray-50 rounded-lg p-2.5">
-                    <p class="text-sm text-gray-700 leading-relaxed">${noteText}</p>
-                </div>
-            `;
-        } else if (item.message) {
-            contentHtml = `
-                <div class="bg-gray-50 rounded-lg p-2.5">
-                    <p class="text-sm text-gray-700 leading-relaxed">${item.message}</p>
-                </div>
-            `;
-        } else {
-            contentHtml = `
-                <p class="text-sm text-gray-700">${config.label}</p>
-            `;
-        }
-
-        return `
-            <div class="relative pl-6 ${isLast ? '' : 'pb-6'}">
-                <!-- Timeline connector line -->
-                ${!isLast ? '<div class="absolute left-2 top-2 bottom-0 w-0.5 bg-gray-200"></div>' : ''}
-
-                <!-- Timeline dot -->
-                <div class="absolute left-0 top-1.5 w-4 h-4 rounded-full border-2 border-white shadow-sm ${config.color} ring-2 ${config.color.replace('bg-', 'ring-')}"></div>
-
-                <!-- Content -->
-                <div class="flex flex-col gap-1.5">
-                    <!-- Header: Type -->
-                    <div class="flex items-center gap-2">
-                        <span class="text-xs font-medium text-gray-500">${config.label}</span>
-                    </div>
-
-                    <!-- Content -->
-                    ${contentHtml}
-
-                    <!-- Footer: User & Date -->
-                    <div class="flex items-center justify-between text-xs text-gray-500 mt-1">
-                        <div class="flex items-center gap-1.5">
-                            <div class="w-5 h-5 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-semibold">
-                                ${userName.charAt(0).toUpperCase()}
-                            </div>
-                            <span class="font-medium text-gray-700">${userName}</span>
-                        </div>
-                        <div class="flex items-center gap-1 text-gray-400">
-                            <span>${dateStr}</span>
-                            <span class="text-gray-300">|</span>
-                            <span>${timeStr}</span>
-                        </div>
-                    </div>
+        html += `
                 </div>
             </div>
         `;
-    }).join('');
+    });
 
+    container.innerHTML = html;
     lucide.createIcons();
 }
 
@@ -331,22 +477,9 @@ function submitStatusUpdate() {
     const status = document.getElementById('statusTargetStatus').value;
     const note = document.getElementById('statusNote').value;
     const followUpDate = document.getElementById('statusFollowUpDate').value;
-    const statusInfo = statusLabels[status] || { text: status };
 
-    // Open confirm modal
-    document.getElementById('confirmActionText').textContent = `Update to ${statusInfo.text}`;
-    document.getElementById('confirmDetailsText').textContent = note;
-
-    confirmCallback = () => executeStatusUpdate(currentId, status, note, followUpDate);
-
-    const modal = document.getElementById('confirmModal');
-    const modalContent = document.getElementById('confirmModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
+    // Directly execute status update without confirmation modal
+    executeStatusUpdate(currentId, status, note, followUpDate);
 }
 
 async function executeStatusUpdate(id, status, note, followUpDate) {
@@ -358,7 +491,6 @@ async function executeStatusUpdate(id, status, note, followUpDate) {
         });
 
         showToast('success', 'Status updated successfully');
-        closeConfirmModal();
         closeStatusModal();
         loadEnquiryDetail(id);
     } catch {
