@@ -1260,7 +1260,8 @@ async function submitBulkUpload() {
     progressPercent.textContent = '100%';
 
     // Show results - extract data from API response
-    const resultData = res.data || res;
+    // Handle nested structure: res.data.data or res.data
+    const resultData = res.data?.data || res.data || res;
     showUploadResults(resultData);
 
     // Refresh enquiries list
@@ -1311,31 +1312,44 @@ function showUploadResults(results) {
   document.getElementById('uploadProgressArea').classList.add('hidden');
   resultsArea.classList.remove('hidden');
 
-  // Update counts
-  document.getElementById('successCount').textContent = results.success || 0;
-  document.getElementById('errorCount').textContent = results.failed || 0;
-  document.getElementById('totalCount').textContent = results.total || 0;
+  // Update counts - backend uses successCount/failedCount/totalCount
+  const successCount = results.successCount ?? results.success ?? 0;
+  const failedCount = results.failedCount ?? results.failed ?? 0;
+  const totalCount = results.totalCount ?? results.total ?? (successCount + failedCount);
+
+  document.getElementById('successCount').textContent = successCount;
+  document.getElementById('errorCount').textContent = failedCount;
+  document.getElementById('totalCount').textContent = totalCount;
 
   // Set icon and title based on results
-  const hasErrors = (results.failed || 0) > 0;
-  const allSuccess = (results.success || 0) === (results.total || 0);
+  const hasErrors = (failedCount || 0) > 0;
+  const allSuccess = (successCount || 0) === (totalCount || 0) && (failedCount || 0) === 0;
 
   if (allSuccess) {
     resultIcon.className = 'w-10 h-10 bg-green-100 rounded-full flex items-center justify-center';
     resultIcon.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>';
     resultTitle.textContent = 'Upload Complete!';
     resultSubtitle.textContent = 'All enquiries uploaded successfully';
-    showToast('success', `Uploaded ${results.success} enquiries successfully`);
+    showToast('success', `Uploaded ${successCount} enquiries successfully`);
   } else if (hasErrors) {
     resultIcon.className = 'w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center';
     resultIcon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-amber-600"></i>';
     resultTitle.textContent = 'Partial Upload';
-    resultSubtitle.textContent = `${results.success} succeeded, ${results.failed} failed`;
+    resultSubtitle.textContent = `${successCount} succeeded, ${failedCount} failed`;
 
     // Show error details
     if (results.errors && results.errors.length > 0) {
       errorDetails.classList.remove('hidden');
-      errorList.innerHTML = results.errors.map(e => `<li>${e}</li>`).join('');
+      errorList.innerHTML = results.errors.map(e => {
+        // Handle both string errors and object errors with row numbers
+        if (typeof e === 'string') {
+          return `<li>${e}</li>`;
+        } else if (e.row && e.error) {
+          return `<li class="flex gap-2"><span class="text-gray-400 font-mono">Row ${e.row}:</span><span>${e.error}</span></li>`;
+        } else {
+          return `<li>${JSON.stringify(e)}</li>`;
+        }
+      }).join('');
     }
   } else {
     resultIcon.className = 'w-10 h-10 bg-red-100 rounded-full flex items-center justify-center';
@@ -1506,14 +1520,14 @@ function getActionButtons(id, status, assignedToId) {
     if (primary.isConvert) {
       buttonsHtml += `
         <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
-          class="px-3 py-1.5 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm hover:shadow">
+          class="px-2 py-1 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-md text-[11px] font-medium transition-all">
           ${primary.label}
         </button>
       `;
     } else {
       buttonsHtml += `
         <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${primary.status}', '${status}')"
-          class="px-3 py-1.5 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm hover:shadow">
+          class="px-2 py-1 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-md text-[11px] font-medium transition-all">
           ${primary.label}
         </button>
       `;
@@ -1525,7 +1539,7 @@ function getActionButtons(id, status, assignedToId) {
     const secondary = config.secondary;
     buttonsHtml += `
       <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${secondary.status}', '${status}')"
-        class="px-3 py-1.5 border-2 border-${secondary.color}-500 text-${secondary.color}-700 hover:bg-${secondary.color}-50 rounded-lg text-xs font-semibold transition-all">
+        class="px-2 py-1 border border-${secondary.color}-400 text-${secondary.color}-700 hover:bg-${secondary.color}-50 rounded-md text-[11px] font-medium transition-all">
         ${secondary.label}
       </button>
     `;
@@ -1566,9 +1580,9 @@ function getActionButtons(id, status, assignedToId) {
     buttonsHtml += `
       <div class="relative action-dropdown-container" id="container-${dropdownId}">
         <button onclick="event.stopPropagation(); toggleActionDropdown('${dropdownId}')"
-          class="px-2 py-1.5 border border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded-lg text-xs font-medium transition-all flex items-center gap-1">
+          class="px-2 py-1 border border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded-md text-[11px] font-medium transition-all flex items-center gap-1">
           More
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dropdown-arrow"><path d="m6 9 6 6 6-6"/></svg>
+          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dropdown-arrow"><path d="m6 9 6 6 6-6"/></svg>
         </button>
         <div id="${dropdownId}" class="hidden absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
           ${dropdownItems}
@@ -1577,7 +1591,7 @@ function getActionButtons(id, status, assignedToId) {
     `;
   }
 
-  return `<div class="flex items-center gap-1.5 flex-wrap justify-center">${buttonsHtml}</div>`;
+  return `<div class="flex items-center gap-1 justify-center whitespace-nowrap">${buttonsHtml}</div>`;
 }
 
 // Toggle dropdown visibility

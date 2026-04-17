@@ -43,11 +43,15 @@ async function loadPayments() {
         );
 
         const paymentArrays = await Promise.all(paymentPromises);
-        allPayments = paymentArrays.flat().map(p => ({
-            ...p,
-            admissionId: p.admissionId?._id || p.admissionId,
-            studentName: admissions.find(a => a._id === (p.admissionId?._id || p.admissionId))?.enquiryId?.name || 'Unknown'
-        }));
+        allPayments = paymentArrays.flat().map(p => {
+            const admission = admissions.find(a => a._id === (p.admissionId?._id || p.admissionId));
+            return {
+                ...p,
+                admissionId: admission || p.admissionId,  // Keep full admission with enquiryId
+                studentName: admission?.enquiryId?.name || 'Unknown',
+                courseName: admission?.enquiryId?.courseInterested || '-'
+            };
+        });
 
         // Calculate pagination
         totalPages = Math.ceil(allPayments.length / ITEMS_PER_PAGE) || 1;
@@ -85,10 +89,10 @@ function renderTable() {
         return `
             <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
                 <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">${p.admissionId?.enquiryId?.name || '-'}</div>
+                    <div class="font-medium text-gray-900">${p.studentName}</div>
                     ${p.admissionId?.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${p.admissionId.enquiryId.mobile}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 text-gray-700">${p.admissionId?.enquiryId?.courseInterested || '-'}</td>
+                <td class="px-6 py-4 text-gray-700">${p.courseName}</td>
                 <td class="px-6 py-4 text-green-600 font-semibold">${formatCurrency(p.amount)}</td>
                 <td class="px-6 py-4">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${style.bg} ${style.text}">
