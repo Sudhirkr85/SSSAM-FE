@@ -1,0 +1,481 @@
+<!--
+  =====================================================
+  ACADEMIC CRM - UI COMPONENTS SYSTEM
+  Font Awesome + Tailwind CSS
+  =====================================================
+-->
+
+<!-- ======================
+     1. SIDEBAR COMPONENT
+====================== -->
+<aside class="w-64 bg-[#1f2937] text-gray-300 flex flex-col h-screen fixed left-0 top-0">
+
+  <!-- Logo -->
+  <div class="px-6 py-5 border-b border-gray-700 flex items-center gap-3">
+    <div class="w-10 h-10 bg-[#3b82f6] rounded-lg flex items-center justify-center shadow-lg">
+      <i class="fa-solid fa-graduation-cap text-white text-lg"></i>
+    </div>
+    <div>
+      <span class="text-lg font-semibold text-white">EduCRM</span>
+      <p class="text-xs text-gray-400">Academic Management</p>
+    </div>
+  </div>
+
+  <!-- Counselor Navigation -->
+  <nav id="counselorNav" class="flex-1 py-4 space-y-1">
+    <p class="px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Counselor</p>
+
+    <a href="enquiries.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="enquiries">
+      <i class="fa-solid fa-user-graduate w-5 text-center"></i>
+      <span>Student Enquiries</span>
+    </a>
+
+    <a href="today.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="today">
+      <i class="fa-solid fa-phone w-5 text-center"></i>
+      <span>Follow-ups</span>
+      <span id="followupBadge" class="ml-auto bg-[#ef4444] text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
+    </a>
+
+    <a href="appointments.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="appointments">
+      <i class="fa-solid fa-calendar-check w-5 text-center"></i>
+      <span>Appointments</span>
+    </a>
+
+    <a href="notes.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="notes">
+      <i class="fa-solid fa-note-sticky w-5 text-center"></i>
+      <span>Notes</span>
+    </a>
+
+    <a href="converted.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="converted">
+      <i class="fa-solid fa-circle-check w-5 text-center"></i>
+      <span>Converted Students</span>
+    </a>
+  </nav>
+
+  <!-- Admin Navigation (Hidden by default) -->
+  <nav id="adminNav" class="hidden flex-1 py-4 space-y-1">
+    <p class="px-6 text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Administration</p>
+
+    <a href="dashboard.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="dashboard">
+      <i class="fa-solid fa-users w-5 text-center"></i>
+      <span>All Students</span>
+    </a>
+
+    <a href="reports.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="reports">
+      <i class="fa-solid fa-chart-line w-5 text-center"></i>
+      <span>Reports</span>
+    </a>
+
+    <a href="counselors.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="counselors">
+      <i class="fa-solid fa-user-tie w-5 text-center"></i>
+      <span>Manage Counselors</span>
+    </a>
+
+    <a href="data.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="data">
+      <i class="fa-solid fa-database w-5 text-center"></i>
+      <span>Data Management</span>
+    </a>
+
+    <a href="settings.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg mx-3 transition hover:bg-gray-800 hover:text-white" data-page="settings">
+      <i class="fa-solid fa-gear w-5 text-center"></i>
+      <span>Settings</span>
+    </a>
+  </nav>
+
+  <!-- User Profile -->
+  <div class="p-4 border-t border-gray-700">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-[#3b82f6]/20 rounded-full flex items-center justify-center">
+        <i class="fa-solid fa-user text-[#3b82f6]"></i>
+      </div>
+      <div class="flex-1 min-w-0">
+        <p id="userName" class="text-sm font-medium truncate text-white">Loading...</p>
+        <p id="userRole" class="text-xs text-gray-400">Loading...</p>
+      </div>
+      <button onclick="logout()" class="p-2 hover:bg-gray-800 rounded-lg transition text-gray-400 hover:text-white" title="Logout">
+        <i class="fa-solid fa-right-from-bracket"></i>
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- ======================
+     2. ACTION BUTTONS
+====================== -->
+
+<!-- Primary Button -->
+<button class="btn-primary flex items-center gap-2 bg-[#3b82f6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+  <i class="fa-solid fa-plus"></i>
+  Add Student
+</button>
+
+<!-- Secondary Button -->
+<button class="btn-secondary flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-[#1f2933] px-4 py-2 rounded-lg font-medium transition">
+  <i class="fa-solid fa-filter"></i>
+  Filter
+</button>
+
+<!-- Success Button -->
+<button class="btn-success flex items-center gap-2 bg-[#22c55e] hover:bg-green-600 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+  <i class="fa-solid fa-check"></i>
+  Confirm
+</button>
+
+<!-- Danger Button -->
+<button class="btn-danger flex items-center gap-2 bg-[#ef4444] hover:bg-red-600 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+  <i class="fa-solid fa-trash"></i>
+  Delete
+</button>
+
+<!-- Warning Button -->
+<button class="btn-warning flex items-center gap-2 bg-[#f59e0b] hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+  <i class="fa-solid fa-triangle-exclamation"></i>
+  Warning
+</button>
+
+<!-- Ghost Button -->
+<button class="btn-ghost flex items-center gap-2 bg-transparent hover:bg-gray-100 text-gray-600 px-4 py-2 rounded-lg font-medium transition">
+  <i class="fa-solid fa-rotate-left"></i>
+  Reset
+</button>
+
+<!-- Icon Only Button -->
+<button class="btn-icon-only p-2 hover:bg-gray-100 rounded-lg transition text-gray-600" title="Edit">
+  <i class="fa-solid fa-pen-to-square"></i>
+</button>
+
+<!-- ======================
+     3. STATUS BADGES
+====================== -->
+
+<!-- Success / Converted -->
+<span class="badge-success inline-flex items-center gap-1.5 text-[#22c55e] bg-green-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-circle-check text-[10px]"></i>
+  Converted
+</span>
+
+<!-- New -->
+<span class="badge-new inline-flex items-center gap-1.5 text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-star text-[10px]"></i>
+  New
+</span>
+
+<!-- Contacted -->
+<span class="badge-contacted inline-flex items-center gap-1.5 text-cyan-600 bg-cyan-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-phone text-[10px]"></i>
+  Contacted
+</span>
+
+<!-- Follow Up -->
+<span class="badge-followup inline-flex items-center gap-1.5 text-amber-600 bg-amber-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-clock text-[10px]"></i>
+  Follow Up
+</span>
+
+<!-- Interested -->
+<span class="badge-interested inline-flex items-center gap-1.5 text-purple-600 bg-purple-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-thumbs-up text-[10px]"></i>
+  Interested
+</span>
+
+<!-- Not Interested -->
+<span class="badge-not-interested inline-flex items-center gap-1.5 text-gray-600 bg-gray-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-thumbs-down text-[10px]"></i>
+  Not Interested
+</span>
+
+<!-- Admission Process -->
+<span class="badge-admission inline-flex items-center gap-1.5 text-indigo-600 bg-indigo-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-file-signature text-[10px]"></i>
+  Admission Process
+</span>
+
+<!-- No Response -->
+<span class="badge-no-response inline-flex items-center gap-1.5 text-red-600 bg-red-100 px-2.5 py-1 rounded-full text-xs font-medium">
+  <i class="fa-solid fa-phone-slash text-[10px]"></i>
+  No Response
+</span>
+
+<!-- ======================
+     4. FORM COMPONENTS
+====================== -->
+
+<!-- Input Field -->
+<div class="form-group">
+  <label class="block text-sm font-medium text-[#1f2933] mb-1.5">
+    Student Name <span class="text-[#ef4444]">*</span>
+  </label>
+  <div class="relative">
+    <i class="fa-solid fa-user absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+    <input type="text" 
+           class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-100 transition"
+           placeholder="Enter student name">
+  </div>
+</div>
+
+<!-- Phone Input -->
+<div class="form-group">
+  <label class="block text-sm font-medium text-[#1f2933] mb-1.5">
+    Mobile Number <span class="text-[#ef4444]">*</span>
+  </label>
+  <div class="relative">
+    <i class="fa-solid fa-phone absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+    <input type="tel" 
+           class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-100 transition"
+           placeholder="10-digit mobile number">
+  </div>
+</div>
+
+<!-- Email Input -->
+<div class="form-group">
+  <label class="block text-sm font-medium text-[#1f2933] mb-1.5">
+    Email Address
+  </label>
+  <div class="relative">
+    <i class="fa-solid fa-envelope absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+    <input type="email" 
+           class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-100 transition"
+           placeholder="student@example.com">
+  </div>
+</div>
+
+<!-- Select Dropdown -->
+<div class="form-group">
+  <label class="block text-sm font-medium text-[#1f2933] mb-1.5">
+    Course Interested <span class="text-[#ef4444]">*</span>
+  </label>
+  <div class="relative">
+    <i class="fa-solid fa-book absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
+    <select class="w-full pl-10 pr-10 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-100 transition bg-white appearance-none">
+      <option value="">Select a course</option>
+      <option value="web-designing">Web Designing</option>
+      <option value="web-development">Web Development</option>
+      <option value="graphic-design">Graphic Design</option>
+      <option value="digital-marketing">Digital Marketing</option>
+    </select>
+    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none text-xs"></i>
+  </div>
+</div>
+
+<!-- Textarea -->
+<div class="form-group">
+  <label class="block text-sm font-medium text-[#1f2933] mb-1.5">
+    Notes
+  </label>
+  <div class="relative">
+    <textarea rows="3" 
+              class="w-full p-3 border border-gray-300 rounded-lg focus:outline-none focus:border-[#3b82f6] focus:ring-2 focus:ring-blue-100 transition resize-none"
+              placeholder="Add any additional notes..."></textarea>
+  </div>
+</div>
+
+<!-- ======================
+     5. CARD COMPONENTS
+====================== -->
+
+<!-- Stats Card -->
+<div class="stats-card bg-white p-5 rounded-xl shadow-sm border border-gray-100">
+  <div class="flex items-center justify-between">
+    <div>
+      <p class="text-sm text-gray-500 font-medium">Total Enquiries</p>
+      <p class="text-2xl font-bold text-[#1f2933] mt-1">1,284</p>
+    </div>
+    <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
+      <i class="fa-solid fa-users text-[#3b82f6] text-xl"></i>
+    </div>
+  </div>
+  <div class="flex items-center gap-1 mt-3 text-sm">
+    <i class="fa-solid fa-arrow-trend-up text-[#22c55e]"></i>
+    <span class="text-[#22c55e] font-medium">+12%</span>
+    <span class="text-gray-400">from last month</span>
+  </div>
+</div>
+
+<!-- Table Row -->
+<tr class="hover:bg-gray-50 transition border-b border-gray-100">
+  <td class="px-4 py-3">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+        <i class="fa-solid fa-user text-gray-400"></i>
+      </div>
+      <div>
+        <p class="font-medium text-[#1f2933]">John Doe</p>
+        <p class="text-xs text-gray-500">+91 98765 43210</p>
+      </div>
+    </div>
+  </td>
+  <td class="px-4 py-3">
+    <span class="inline-flex items-center gap-1.5 text-blue-600 bg-blue-100 px-2.5 py-1 rounded-full text-xs font-medium">
+      <i class="fa-solid fa-star text-[10px]"></i>
+      New
+    </span>
+  </td>
+  <td class="px-4 py-3 text-gray-600">Web Designing</td>
+  <td class="px-4 py-3 text-gray-500 text-sm">Today, 10:30 AM</td>
+  <td class="px-4 py-3">
+    <div class="flex items-center gap-2">
+      <button class="p-1.5 hover:bg-gray-100 rounded-lg transition text-gray-600" title="Edit">
+        <i class="fa-solid fa-pen-to-square"></i>
+      </button>
+      <button class="p-1.5 hover:bg-gray-100 rounded-lg transition text-gray-600" title="Call">
+        <i class="fa-solid fa-phone"></i>
+      </button>
+    </div>
+  </td>
+</tr>
+
+<!-- ======================
+     6. MODAL COMPONENTS
+====================== -->
+
+<!-- Modal Overlay -->
+<div class="modal-overlay fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50">
+  <div class="modal-content bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-95 transition-transform duration-200">
+    
+    <!-- Modal Header -->
+    <div class="flex items-center gap-3 mb-5">
+      <div class="w-10 h-10 bg-[#3b82f6]/10 rounded-xl flex items-center justify-center">
+        <i class="fa-solid fa-user-plus text-[#3b82f6]"></i>
+      </div>
+      <h2 class="text-xl font-semibold text-[#1f2933]">Add New Student</h2>
+    </div>
+
+    <!-- Modal Body -->
+    <div class="space-y-4">
+      <!-- Form fields here -->
+    </div>
+
+    <!-- Modal Footer -->
+    <div class="flex justify-end gap-3 pt-5 mt-5 border-t border-gray-100">
+      <button class="flex items-center gap-2 bg-white border border-gray-300 hover:bg-gray-50 text-[#1f2933] px-4 py-2 rounded-lg font-medium transition">
+        Cancel
+      </button>
+      <button class="flex items-center gap-2 bg-[#3b82f6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+        <i class="fa-solid fa-plus"></i>
+        Add Student
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ======================
+     7. ALERT COMPONENTS
+====================== -->
+
+<!-- Success Alert -->
+<div class="alert-success flex items-start gap-3 bg-green-50 border border-green-200 rounded-lg p-4">
+  <i class="fa-solid fa-circle-check text-[#22c55e] mt-0.5"></i>
+  <div>
+    <p class="font-medium text-green-800">Success!</p>
+    <p class="text-sm text-green-600">Student enquiry added successfully.</p>
+  </div>
+</div>
+
+<!-- Error Alert -->
+<div class="alert-error flex items-start gap-3 bg-red-50 border border-red-200 rounded-lg p-4">
+  <i class="fa-solid fa-circle-xmark text-[#ef4444] mt-0.5"></i>
+  <div>
+    <p class="font-medium text-red-800">Error!</p>
+    <p class="text-sm text-red-600">Something went wrong. Please try again.</p>
+  </div>
+</div>
+
+<!-- Warning Alert -->
+<div class="alert-warning flex items-start gap-3 bg-amber-50 border border-amber-200 rounded-lg p-4">
+  <i class="fa-solid fa-triangle-exclamation text-[#f59e0b] mt-0.5"></i>
+  <div>
+    <p class="font-medium text-amber-800">Warning!</p>
+    <p class="text-sm text-amber-600">This action cannot be undone.</p>
+  </div>
+</div>
+
+<!-- Info Alert -->
+<div class="alert-info flex items-start gap-3 bg-blue-50 border border-blue-200 rounded-lg p-4">
+  <i class="fa-solid fa-circle-info text-[#3b82f6] mt-0.5"></i>
+  <div>
+    <p class="font-medium text-blue-800">Info</p>
+    <p class="text-sm text-blue-600">New updates are available.</p>
+  </div>
+</div>
+
+<!-- ======================
+     8. EMPTY STATE
+====================== -->
+
+<div class="empty-state flex flex-col items-center justify-center py-16 text-center">
+  <div class="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+    <i class="fa-solid fa-inbox text-gray-400 text-3xl"></i>
+  </div>
+  <h3 class="text-lg font-semibold text-[#1f2933] mb-1">No enquiries found</h3>
+  <p class="text-sm text-gray-500 max-w-sm">Get started by adding your first student enquiry.</p>
+  <button class="mt-4 flex items-center gap-2 bg-[#3b82f6] hover:bg-blue-600 text-white px-4 py-2 rounded-lg font-medium transition shadow-sm">
+    <i class="fa-solid fa-plus"></i>
+    Add Enquiry
+  </button>
+</div>
+
+<!-- ======================
+     9. PAGINATION
+====================== -->
+
+<div class="pagination flex items-center justify-between px-4 py-3 border-t border-gray-100">
+  <p class="text-sm text-gray-500">
+    Showing <span class="font-medium text-[#1f2933]">1</span> to <span class="font-medium text-[#1f2933]">10</span> of <span class="font-medium text-[#1f2933]">50</span> results
+  </p>
+  <div class="flex items-center gap-2">
+    <button class="p-2 hover:bg-gray-100 rounded-lg transition text-gray-600 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+      <i class="fa-solid fa-chevron-left"></i>
+    </button>
+    <button class="w-8 h-8 bg-[#3b82f6] text-white rounded-lg font-medium text-sm">1</button>
+    <button class="w-8 h-8 hover:bg-gray-100 rounded-lg font-medium text-sm text-gray-600 transition">2</button>
+    <button class="w-8 h-8 hover:bg-gray-100 rounded-lg font-medium text-sm text-gray-600 transition">3</button>
+    <button class="p-2 hover:bg-gray-100 rounded-lg transition text-gray-600">
+      <i class="fa-solid fa-chevron-right"></i>
+    </button>
+  </div>
+</div>
+
+<!-- ======================
+     10. BREADCRUMB
+====================== -->
+
+<nav class="breadcrumb flex items-center gap-2 text-sm mb-4">
+  <a href="dashboard.html" class="text-gray-500 hover:text-[#3b82f6] transition flex items-center gap-1">
+    <i class="fa-solid fa-home text-xs"></i>
+    Home
+  </a>
+  <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+  <a href="enquiries.html" class="text-gray-500 hover:text-[#3b82f6] transition">Enquiries</a>
+  <i class="fa-solid fa-chevron-right text-gray-300 text-xs"></i>
+  <span class="text-[#1f2933] font-medium">Add New</span>
+</nav>
+
+<!-- ======================
+     JAVASCRIPT HELPERS
+====================== -->
+<script>
+  // Active menu highlighting
+  document.addEventListener('DOMContentLoaded', () => {
+    const currentPage = window.location.pathname.split('/').pop().replace('.html', '');
+    document.querySelectorAll('.nav-item').forEach(link => {
+      if (link.dataset.page === currentPage) {
+        link.classList.add('bg-[#3b82f6]', 'text-white');
+        link.classList.remove('hover:bg-gray-800');
+      }
+    });
+  });
+
+  // Show/hide nav based on role
+  function setNavigation(role) {
+    const counselorNav = document.getElementById('counselorNav');
+    const adminNav = document.getElementById('adminNav');
+    
+    if (role === 'admin') {
+      counselorNav.classList.add('hidden');
+      adminNav.classList.remove('hidden');
+    } else {
+      counselorNav.classList.remove('hidden');
+      adminNav.classList.add('hidden');
+    }
+  }
+</script>
