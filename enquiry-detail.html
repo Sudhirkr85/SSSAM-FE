@@ -25,8 +25,16 @@
 
     <div class="flex h-screen">
 
+        <!-- Mobile Menu Toggle Button (visible only on small screens) -->
+        <button id="mobileMenuToggle" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center shadow-lg">
+            <i data-lucide="menu" class="w-5 h-5"></i>
+        </button>
+
+        <!-- Mobile Overlay Backdrop -->
+        <div id="mobileOverlay" class="lg:hidden fixed inset-0 bg-black/50 z-40 hidden transition-opacity opacity-0"></div>
+
         <!-- Sidebar -->
-        <aside class="w-64 bg-gray-900 text-gray-300 flex flex-col">
+        <aside id="sidebar" class="w-64 bg-gray-900 text-gray-300 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50">
 
             <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
                 <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
@@ -58,13 +66,17 @@
                 <p id="userRole" class="text-xs text-gray-400"></p>
             </div>
 
+            <!-- Mobile Close Button (visible only on small screens) -->
+            <button id="mobileCloseBtn" class="lg:hidden absolute top-4 right-4 w-8 h-8 bg-gray-800 text-gray-400 hover:text-white rounded-lg flex items-center justify-center">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
         </aside>
 
         <!-- Main -->
-        <div class="flex-1 flex flex-col">
+        <div class="flex-1 flex flex-col lg:ml-0">
 
             <!-- Header -->
-            <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm">
+            <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
                 <div class="flex items-center gap-3">
                     <a href="enquiries.html" class="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors">
                         <i data-lucide="arrow-left" class="w-5 h-5 text-gray-600"></i>
@@ -436,6 +448,35 @@
 
     <script>
         lucide.createIcons();
+
+        // Mobile Menu Toggle
+        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+        const mobileCloseBtn = document.getElementById('mobileCloseBtn');
+        const sidebar = document.getElementById('sidebar');
+        const mobileOverlay = document.getElementById('mobileOverlay');
+
+        function openMobileMenu() {
+            sidebar.classList.remove('-translate-x-full');
+            mobileOverlay.classList.remove('hidden');
+            setTimeout(() => mobileOverlay.classList.remove('opacity-0'), 10);
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeMobileMenu() {
+            sidebar.classList.add('-translate-x-full');
+            mobileOverlay.classList.add('opacity-0');
+            setTimeout(() => mobileOverlay.classList.add('hidden'), 300);
+            document.body.style.overflow = '';
+        }
+
+        mobileMenuToggle?.addEventListener('click', openMobileMenu);
+        mobileCloseBtn?.addEventListener('click', closeMobileMenu);
+        mobileOverlay?.addEventListener('click', closeMobileMenu);
+
+        // Close on escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') closeMobileMenu();
+        });
     </script>
 
     <style>
