@@ -9,6 +9,10 @@ let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
 
+// Sorting state
+let sortColumn = 'createdAt';
+let sortDirection = 'desc';
+
 /* ======================
 USER PROFILE DISPLAY
 ====================== */
@@ -79,6 +83,13 @@ document.addEventListener('DOMContentLoaded', () => {
     resetFilters();
   });
 
+  // Close action dropdowns when clicking outside
+  document.addEventListener('click', (e) => {
+    if (!e.target.closest('.action-dropdown-container')) {
+      closeAllActionDropdowns();
+    }
+  });
+
   // Course dropdown change handler (create modal)
   const courseSelect = document.getElementById('course');
   if (courseSelect) {
@@ -120,7 +131,9 @@ async function loadEnquiries() {
 
     const params = {
       page: currentPage,
-      limit: ITEMS_PER_PAGE
+      limit: ITEMS_PER_PAGE,
+      sortBy: sortColumn,
+      sortOrder: sortDirection
     };
 
     if (search) params.search = search;
@@ -153,9 +166,41 @@ async function loadEnquiries() {
 
     renderTable(allEnquiries);
     updatePaginationInfoFromServer(paginationData);
+    updateSortIcons();
   } catch (err) {
     handleEnquiryError(err, 'Failed to load enquiries');
     renderEmptyState();
+  }
+}
+
+/* ======================
+SORTING
+====================== */
+function sortBy(column) {
+  if (sortColumn === column) {
+    // Toggle direction if same column
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column, default to ascending
+    sortColumn = column;
+    sortDirection = 'asc';
+  }
+  currentPage = 1;
+  loadEnquiries();
+}
+
+function updateSortIcons() {
+  // Reset all sort icons
+  document.querySelectorAll('.sort-icon').forEach(icon => {
+    icon.className = 'sort-icon inline-block w-3 h-3 ml-1 text-gray-400 transition-transform';
+    icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>';
+  });
+
+  // Update active sort icon
+  const activeIcon = document.getElementById(`sort-${sortColumn}`);
+  if (activeIcon) {
+    activeIcon.className = `sort-icon inline-block w-3 h-3 ml-1 text-blue-600 transition-transform ${sortDirection === 'asc' ? 'rotate-180' : ''}`;
+    activeIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
   }
 }
 
@@ -1360,20 +1405,72 @@ Notes:
 /* ======================
 ACTION BUTTONS HELPER
 ====================== */
-function getActionButtons(id, status, assignedToId) {
-  // Define next actions based on current status
-  const nextActions = {
-    'NEW': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-    'CONTACTED': { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
-    'FOLLOW_UP': { status: 'INTERESTED', label: 'Interested', color: 'green' },
-    'INTERESTED': { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
-    'ADMISSION_PROCESS': { convert: true, label: 'Convert', color: 'purple' },
-    'NO_RESPONSE': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-    'NOT_INTERESTED': null,
-    'CONVERTED': null
-  };
+// Button configuration with primary, secondary and more options
+const actionConfig = {
+  'NEW': {
+    primary: { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
+    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
+    more: [
+      { status: 'INTERESTED', label: 'Interested' },
+      { status: 'NOT_INTERESTED', label: 'Not Interested' }
+    ]
+  },
+  'CONTACTED': {
+    primary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
+    secondary: { status: 'INTERESTED', label: 'Interested', color: 'green' },
+    more: [
+      { status: 'CONTACTED', label: 'Contacted (Again)' },
+      { status: 'NOT_INTERESTED', label: 'Not Interested' }
+    ]
+  },
+  'FOLLOW_UP': {
+    primary: { status: 'INTERESTED', label: 'Interested', color: 'green' },
+    secondary: { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
+    more: [
+      { status: 'CONTACTED', label: 'Contacted' },
+      { status: 'NOT_INTERESTED', label: 'Not Interested' }
+    ]
+  },
+  'INTERESTED': {
+    primary: { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
+    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
+    more: [
+      { status: 'INTERESTED', label: 'Interested (Reconfirm)' },
+      { status: 'NOT_INTERESTED', label: 'Not Interested' }
+    ]
+  },
+  'ADMISSION_PROCESS': {
+    primary: { status: 'CONVERTED', label: 'Convert', color: 'emerald', isConvert: true },
+    secondary: null,
+    more: [
+      { status: 'FOLLOW_UP', label: 'Follow Up' },
+      { status: 'NOT_INTERESTED', label: 'Not Interested' }
+    ]
+  },
+  'NO_RESPONSE': {
+    primary: { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
+    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
+    more: [
+      { status: 'NOT_INTERESTED', label: 'Not Interested' }
+    ]
+  },
+  'NOT_INTERESTED': {
+    primary: { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
+    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
+    more: [
+      { status: 'INTERESTED', label: 'Interested' }
+    ]
+  },
+  'CONVERTED': {
+    primary: null,
+    secondary: null,
+    more: []
+  }
+};
 
-  const action = nextActions[status];
+function getActionButtons(id, status, assignedToId) {
+  const config = actionConfig[status];
+  if (!config) return '';
 
   // Get current user info
   const user = JSON.parse(localStorage.getItem('user') || '{}');
@@ -1385,63 +1482,144 @@ function getActionButtons(id, status, assignedToId) {
   const isOwnEnquiry = assignedToId === currentUserId;
   const canTakeAction = isAdminUser || isUnassigned || isOwnEnquiry;
 
-  // Admin-only delete button - only for enquiries NOT in admission process or converted
+  // Admin-only delete - only for enquiries NOT in admission process or converted
   const isInAdmissionProcess = status === 'ADMISSION_PROCESS' || status === 'CONVERTED';
-  const deleteBtn = (isAdminUser && !isInAdmissionProcess) ? `
-    <button onclick="event.stopPropagation(); confirmDeleteEnquiry('${id}')"
-      class="inline-flex items-center justify-center p-1.5 bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 rounded-lg transition-colors ml-2"
-      title="Delete Enquiry">
-      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
-    </button>
-  ` : '';
+  const canDelete = isAdminUser && !isInAdmissionProcess;
 
-  // For CONVERTED status, show no action buttons at all (admission completed)
+  // For CONVERTED status, show no action buttons
   if (status === 'CONVERTED') {
     return '';
   }
 
-  // For ADMISSION_PROCESS, no delete button, only admission actions (if can take action)
-  if (status === 'ADMISSION_PROCESS') {
-    if (!canTakeAction) return '';
-    return `
-      <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
-        class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
-        Continue Admission
-      </button>
-      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', 'FOLLOW_UP', '${status}')"
-        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
-        Follow Up
-      </button>
-    `;
-  }
-
-  // If counselor cannot take action (other counselor's enquiry), show no buttons
+  // If counselor cannot take action, show no buttons
   if (!canTakeAction) {
     return '';
   }
 
-  // Always show Follow Up button - pass current status so modal knows context
-  const followUpBtn = `
-    <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', 'FOLLOW_UP', '${status}')"
-      class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
-      Follow Up
-    </button>
-  `;
+  // Build buttons
+  let buttonsHtml = '';
+  const dropdownId = `dropdown-${id}`;
 
-  if (!action) {
-    // For terminal statuses (NOT_INTERESTED), show only Follow Up + delete for admin
-    return followUpBtn + deleteBtn;
+  // Primary button (colored, filled)
+  if (config.primary) {
+    const primary = config.primary;
+    if (primary.isConvert) {
+      buttonsHtml += `
+        <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
+          class="px-3 py-1.5 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm hover:shadow">
+          ${primary.label}
+        </button>
+      `;
+    } else {
+      buttonsHtml += `
+        <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${primary.status}', '${status}')"
+          class="px-3 py-1.5 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm hover:shadow">
+          ${primary.label}
+        </button>
+      `;
+    }
   }
 
-  // For all other regular statuses, show Next Status + Follow Up + delete for admin
-  return `
-    <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}', '${status}')"
-      class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
-      ${action.label}
-    </button>
-    ${followUpBtn}
-    ${deleteBtn}
-  `;
+  // Secondary button (outline style)
+  if (config.secondary) {
+    const secondary = config.secondary;
+    buttonsHtml += `
+      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${secondary.status}', '${status}')"
+        class="px-3 py-1.5 border-2 border-${secondary.color}-500 text-${secondary.color}-700 hover:bg-${secondary.color}-50 rounded-lg text-xs font-semibold transition-all">
+        ${secondary.label}
+      </button>
+    `;
+  }
+
+  // More dropdown button (if there are more options or delete is available)
+  const hasMoreOptions = config.more && config.more.length > 0;
+  if (hasMoreOptions || canDelete) {
+    let dropdownItems = '';
+    
+    if (hasMoreOptions) {
+      config.more.forEach(item => {
+        dropdownItems += `
+          <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${item.status}', '${status}'); closeActionDropdown('${dropdownId}')"
+            class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
+            ${item.label}
+          </button>
+        `;
+      });
+    }
+
+    // Add divider if both more options and delete exist
+    if (hasMoreOptions && canDelete) {
+      dropdownItems += `<div class="h-px bg-gray-200 my-1"></div>`;
+    }
+
+    // Delete option (admin only)
+    if (canDelete) {
+      dropdownItems += `
+        <button onclick="event.stopPropagation(); closeActionDropdown('${dropdownId}'); confirmDeleteEnquiry('${id}')"
+          class="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          Delete
+        </button>
+      `;
+    }
+
+    buttonsHtml += `
+      <div class="relative action-dropdown-container" id="container-${dropdownId}">
+        <button onclick="event.stopPropagation(); toggleActionDropdown('${dropdownId}')"
+          class="px-2 py-1.5 border border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded-lg text-xs font-medium transition-all flex items-center gap-1">
+          More
+          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dropdown-arrow"><path d="m6 9 6 6 6-6"/></svg>
+        </button>
+        <div id="${dropdownId}" class="hidden absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+          ${dropdownItems}
+        </div>
+      </div>
+    `;
+  }
+
+  return `<div class="flex items-center gap-1.5 flex-wrap justify-center">${buttonsHtml}</div>`;
+}
+
+// Toggle dropdown visibility
+function toggleActionDropdown(dropdownId) {
+  // Close all other dropdowns first
+  document.querySelectorAll('[id^="dropdown-"]').forEach(el => {
+    if (el.id !== dropdownId) {
+      el.classList.add('hidden');
+    }
+  });
+  document.querySelectorAll('.dropdown-arrow').forEach(arrow => {
+    arrow.style.transform = '';
+  });
+
+  const dropdown = document.getElementById(dropdownId);
+  const arrow = dropdown.previousElementSibling.querySelector('.dropdown-arrow');
+  
+  if (dropdown.classList.contains('hidden')) {
+    dropdown.classList.remove('hidden');
+    if (arrow) arrow.style.transform = 'rotate(180deg)';
+  } else {
+    dropdown.classList.add('hidden');
+    if (arrow) arrow.style.transform = '';
+  }
+}
+
+// Close specific dropdown
+function closeActionDropdown(dropdownId) {
+  const dropdown = document.getElementById(dropdownId);
+  const arrow = dropdown?.previousElementSibling?.querySelector('.dropdown-arrow');
+  if (dropdown) dropdown.classList.add('hidden');
+  if (arrow) arrow.style.transform = '';
+}
+
+// Close all dropdowns when clicking outside
+function closeAllActionDropdowns() {
+  document.querySelectorAll('[id^="dropdown-"]').forEach(el => {
+    el.classList.add('hidden');
+  });
+  document.querySelectorAll('.dropdown-arrow').forEach(arrow => {
+    arrow.style.transform = '';
+  });
 }
 
 /* ======================
@@ -1505,6 +1683,10 @@ window.submitQuickUpdate = submitQuickUpdate;
 window.getActionButtons = getActionButtons;
 window.confirmDeleteEnquiry = confirmDeleteEnquiry;
 window.executeDeleteEnquiry = executeDeleteEnquiry;
+window.toggleActionDropdown = toggleActionDropdown;
+window.closeActionDropdown = closeActionDropdown;
+window.closeAllActionDropdowns = closeAllActionDropdowns;
+window.sortBy = sortBy;
 
 // Error handling exports
 window.closeErrorPopup = closeErrorPopup;
