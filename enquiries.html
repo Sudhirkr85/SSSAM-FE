@@ -115,14 +115,14 @@
           </div>
 
           <select id="statusFilter" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all bg-white">
-            <option value="">All Status</option>
             <option value="NEW">New</option>
+            <option value="">All Status</option>
             <option value="CONTACTED">Contacted</option>
             <option value="NO_RESPONSE">No Response</option>
             <option value="FOLLOW_UP">Follow Up</option>
             <option value="INTERESTED">Interested</option>
             <option value="NOT_INTERESTED">Not Interested</option>
-            <option value="ADMISSION_PROCESS">Admission</option>
+            <option value="ADMISSION_PROCESS">Admission Process</option>
             <option value="CONVERTED">Converted</option>
           </select>
 
@@ -142,6 +142,7 @@
               <tr>
                 <th class="px-6 py-3 text-left">Name</th>
                 <th class="px-6 py-3">Course</th>
+                <th class="px-6 py-3">Counselor</th>
                 <th class="px-6 py-3">Status</th>
                 <th class="px-6 py-3">Follow-Up</th>
                 <th class="px-6 py-3 text-center">Actions</th>
@@ -150,7 +151,7 @@
 
             <tbody id="enquiryTable">
               <tr>
-                <td colspan="5" class="text-center py-12">
+                <td colspan="6" class="text-center py-12">
                   <div class="flex flex-col items-center gap-3">
                     <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                       <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>

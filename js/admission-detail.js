@@ -59,6 +59,67 @@ async function loadAdmissionDetails() {
 }
 
 /* ======================
+STATUS CALCULATION
+====================== */
+function getAdmissionStatus(paid, total, dueDate) {
+    const remaining = total - paid;
+
+    if (remaining <= 0) {
+        return { status: 'Paid', color: 'green', bgClass: 'bg-green-100', textClass: 'text-green-700', icon: 'check-circle' };
+    }
+
+    if (paid > 0 && paid < total) {
+        return { status: 'Partial', color: 'amber', bgClass: 'bg-amber-100', textClass: 'text-amber-700', icon: 'clock' };
+    }
+
+    // Check if overdue
+    if (dueDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const due = new Date(dueDate);
+        due.setHours(0, 0, 0, 0);
+
+        if (today > due) {
+            const daysOverdue = Math.floor((today - due) / (1000 * 60 * 60 * 24));
+            return { status: 'Overdue', color: 'red', bgClass: 'bg-red-100', textClass: 'text-red-700', icon: 'alert-circle', daysOverdue };
+        }
+    }
+
+    return { status: 'Pending', color: 'gray', bgClass: 'bg-gray-100', textClass: 'text-gray-600', icon: 'circle' };
+}
+
+function getInstallmentStatus(inst, index, paidAmount, previousCumulative) {
+    const cumulativeForThis = previousCumulative + inst.amount;
+    const isPaid = paidAmount >= cumulativeForThis;
+    const isPartial = paidAmount > previousCumulative && paidAmount < cumulativeForThis;
+
+    if (isPaid) {
+        return { status: 'Paid', color: 'green', bgClass: 'bg-green-100', textClass: 'text-green-700', icon: 'check-circle', isPaid: true };
+    }
+
+    if (isPartial) {
+        const paidForThis = paidAmount - previousCumulative;
+        const remaining = inst.amount - paidForThis;
+        return { status: 'Partial', color: 'blue', bgClass: 'bg-blue-100', textClass: 'text-blue-700', icon: 'clock', isPaid: false, paidForThis, remaining };
+    }
+
+    // Check if overdue
+    if (inst.dueDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const due = new Date(inst.dueDate);
+        due.setHours(0, 0, 0, 0);
+
+        if (today > due) {
+            const daysOverdue = Math.floor((today - due) / (1000 * 60 * 60 * 24));
+            return { status: 'Overdue', color: 'red', bgClass: 'bg-red-100', textClass: 'text-red-700', icon: 'alert-circle', isPaid: false, daysOverdue };
+        }
+    }
+
+    return { status: 'Pending', color: 'gray', bgClass: 'bg-gray-100', textClass: 'text-gray-600', icon: 'circle', isPaid: false };
+}
+
+/* ======================
 RENDER ADMISSION DETAILS
 ====================== */
 function renderAdmissionDetails() {
@@ -96,23 +157,23 @@ function renderAdmissionDetails() {
         ? paymentMethod
         : `${paymentType} (Installment)`;
 
+    // Get due date for status calculation
+    const dueDate = currentAdmission.installments?.[0]?.dueDate || currentAdmission.dueDate || currentAdmission.createdAt;
+    const statusInfo = getAdmissionStatus(paidAmount, totalFees, dueDate);
+
     // Payment Status Badge
     const badgeContainer = document.getElementById('paymentStatusBadge');
-    if (isComplete) {
-        badgeContainer.innerHTML = `
-            <span class="inline-flex items-center gap-1.5 px-4 py-2 bg-green-100 text-green-700 rounded-xl text-sm font-medium">
-                <i data-lucide="check-circle" class="w-4 h-4"></i>
-                Fully Paid
-            </span>
-        `;
-    } else {
-        badgeContainer.innerHTML = `
-            <span class="inline-flex items-center gap-1.5 px-4 py-2 bg-amber-100 text-amber-700 rounded-xl text-sm font-medium">
-                <i data-lucide="clock" class="w-4 h-4"></i>
-                Payment Pending
-            </span>
-        `;
+    let extraText = '';
+    if (statusInfo.status === 'Overdue' && statusInfo.daysOverdue) {
+        extraText = ` (${statusInfo.daysOverdue}d)`;
     }
+
+    badgeContainer.innerHTML = `
+        <span class="inline-flex items-center gap-1.5 px-4 py-2 ${statusInfo.bgClass} ${statusInfo.textClass} rounded-xl text-sm font-medium">
+            <i data-lucide="${statusInfo.icon}" class="w-4 h-4"></i>
+            ${statusInfo.status}${extraText}
+        </span>
+    `;
     lucide.createIcons();
 
     // Payment Status Section
@@ -151,6 +212,12 @@ function renderAdmissionDetails() {
         } else {
             installmentSection.classList.add('hidden');
         }
+
+        // Update Pay Full button visibility
+        const payFullBtn = document.getElementById('payFullBtn');
+        if (payFullBtn) {
+            payFullBtn.style.display = remaining > 0 ? 'flex' : 'none';
+        }
     }
 }
 
@@ -163,38 +230,54 @@ function renderInstallments(installments, paidAmount) {
     let cumulativePaid = 0;
 
     const html = installments.map((inst, index) => {
+        const statusInfo = getInstallmentStatus(inst, index, paidAmount, cumulativePaid);
         cumulativePaid += inst.amount;
-        const isPaid = paidAmount >= cumulativePaid;
-        const status = isPaid ? 'Paid' : (paidAmount >= cumulativePaid - inst.amount ? 'Partial' : 'Pending');
 
-        const statusColors = {
-            'Paid': 'bg-green-100 text-green-700',
-            'Partial': 'bg-blue-100 text-blue-700',
-            'Pending': 'bg-gray-100 text-gray-600'
-        };
+        // Build status text with extra info
+        let statusText = statusInfo.status;
+        let extraInfo = '';
 
-        const statusIcons = {
-            'Paid': 'check-circle',
-            'Partial': 'clock',
-            'Pending': 'circle'
-        };
+        if (statusInfo.status === 'Partial' && statusInfo.paidForThis !== undefined) {
+            extraInfo = `<span class="text-xs text-blue-600">Paid: ${formatCurrency(statusInfo.paidForThis)} / Rem: ${formatCurrency(statusInfo.remaining)}</span>`;
+        } else if (statusInfo.status === 'Overdue' && statusInfo.daysOverdue) {
+            extraInfo = `<span class="text-xs text-red-600">Overdue by ${statusInfo.daysOverdue} days</span>`;
+        }
+
+        // Row background based on status
+        const rowBgClass = statusInfo.status === 'Overdue' ? 'bg-red-50/50' :
+                          statusInfo.status === 'Paid' ? 'bg-green-50/50' :
+                          statusInfo.status === 'Partial' ? 'bg-blue-50/50' : '';
+
+        // Action button
+        let actionButton = '';
+        if (!statusInfo.isPaid) {
+            const amountToPay = statusInfo.status === 'Partial' ? statusInfo.remaining : inst.amount;
+            actionButton = `
+                <button onclick="event.stopPropagation(); openPaymentModalForInstallment(${index}, ${amountToPay})"
+                    class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm">
+                    Pay
+                </button>
+            `;
+        } else {
+            actionButton = `<span class="text-gray-400 text-xs">-</span>`;
+        }
 
         return `
-            <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
-                <div class="flex items-center gap-3">
-                    <div class="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-sm font-semibold text-gray-600">
-                        ${index + 1}
-                    </div>
-                    <div>
-                        <p class="font-medium text-gray-800">${formatCurrency(inst.amount)}</p>
-                        <p class="text-xs text-gray-500">Due: ${formatDate(inst.dueDate)}</p>
-                    </div>
-                </div>
-                <span class="inline-flex items-center gap-1.5 px-3 py-1 ${statusColors[status]} rounded-lg text-xs font-medium">
-                    <i data-lucide="${statusIcons[status]}" class="w-3 h-3"></i>
-                    ${status}
-                </span>
-            </div>
+            <tr class="${rowBgClass} border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
+                <td class="px-4 py-3 text-gray-800 font-medium">${index + 1}</td>
+                <td class="px-4 py-3 text-gray-600">${formatDate(inst.dueDate)}</td>
+                <td class="px-4 py-3 font-medium text-gray-800">${formatCurrency(inst.amount)}</td>
+                <td class="px-4 py-3 text-center">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 ${statusInfo.bgClass} ${statusInfo.textClass} rounded-lg text-xs font-medium">
+                        <i data-lucide="${statusInfo.icon}" class="w-3.5 h-3.5"></i>
+                        ${statusText}
+                    </span>
+                    ${extraInfo ? `<div class="mt-1">${extraInfo}</div>` : ''}
+                </td>
+                <td class="px-4 py-3 text-center">
+                    ${actionButton}
+                </td>
+            </tr>
         `;
     }).join('');
 
@@ -250,11 +333,84 @@ function renderPaymentHistory() {
 /* ======================
 PAYMENT MODAL
 ====================== */
+let currentInstallmentIndex = null;
+
 function openPaymentModal() {
+    currentInstallmentIndex = null;
+
     // Reset form
     document.getElementById('amount').value = '';
     document.getElementById('paymentMode').value = 'Cash';
+    document.getElementById('installmentIndex').value = '';
     clearAmountError();
+
+    // Reset modal title and hide installment info
+    document.getElementById('paymentModalTitle').textContent = 'Add Payment';
+    document.getElementById('paymentModalSubtitle').textContent = 'Enter payment details';
+    document.getElementById('installmentInfo').classList.add('hidden');
+
+    // Show modal with animation
+    const modal = document.getElementById('paymentModal');
+    const modalContent = document.getElementById('paymentModalContent');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function openPaymentModalForInstallment(index, amount) {
+    currentInstallmentIndex = index;
+
+    // Pre-fill amount
+    document.getElementById('amount').value = amount;
+    document.getElementById('paymentMode').value = 'Cash';
+    document.getElementById('installmentIndex').value = index;
+    clearAmountError();
+
+    // Update modal title and show installment info
+    document.getElementById('paymentModalTitle').textContent = 'Pay Installment';
+    document.getElementById('paymentModalSubtitle').textContent = `Installment #${index + 1}`;
+    document.getElementById('installmentNumber').textContent = index + 1;
+    document.getElementById('installmentAmountDue').textContent = formatCurrency(amount);
+    document.getElementById('installmentInfo').classList.remove('hidden');
+
+    // Show modal with animation
+    const modal = document.getElementById('paymentModal');
+    const modalContent = document.getElementById('paymentModalContent');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function openPayFullModal() {
+    if (!currentAdmission) return;
+
+    const totalFees = currentAdmission.totalFees || 0;
+    const paidAmount = currentAdmission.paidAmount || 0;
+    const remaining = Math.max(0, totalFees - paidAmount);
+
+    if (remaining <= 0) {
+        showToast('info', 'Payment already complete');
+        return;
+    }
+
+    currentInstallmentIndex = null;
+
+    // Pre-fill with remaining amount
+    document.getElementById('amount').value = remaining;
+    document.getElementById('paymentMode').value = 'Cash';
+    document.getElementById('installmentIndex').value = '';
+    clearAmountError();
+
+    // Update modal title
+    document.getElementById('paymentModalTitle').textContent = 'Pay Full Amount';
+    document.getElementById('paymentModalSubtitle').textContent = `Clear remaining balance: ${formatCurrency(remaining)}`;
+    document.getElementById('installmentInfo').classList.add('hidden');
 
     // Show modal with animation
     const modal = document.getElementById('paymentModal');
@@ -404,6 +560,8 @@ async function submitEdit() {
 EXPORT
 ====================== */
 window.openPaymentModal = openPaymentModal;
+window.openPaymentModalForInstallment = openPaymentModalForInstallment;
+window.openPayFullModal = openPayFullModal;
 window.closePaymentModal = closePaymentModal;
 window.submitPayment = submitPayment;
 window.openEditModal = openEditModal;

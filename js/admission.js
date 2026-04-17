@@ -88,6 +88,68 @@ function updateCompletedWithRemainingCount() {
 }
 
 /* ======================
+STATUS CALCULATION
+====================== */
+function getPaymentStatus(paid, total, dueDate) {
+    const remaining = total - paid;
+
+    if (remaining <= 0) {
+        return { status: 'Paid', color: 'green', bgClass: 'bg-green-50', textClass: 'text-green-700' };
+    }
+
+    if (paid > 0 && paid < total) {
+        return { status: 'Partial', color: 'amber', bgClass: 'bg-amber-50', textClass: 'text-amber-700' };
+    }
+
+    // Check if overdue
+    if (dueDate) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const due = new Date(dueDate);
+        due.setHours(0, 0, 0, 0);
+
+        if (today > due) {
+            const daysOverdue = Math.floor((today - due) / (1000 * 60 * 60 * 24));
+            return { status: 'Overdue', color: 'red', bgClass: 'bg-red-50', textClass: 'text-red-700', daysOverdue };
+        }
+    }
+
+    return { status: 'Pending', color: 'gray', bgClass: 'bg-gray-50', textClass: 'text-gray-600' };
+}
+
+function getStatusBadge(statusInfo) {
+    const { status, color, daysOverdue } = statusInfo;
+    const icons = {
+        'Paid': 'check-circle',
+        'Partial': 'clock',
+        'Overdue': 'alert-circle',
+        'Pending': 'circle'
+    };
+
+    let extraText = '';
+    if (status === 'Overdue' && daysOverdue) {
+        extraText = ` (${daysOverdue}d)`;
+    }
+
+    return `
+        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-${color}-100 ${statusInfo.textClass} rounded-lg text-xs font-medium">
+            <i data-lucide="${icons[status]}" class="w-3.5 h-3.5"></i>
+            ${status}${extraText}
+        </span>
+    `;
+}
+
+function getRowBgClass(status) {
+    const bgClasses = {
+        'Paid': 'bg-green-50/30 hover:bg-green-50/50',
+        'Partial': 'bg-amber-50/30 hover:bg-amber-50/50',
+        'Overdue': 'bg-red-50/30 hover:bg-red-50/50',
+        'Pending': 'hover:bg-gray-50'
+    };
+    return bgClasses[status] || 'hover:bg-gray-50';
+}
+
+/* ======================
 RENDER
 ====================== */
 function renderTable() {
@@ -108,7 +170,7 @@ function renderTable() {
             <th class="px-6 py-3">Total Fees</th>
             <th class="px-6 py-3">Paid</th>
             <th class="px-6 py-3">Remaining</th>
-            <th class="px-6 py-3 text-center">Action</th>
+            <th class="px-6 py-3 text-center">Status</th>
         `;
     } else {
         thead.innerHTML = `
@@ -117,7 +179,8 @@ function renderTable() {
             <th class="px-6 py-3">Total Fees</th>
             <th class="px-6 py-3">Paid</th>
             <th class="px-6 py-3">Pending</th>
-            <th class="px-6 py-3 text-center">Action</th>
+            <th class="px-6 py-3">Due Date</th>
+            <th class="px-6 py-3 text-center">Status</th>
         `;
     }
 
@@ -125,13 +188,17 @@ function renderTable() {
         const paid = a.paidAmount || 0;
         const total = a.totalFees || 0;
         const pending = total - paid;
-        const isComplete = pending <= 0;
         const counselor = a.enquiryId?.assignedTo;
+
+        // Get due date from installments or admission
+        const dueDate = a.installments?.[0]?.dueDate || a.dueDate || a.createdAt;
+        const statusInfo = getPaymentStatus(paid, total, dueDate);
+        const rowBgClass = getRowBgClass(statusInfo.status);
 
         if (showCompletedWithRemaining) {
             // Show counselor details in this mode
             return `
-                <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
+                <tr class="${rowBgClass} transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
                     <td class="px-6 py-4">
                         <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
                         ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
@@ -143,20 +210,18 @@ function renderTable() {
                     </td>
                     <td class="px-6 py-4 font-medium text-gray-800">${formatCurrency(total)}</td>
                     <td class="px-6 py-4 text-green-600 font-medium">${formatCurrency(paid)}</td>
-                    <td class="px-6 py-4 ${isComplete ? 'text-green-600' : 'text-red-600'} font-medium">
-                        ${isComplete ? formatCurrency(Math.abs(pending)) + ' (overpaid)' : formatCurrency(pending)}
+                    <td class="px-6 py-4 ${pending <= 0 ? 'text-green-600' : 'text-red-600'} font-medium">
+                        ${pending <= 0 ? formatCurrency(Math.abs(pending)) + ' (overpaid)' : formatCurrency(pending)}
                     </td>
                     <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-                        <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-medium">
-                            <i data-lucide="check" class="w-3 h-3"></i> Completed
-                        </span>
+                        ${getStatusBadge(statusInfo)}
                     </td>
                 </tr>
             `;
         }
 
         return `
-            <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
+            <tr class="${rowBgClass} transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
                 <td class="px-6 py-4">
                     <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
                     ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
@@ -164,18 +229,14 @@ function renderTable() {
                 <td class="px-6 py-4 text-gray-700">${a.enquiryId?.courseInterested || '-'}</td>
                 <td class="px-6 py-4 font-medium text-gray-800">${formatCurrency(total)}</td>
                 <td class="px-6 py-4 text-green-600 font-medium">${formatCurrency(paid)}</td>
-                <td class="px-6 py-4 ${isComplete ? 'text-green-600' : 'text-red-600'} font-medium">
-                    ${isComplete ? '✓ Paid' : formatCurrency(pending)}
+                <td class="px-6 py-4 ${pending <= 0 ? 'text-green-600' : 'text-red-600'} font-medium">
+                    ${pending <= 0 ? '✓ Paid' : formatCurrency(pending)}
+                </td>
+                <td class="px-6 py-4 text-gray-600">
+                    ${formatDate(dueDate)}
                 </td>
                 <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-                    ${!isComplete ? `
-                        <button onclick="openPaymentModal('${a._id}')"
-                            class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm">
-                            Pay
-                        </button>
-                    ` : `<span class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-medium">
-                        <i data-lucide="check" class="w-3 h-3"></i> Completed
-                    </span>`}
+                    ${getStatusBadge(statusInfo)}
                 </td>
             </tr>
         `;
@@ -186,7 +247,7 @@ function renderTable() {
 
 function renderEmptyState() {
     const table = document.getElementById('admissionTable');
-    const colSpan = showCompletedWithRemaining ? 7 : 6;
+    const colSpan = 7;
     const message = showCompletedWithRemaining
         ? 'No completed admissions with remaining payment found'
         : 'Convert enquiries to see them here';

@@ -31,6 +31,9 @@ document.addEventListener('DOMContentLoaded', () => {
     currentView = 'all';
   }
 
+  // Set default status filter to NEW
+  document.getElementById('statusFilter').value = 'NEW';
+
   loadEnquiries();
 
   document.getElementById('searchInput').addEventListener('input', () => {
@@ -279,7 +282,7 @@ function filterData() {
 
 function resetFilters() {
   document.getElementById('searchInput').value = '';
-  document.getElementById('statusFilter').value = '';
+  document.getElementById('statusFilter').value = 'NEW';
   currentPage = 1;
   filterData();
 }
@@ -359,6 +362,9 @@ function renderTable(data) {
 
   table.innerHTML = data.map(e => {
     const isConverted = e.status === 'CONVERTED';
+    const counselor = e.assignedTo || e.counselorId || e.counselor;
+    const counselorName = counselor?.name || counselor?.fullName || 'Unassigned';
+
     return `
     <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='enquiry-detail.html?id=${e._id}'">
       <td class="px-6 py-4">
@@ -366,6 +372,7 @@ function renderTable(data) {
         <div class="text-xs text-gray-500">${e.mobile || ''}</div>
       </td>
       <td class="px-6 py-4 text-gray-700">${e.courseInterested || '-'}</td>
+      <td class="px-6 py-4 text-gray-600">${counselorName}</td>
       <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
       <td class="px-6 py-4 text-gray-600">${!isConverted && e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
       <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
@@ -379,7 +386,7 @@ function renderEmptyState() {
   const table = document.getElementById('enquiryTable');
   table.innerHTML = `
     <tr>
-      <td colspan="5" class="text-center py-12">
+      <td colspan="6" class="text-center py-12">
         <div class="flex flex-col items-center gap-3">
           <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
             <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
@@ -1337,18 +1344,36 @@ function getActionButtons(id, status) {
 
   const action = nextActions[status];
 
-  // Admin-only delete button
-  const deleteBtn = isAdmin() ? `
+  // Admin-only delete button - only for enquiries NOT in admission process or converted
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const isAdminUser = user.role === 'admin';
+  const isInAdmissionProcess = status === 'ADMISSION_PROCESS' || status === 'CONVERTED';
+
+  const deleteBtn = (isAdminUser && !isInAdmissionProcess) ? `
     <button onclick="event.stopPropagation(); confirmDeleteEnquiry('${id}')"
-      class="p-1 hover:bg-red-100 text-gray-400 hover:text-red-600 rounded transition-colors ml-1"
-      title="Delete">
-      <i data-lucide="trash-2" class="w-4 h-4"></i>
+      class="inline-flex items-center justify-center p-1.5 bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 rounded-lg transition-colors ml-2"
+      title="Delete Enquiry">
+      <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-trash-2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>
     </button>
   ` : '';
 
-  // For CONVERTED status, only show delete for admin
+  // For CONVERTED status, show no action buttons at all (admission completed)
   if (status === 'CONVERTED') {
-    return deleteBtn;
+    return '';
+  }
+
+  // For ADMISSION_PROCESS, no delete button, only admission actions
+  if (status === 'ADMISSION_PROCESS') {
+    return `
+      <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
+        class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
+        Continue Admission
+      </button>
+      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', 'FOLLOW_UP', '${status}')"
+        class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
+        Follow Up
+      </button>
+    `;
   }
 
   // Always show Follow Up button - pass current status so modal knows context
@@ -1360,31 +1385,19 @@ function getActionButtons(id, status) {
   `;
 
   if (!action) {
-    // For other terminal statuses, only show Follow Up + delete for admin
+    // For terminal statuses (NOT_INTERESTED), show only Follow Up + delete for admin
     return followUpBtn + deleteBtn;
   }
 
-  if (action.convert) {
-    // For admission process, show Setup Admission (navigate to detail) + Follow Up + delete for admin
-    return `
-      <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
-        class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
-        Setup Admission
-      </button>
-      ${followUpBtn}
-      ${deleteBtn}
-    `;
-  } else {
-    // For other statuses, show Next Status + Follow Up + delete for admin
-    return `
-      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}', '${status}')"
-        class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
-        ${action.label}
-      </button>
-      ${followUpBtn}
-      ${deleteBtn}
-    `;
-  }
+  // For all other regular statuses, show Next Status + Follow Up + delete for admin
+  return `
+    <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}', '${status}')"
+      class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
+      ${action.label}
+    </button>
+    ${followUpBtn}
+    ${deleteBtn}
+  `;
 }
 
 /* ======================
