@@ -151,7 +151,6 @@ function renderAdmissionDetails() {
 
     // Counselor Info
     document.getElementById('counselorName').textContent = counselor.name || 'Unassigned';
-    document.getElementById('counselorEmail').textContent = counselor.email || '-';
 
     // Payment Summary
     const totalFees = currentAdmission.totalFees || 0;
