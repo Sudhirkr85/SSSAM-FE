@@ -366,7 +366,7 @@ function openPaymentModal(id) {
 
     // Reset form
     document.getElementById('amount').value = '';
-    document.getElementById('paymentMode').value = 'Cash';
+    document.getElementById('paymentMode').value = 'CASH';
     clearAmountError();
 
     // Show modal with animation
@@ -432,7 +432,7 @@ async function submitPayment() {
         await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, {
             admissionId: selectedAdmissionId,
             amount,
-            paymentMode
+            paymentMode: paymentMode.toUpperCase()
         });
 
         showToast('success', 'Payment added successfully');

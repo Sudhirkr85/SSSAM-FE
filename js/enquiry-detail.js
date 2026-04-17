@@ -1,6 +1,19 @@
 let currentId = null;
 let confirmCallback = null;
 
+/* ======================
+ROLE CHECK HELPERS
+====================== */
+function isAdmin() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.role === 'admin';
+}
+
+function isCounselor() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.role === 'counselor' || user.role === 'user';
+}
+
 // Status labels - text only, no icons
 const statusLabels = {
     'CONTACTED': { text: 'Contacted', color: 'blue' },
@@ -16,6 +29,12 @@ const statusLabels = {
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
+    // Check role and hide timeline for non-admin users
+    const timelineSection = document.getElementById('timelineSection');
+    if (timelineSection && !isAdmin()) {
+        timelineSection.classList.add('hidden');
+    }
+
     // Get enquiry ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     currentId = urlParams.get('id');
@@ -712,6 +731,8 @@ function executeConfirmAction() {
 /* ======================
 EXPORT
 ====================== */
+window.isAdmin = isAdmin;
+window.isCounselor = isCounselor;
 window.openStatusModal = openStatusModal;
 window.closeStatusModal = closeStatusModal;
 window.submitStatusUpdate = submitStatusUpdate;

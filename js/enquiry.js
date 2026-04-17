@@ -10,21 +10,42 @@ const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
 
 /* ======================
+USER PROFILE DISPLAY
+====================== */
+function updateUserProfileDisplay() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const name = user.name || user.fullName || 'User';
+  const role = user.role || 'counselor';
+
+  // Get initials from name
+  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+
+  // Update navbar display elements
+  const initialsEl = document.getElementById('userInitials');
+  const nameEl = document.getElementById('userNameDisplay');
+  const roleEl = document.getElementById('userRoleDisplay');
+
+  if (initialsEl) initialsEl.textContent = initials;
+  if (nameEl) nameEl.textContent = name;
+  if (roleEl) roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+}
+
+/* ======================
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
   // Set initial view based on role
   if (isCounselor()) {
-    currentView = 'my-leads';
+    currentView = 'all'; // Counselors now see all enquiries by default
     // Show view tabs for counselors
     const viewTabs = document.getElementById('viewTabs');
     if (viewTabs) {
       viewTabs.classList.remove('hidden');
     }
-    // Show "All (Read-Only)" tab only for counselors
-    const allReadonlyTab = document.querySelector('[data-view-tab="all-readonly"]');
-    if (allReadonlyTab) {
-      allReadonlyTab.classList.remove('hidden');
+    // Show "My Leads" tab for counselors to filter to their own
+    const myLeadsTab = document.querySelector('[data-view-tab="my-leads"]');
+    if (myLeadsTab) {
+      myLeadsTab.classList.remove('hidden');
     }
   } else {
     // Admin sees all enquiries by default
@@ -32,8 +53,15 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // Set default status filter to NEW
-  document.getElementById('statusFilter').value = 'NEW';
+  const statusFilter = document.getElementById('statusFilter');
+  if (statusFilter) {
+    statusFilter.value = 'NEW';
+  }
 
+  // Update user profile display in navbar
+  updateUserProfileDisplay();
+
+  // Always load enquiries with default filter
   loadEnquiries();
 
   document.getElementById('searchInput').addEventListener('input', () => {
@@ -45,11 +73,9 @@ document.addEventListener('DOMContentLoaded', () => {
     filterData();
   });
   document.getElementById('resetFilters').addEventListener('click', () => {
-    // Reset to default view based on role
-    if (isCounselor()) {
-      currentView = 'my-leads';
-      updateViewTabs();
-    }
+    // Reset to default view - both admin and counselor default to 'all'
+    currentView = 'all';
+    updateViewTabs();
     resetFilters();
   });
 
@@ -85,7 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
 LOAD DATA - ROLE BASED
 ====================== */
 let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
-let currentView = 'my-leads'; // 'my-leads', 'unassigned', 'all'
+let currentView = 'all'; // 'all', 'my-leads', 'unassigned'
 
 async function loadEnquiries() {
   try {
@@ -109,11 +135,12 @@ async function loadEnquiries() {
       } else if (currentView === 'my-leads') {
         params.assignedTo = 'me';
       }
+      // For 'all' or 'all-readonly' view, don't set assignedTo filter - show all enquiries
       endpoint = API_ENDPOINTS.ENQUIRIES.GET_ALL;
     } else {
       // Admin: can view all or use GET_ALL_ADMIN for read-only view
-      endpoint = currentView === 'all-readonly' 
-        ? API_ENDPOINTS.ENQUIRIES.GET_ALL_ADMIN 
+      endpoint = currentView === 'all-readonly'
+        ? API_ENDPOINTS.ENQUIRIES.GET_ALL_ADMIN
         : API_ENDPOINTS.ENQUIRIES.GET_ALL;
     }
 
@@ -231,6 +258,7 @@ VIEW SWITCHERS (Role Based)
 function switchToMyLeads() {
   currentView = 'my-leads';
   currentPage = 1;
+  // Keep status filter as is (NEW by default)
   loadEnquiries();
   updateViewTabs();
 }
@@ -242,19 +270,22 @@ function switchToUnassigned() {
   }
   currentView = 'unassigned';
   currentPage = 1;
+  // Keep status filter as is (NEW by default)
+  loadEnquiries();
+  updateViewTabs();
+}
+
+function switchToAll() {
+  // Both admin and counselor can view all enquiries
+  currentView = 'all';
+  currentPage = 1;
   loadEnquiries();
   updateViewTabs();
 }
 
 function switchToAllReadonly() {
-  if (!isCounselor()) {
-    showErrorPopup('Access Denied', 'This view is only available for counselors');
-    return;
-  }
-  currentView = 'all-readonly';
-  currentPage = 1;
-  loadEnquiries();
-  updateViewTabs();
+  // Redirect to regular all view - deprecated, use switchToAll
+  switchToAll();
 }
 
 function updateViewTabs() {
@@ -376,7 +407,7 @@ function renderTable(data) {
       <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
       <td class="px-6 py-4 text-gray-600">${!isConverted && e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
       <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-        ${getActionButtons(e._id, e.status)}
+        ${getActionButtons(e._id, e.status, e.assignedTo?._id || e.assignedTo || e.counselorId?._id || e.counselorId)}
       </td>
     </tr>
   `}).join('');
@@ -1329,7 +1360,7 @@ Notes:
 /* ======================
 ACTION BUTTONS HELPER
 ====================== */
-function getActionButtons(id, status) {
+function getActionButtons(id, status, assignedToId) {
   // Define next actions based on current status
   const nextActions = {
     'NEW': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
@@ -1344,11 +1375,18 @@ function getActionButtons(id, status) {
 
   const action = nextActions[status];
 
-  // Admin-only delete button - only for enquiries NOT in admission process or converted
+  // Get current user info
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const isAdminUser = user.role === 'admin';
-  const isInAdmissionProcess = status === 'ADMISSION_PROCESS' || status === 'CONVERTED';
+  const currentUserId = user._id || user.id;
 
+  // Check if counselor can take action on this enquiry
+  const isUnassigned = !assignedToId;
+  const isOwnEnquiry = assignedToId === currentUserId;
+  const canTakeAction = isAdminUser || isUnassigned || isOwnEnquiry;
+
+  // Admin-only delete button - only for enquiries NOT in admission process or converted
+  const isInAdmissionProcess = status === 'ADMISSION_PROCESS' || status === 'CONVERTED';
   const deleteBtn = (isAdminUser && !isInAdmissionProcess) ? `
     <button onclick="event.stopPropagation(); confirmDeleteEnquiry('${id}')"
       class="inline-flex items-center justify-center p-1.5 bg-red-50 hover:bg-red-100 text-red-500 hover:text-red-700 rounded-lg transition-colors ml-2"
@@ -1362,8 +1400,9 @@ function getActionButtons(id, status) {
     return '';
   }
 
-  // For ADMISSION_PROCESS, no delete button, only admission actions
+  // For ADMISSION_PROCESS, no delete button, only admission actions (if can take action)
   if (status === 'ADMISSION_PROCESS') {
+    if (!canTakeAction) return '';
     return `
       <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
         class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
@@ -1374,6 +1413,11 @@ function getActionButtons(id, status) {
         Follow Up
       </button>
     `;
+  }
+
+  // If counselor cannot take action (other counselor's enquiry), show no buttons
+  if (!canTakeAction) {
+    return '';
   }
 
   // Always show Follow Up button - pass current status so modal knows context
@@ -1468,6 +1512,16 @@ window.closeSuccessPopup = closeSuccessPopup;
 window.closeConfirmActionPopup = closeConfirmActionPopup;
 
 // View switcher exports
+window.switchToAll = switchToAll;
 window.switchToMyLeads = switchToMyLeads;
 window.switchToUnassigned = switchToUnassigned;
 window.switchToAllReadonly = switchToAllReadonly;
+
+// User profile exports
+window.updateUserProfileDisplay = updateUserProfileDisplay;
+
+// Logout function
+window.logout = function() {
+  localStorage.clear();
+  window.location.href = 'index.html';
+};

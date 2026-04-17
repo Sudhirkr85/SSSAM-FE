@@ -340,7 +340,8 @@ function openPaymentModal() {
 
     // Reset form
     document.getElementById('amount').value = '';
-    document.getElementById('paymentMode').value = 'Cash';
+    const paymentModeField = document.getElementById('paymentMode');
+    if (paymentModeField) paymentModeField.value = 'CASH';
     document.getElementById('installmentIndex').value = '';
     clearAmountError();
 
@@ -365,7 +366,8 @@ function openPaymentModalForInstallment(index, amount) {
 
     // Pre-fill amount
     document.getElementById('amount').value = amount;
-    document.getElementById('paymentMode').value = 'Cash';
+    const paymentModeField = document.getElementById('paymentMode');
+    if (paymentModeField) paymentModeField.value = 'CASH';
     document.getElementById('installmentIndex').value = index;
     clearAmountError();
 
@@ -403,7 +405,8 @@ function openPayFullModal() {
 
     // Pre-fill with remaining amount
     document.getElementById('amount').value = remaining;
-    document.getElementById('paymentMode').value = 'Cash';
+    const paymentModeField = document.getElementById('paymentMode');
+    if (paymentModeField) paymentModeField.value = 'CASH';
     document.getElementById('installmentIndex').value = '';
     clearAmountError();
 
@@ -486,7 +489,7 @@ async function submitPayment() {
         await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, {
             admissionId: currentAdmissionId,
             amount,
-            paymentMode
+            paymentMode: paymentMode.toUpperCase()
         });
 
         showToast('success', 'Payment added successfully');
