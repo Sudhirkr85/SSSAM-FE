@@ -125,3 +125,67 @@ async function apiDelete(url) {
     const res = await api.delete(url);
     return res.data.data || res.data;
 }
+
+/* ======================
+ROLE-BASED UTILITIES
+====================== */
+function getCurrentUser() {
+    try {
+        return JSON.parse(localStorage.getItem('user') || '{}');
+    } catch {
+        return {};
+    }
+}
+
+function getUserRole() {
+    return getCurrentUser().role || 'counselor';
+}
+
+function isAdmin() {
+    return getUserRole() === 'admin';
+}
+
+function isCounselor() {
+    return getUserRole() === 'counselor';
+}
+
+// Get dashboard endpoint based on user role
+function getDashboardEndpoint() {
+    return isCounselor() 
+        ? API_ENDPOINTS.DASHBOARD.COUNSELOR 
+        : API_ENDPOINTS.DASHBOARD.GET;
+}
+
+// Check if user has access to a feature
+function hasAccess(feature) {
+    const role = getUserRole();
+    const permissions = {
+        'dashboard': ['admin', 'counselor'],
+        'counselor_dashboard': ['counselor'],
+        'reports': ['admin'],
+        'revenue_stats': ['admin'],
+        'enquiry_stats': ['admin'],
+        'admissions_report': ['admin'],
+        'fees_report': ['admin'],
+        'counselor_performance': ['admin'],
+        'course_performance': ['admin'],
+        'today_calls': ['admin', 'counselor'],
+        'followups': ['admin', 'counselor'],
+        'installment_alerts': ['admin', 'counselor'],
+        'all_enquiries': ['admin'],
+        'assign_enquiry': ['admin'],
+        'delete_enquiry': ['admin'],
+        'lock_admission': ['admin'],
+        'payment_update': ['admin']
+    };
+    return permissions[feature]?.includes(role) || false;
+}
+
+// Handle 403 errors for role-restricted APIs
+function handleRoleError(error, feature) {
+    if (error.response?.status === 403) {
+        console.warn(`Access denied: ${feature} requires elevated permissions`);
+        return { accessDenied: true, message: error.response.data?.message || 'Access denied' };
+    }
+    throw error;
+}

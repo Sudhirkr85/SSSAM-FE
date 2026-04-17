@@ -6,17 +6,31 @@ document.addEventListener('DOMContentLoaded', () => {
 
 async function loadDashboard() {
     try {
-        // Use the proper dashboard API endpoint
-        const res = await apiGet(API_ENDPOINTS.DASHBOARD.GET);
+        // Use role-based dashboard API endpoint
+        const endpoint = getDashboardEndpoint();
+        const res = await apiGet(endpoint);
         const data = res.data || res;
 
-        // Update dashboard counts from API response
-        // Main dashboard returns: totalEnquiries, totalConversions, overdueFollowUps, todayFollowUps
-        document.getElementById('totalEnquiries').textContent = data.totalEnquiries || 0;
-        document.getElementById('newEnquiries').textContent = data.todayFollowUps || data.todayEnquiries || 0;
-        document.getElementById('overdueEnquiries').textContent = data.overdueFollowUps || data.overdueEnquiries || 0;
-        document.getElementById('convertedEnquiries').textContent = data.totalConversions || data.convertedEnquiries || 0;
-    } catch {
+        // Handle different response structures based on role
+        if (isCounselor()) {
+            // Counselor dashboard response structure
+            document.getElementById('totalEnquiries').textContent = data.enquiries?.totalAssigned || data.totalEnquiries || 0;
+            document.getElementById('newEnquiries').textContent = data.enquiries?.today || data.todayEnquiries || 0;
+            document.getElementById('overdueEnquiries').textContent = data.followUps?.overdue || data.overdueFollowUps || 0;
+            document.getElementById('convertedEnquiries').textContent = data.conversions || data.totalConversions || 0;
+        } else {
+            // Admin dashboard response structure
+            document.getElementById('totalEnquiries').textContent = data.totalEnquiries || 0;
+            document.getElementById('newEnquiries').textContent = data.todayFollowUps || data.todayEnquiries || 0;
+            document.getElementById('overdueEnquiries').textContent = data.overdueFollowUps || data.overdueEnquiries || 0;
+            document.getElementById('convertedEnquiries').textContent = data.totalConversions || data.convertedEnquiries || 0;
+        }
+    } catch (error) {
+        // Check for 403 access denied
+        if (error.response?.status === 403) {
+            showToast('error', 'Access denied to dashboard');
+            return;
+        }
         // Fallback: try to fetch from enquiries endpoint
         try {
             const totalRes = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { limit: 1 });
