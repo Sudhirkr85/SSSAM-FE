@@ -86,7 +86,7 @@
             <main class="p-6 space-y-6 overflow-y-auto">
 
                 <!-- STATS -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
 
                     <div class="bg-white p-5 rounded-xl shadow-sm">
                         <div class="flex items-center gap-3">
@@ -96,6 +96,30 @@
                             <div>
                                 <p class="text-sm text-gray-500">Total Admissions</p>
                                 <p id="totalAdmissions" class="text-2xl font-bold text-gray-800">0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="wallet" class="w-6 h-6 text-emerald-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Total Received</p>
+                                <p id="totalReceived" class="text-2xl font-bold text-emerald-600">₹0</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-5 rounded-xl shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                                <i data-lucide="clock" class="w-6 h-6 text-red-600"></i>
+                            </div>
+                            <div>
+                                <p class="text-sm text-gray-500">Total Remaining</p>
+                                <p id="totalRemaining" class="text-2xl font-bold text-red-600">₹0</p>
                             </div>
                         </div>
                     </div>
@@ -124,6 +148,19 @@
                         </div>
                     </div>
 
+                </div>
+
+                <!-- FILTERS -->
+                <div class="bg-white p-4 rounded-xl shadow flex flex-wrap gap-4 items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="showCompletedWithRemaining" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
+                            <span class="text-sm text-gray-700">Show Completed with Remaining Payment</span>
+                        </label>
+                    </div>
+                    <div class="text-sm text-gray-500">
+                        <span id="completedWithRemainingCount" class="font-medium text-amber-600 hidden">0 completed with remaining</span>
+                    </div>
                 </div>
 
                 <!-- TABLE -->

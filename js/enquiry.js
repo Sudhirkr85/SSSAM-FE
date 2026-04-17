@@ -23,10 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
     currentPage = 1;
     filterData();
   });
-  document.getElementById('courseFilter').addEventListener('change', () => {
-    currentPage = 1;
-    filterData();
-  });
   document.getElementById('resetFilters').addEventListener('click', resetFilters);
 
   // Course dropdown change handler (create modal)
@@ -66,7 +62,6 @@ async function loadEnquiries() {
   try {
     const search = document.getElementById('searchInput').value.toLowerCase().trim();
     const status = document.getElementById('statusFilter').value;
-    const course = document.getElementById('courseFilter').value;
 
     const params = {
       page: currentPage,
@@ -75,7 +70,6 @@ async function loadEnquiries() {
 
     if (search) params.search = search;
     if (status) params.status = status;
-    if (course) params.course = course;
 
     const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
 
@@ -104,7 +98,6 @@ function filterData() {
 function resetFilters() {
   document.getElementById('searchInput').value = '';
   document.getElementById('statusFilter').value = '';
-  document.getElementById('courseFilter').value = '';
   currentPage = 1;
   filterData();
 }
@@ -182,7 +175,9 @@ function renderTable(data) {
     return;
   }
 
-  table.innerHTML = data.map(e => `
+  table.innerHTML = data.map(e => {
+    const isConverted = e.status === 'CONVERTED';
+    return `
     <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='enquiry-detail.html?id=${e._id}'">
       <td class="px-6 py-4">
         <div class="font-medium text-gray-900">${e.name || '-'}</div>
@@ -190,12 +185,12 @@ function renderTable(data) {
       </td>
       <td class="px-6 py-4 text-gray-700">${e.courseInterested || '-'}</td>
       <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
-      <td class="px-6 py-4 text-gray-600">${e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
+      <td class="px-6 py-4 text-gray-600">${!isConverted && e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
       <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
         ${getActionButtons(e._id, e.status)}
       </td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 function renderEmptyState() {
@@ -937,6 +932,11 @@ function getActionButtons(id, status) {
 
   const action = nextActions[status];
 
+  // For CONVERTED status, don't show any actions
+  if (status === 'CONVERTED') {
+    return '';
+  }
+
   // Always show Follow Up button - pass current status so modal knows context
   const followUpBtn = `
     <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', 'FOLLOW_UP', '${status}')"
@@ -946,7 +946,7 @@ function getActionButtons(id, status) {
   `;
 
   if (!action) {
-    // For terminal statuses, only show Follow Up
+    // For other terminal statuses, only show Follow Up
     return followUpBtn;
   }
 

@@ -651,9 +651,41 @@ async function submitSetupFees() {
         if (backendErrors && backendErrors.length > 0) {
             errorMsg = backendErrors.map(e => e.message).join(', ');
         }
-        showToast('error', errorMsg);
         console.error('Error:', err);
+
+        // Close setup modal and show error in centered popup
+        closeSetupFeesModal();
+        setTimeout(() => {
+            showErrorModal(errorMsg);
+        }, 300);
     }
+}
+
+// Error Modal - centered popup for errors
+function showErrorModal(message) {
+    const modal = document.getElementById('errorModal');
+    const modalContent = document.getElementById('errorModalContent');
+    const errorText = document.getElementById('errorModalText');
+
+    if (errorText) errorText.textContent = message;
+
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function closeErrorModal() {
+    const modal = document.getElementById('errorModal');
+    const modalContent = document.getElementById('errorModalContent');
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
 }
 
 /* ======================
@@ -692,3 +724,5 @@ window.addInstallmentRow = addInstallmentRow;
 window.removeInstallmentRow = removeInstallmentRow;
 window.closeConfirmModal = closeConfirmModal;
 window.executeConfirmAction = executeConfirmAction;
+window.showErrorModal = showErrorModal;
+window.closeErrorModal = closeErrorModal;

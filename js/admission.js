@@ -1,5 +1,6 @@
 let admissions = [];
 let selectedAdmissionId = null;
+let showCompletedWithRemaining = false;
 
 // Pagination state
 let currentPage = 1;
@@ -18,6 +19,16 @@ document.addEventListener('DOMContentLoaded', () => {
     if (amountInput) {
         amountInput.addEventListener('input', clearAmountError);
     }
+
+    // Filter checkbox listener
+    const filterCheckbox = document.getElementById('showCompletedWithRemaining');
+    if (filterCheckbox) {
+        filterCheckbox.addEventListener('change', (e) => {
+            showCompletedWithRemaining = e.target.checked;
+            currentPage = 1;
+            loadAdmissions();
+        });
+    }
 });
 
 /* ======================
@@ -25,10 +36,17 @@ LOAD DATA
 ====================== */
 async function loadAdmissions() {
     try {
-        const res = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, {
+        const params = {
             page: currentPage,
             limit: ITEMS_PER_PAGE
-        });
+        };
+
+        // Add filter for completed with remaining if checked
+        if (showCompletedWithRemaining) {
+            params.filter = 'completed_with_remaining';
+        }
+
+        const res = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, params);
 
         admissions = res.admissions || [];
         paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
@@ -37,9 +55,35 @@ async function loadAdmissions() {
         renderTable();
         renderStats();
         updatePaginationInfoFromServer(paginationData);
+
+        // Update completed with remaining count
+        updateCompletedWithRemainingCount();
     } catch (err) {
         showToast('error', 'Failed to load admissions');
         renderEmptyState();
+    }
+}
+
+/* ======================
+COMPLETED WITH REMAINING COUNT
+====================== */
+function updateCompletedWithRemainingCount() {
+    const countElement = document.getElementById('completedWithRemainingCount');
+    if (!countElement) return;
+
+    // Calculate completed admissions with remaining payment
+    const completedWithRemaining = admissions.filter(a => {
+        const paid = a.paidAmount || 0;
+        const total = a.totalFees || 0;
+        // Completed but has remaining (anomaly)
+        return paid >= total && (total - paid) < 0;
+    });
+
+    if (completedWithRemaining.length > 0) {
+        countElement.textContent = `${completedWithRemaining.length} completed with remaining`;
+        countElement.classList.remove('hidden');
+    } else {
+        countElement.classList.add('hidden');
     }
 }
 
@@ -48,10 +92,33 @@ RENDER
 ====================== */
 function renderTable() {
     const table = document.getElementById('admissionTable');
+    const thead = document.querySelector('thead tr');
 
     if (!admissions.length) {
         renderEmptyState();
         return;
+    }
+
+    // Update table headers based on filter
+    if (showCompletedWithRemaining) {
+        thead.innerHTML = `
+            <th class="px-6 py-3 text-left">Name</th>
+            <th class="px-6 py-3">Course</th>
+            <th class="px-6 py-3">Counselor</th>
+            <th class="px-6 py-3">Total Fees</th>
+            <th class="px-6 py-3">Paid</th>
+            <th class="px-6 py-3">Remaining</th>
+            <th class="px-6 py-3 text-center">Action</th>
+        `;
+    } else {
+        thead.innerHTML = `
+            <th class="px-6 py-3 text-left">Name</th>
+            <th class="px-6 py-3">Course</th>
+            <th class="px-6 py-3">Total Fees</th>
+            <th class="px-6 py-3">Paid</th>
+            <th class="px-6 py-3">Pending</th>
+            <th class="px-6 py-3 text-center">Action</th>
+        `;
     }
 
     table.innerHTML = admissions.map(a => {
@@ -59,9 +126,37 @@ function renderTable() {
         const total = a.totalFees || 0;
         const pending = total - paid;
         const isComplete = pending <= 0;
+        const counselor = a.enquiryId?.assignedTo;
+
+        if (showCompletedWithRemaining) {
+            // Show counselor details in this mode
+            return `
+                <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
+                    <td class="px-6 py-4">
+                        <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
+                        ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
+                    </td>
+                    <td class="px-6 py-4 text-gray-700">${a.enquiryId?.courseInterested || '-'}</td>
+                    <td class="px-6 py-4">
+                        <div class="text-sm text-gray-800">${counselor?.name || 'Unassigned'}</div>
+                        ${counselor?.email ? `<div class="text-xs text-gray-500">${counselor.email}</div>` : ''}
+                    </td>
+                    <td class="px-6 py-4 font-medium text-gray-800">${formatCurrency(total)}</td>
+                    <td class="px-6 py-4 text-green-600 font-medium">${formatCurrency(paid)}</td>
+                    <td class="px-6 py-4 ${isComplete ? 'text-green-600' : 'text-red-600'} font-medium">
+                        ${isComplete ? formatCurrency(Math.abs(pending)) + ' (overpaid)' : formatCurrency(pending)}
+                    </td>
+                    <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
+                        <span class="inline-flex items-center gap-1 px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-medium">
+                            <i data-lucide="check" class="w-3 h-3"></i> Completed
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }
 
         return `
-            <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+            <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
                 <td class="px-6 py-4">
                     <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
                     ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
@@ -72,7 +167,7 @@ function renderTable() {
                 <td class="px-6 py-4 ${isComplete ? 'text-green-600' : 'text-red-600'} font-medium">
                     ${isComplete ? '✓ Paid' : formatCurrency(pending)}
                 </td>
-                <td class="px-6 py-4 text-center">
+                <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
                     ${!isComplete ? `
                         <button onclick="openPaymentModal('${a._id}')"
                             class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm">
@@ -85,25 +180,32 @@ function renderTable() {
             </tr>
         `;
     }).join('');
+
+    lucide.createIcons();
 }
 
 function renderEmptyState() {
     const table = document.getElementById('admissionTable');
+    const colSpan = showCompletedWithRemaining ? 7 : 6;
+    const message = showCompletedWithRemaining
+        ? 'No completed admissions with remaining payment found'
+        : 'Convert enquiries to see them here';
     table.innerHTML = `
         <tr>
-            <td colspan="6" class="text-center py-12">
+            <td colspan="${colSpan}" class="text-center py-12">
                 <div class="flex flex-col items-center gap-3">
                     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                         <i data-lucide="graduation-cap" class="w-8 h-8 text-gray-400"></i>
                     </div>
                     <div>
                         <p class="text-gray-800 font-medium">No admissions yet</p>
-                        <p class="text-gray-500 text-sm">Convert enquiries to see them here</p>
+                        <p class="text-gray-500 text-sm">${message}</p>
                     </div>
                 </div>
             </td>
         </tr>
     `;
+    lucide.createIcons();
 }
 
 /* ======================
@@ -114,9 +216,22 @@ function renderStats() {
     const completed = admissions.filter(a => (a.paidAmount || 0) >= (a.totalFees || 0)).length;
     const pending = admissions.length - completed;
 
+    // Calculate total received and remaining from all admissions data
+    let totalReceived = 0;
+    let totalRemaining = 0;
+
+    admissions.forEach(a => {
+        const paid = a.paidAmount || 0;
+        const totalFees = a.totalFees || 0;
+        totalReceived += paid;
+        totalRemaining += Math.max(0, totalFees - paid);
+    });
+
     document.getElementById('totalAdmissions').textContent = total;
     document.getElementById('pendingCount').textContent = pending;
     document.getElementById('completedCount').textContent = completed;
+    document.getElementById('totalReceived').textContent = formatCurrency(totalReceived);
+    document.getElementById('totalRemaining').textContent = formatCurrency(totalRemaining);
 }
 
 /* ======================
@@ -276,3 +391,5 @@ window.submitPayment = submitPayment;
 window.changePage = changePage;
 window.goToPage = goToPage;
 window.goToLastPage = goToLastPage;
+window.renderEmptyState = renderEmptyState;
+window.updateCompletedWithRemainingCount = updateCompletedWithRemainingCount;
