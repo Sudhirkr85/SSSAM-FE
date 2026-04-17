@@ -53,6 +53,9 @@ async function loadAdmissionDetails() {
 
         renderAdmissionDetails();
         renderPaymentHistory();
+
+        // Re-setup WhatsApp after dynamic button is created
+        setupWhatsAppIntegration();
     } catch (err) {
         showToast('error', 'Failed to load admission details');
         console.error(err);
@@ -132,18 +135,16 @@ function renderAdmissionDetails() {
     // Student Info
     document.getElementById('studentName').textContent = enquiry.name || '-';
 
-    // Mobile with WhatsApp icon
-    const mobile = enquiry.mobile || '-';
+    // Mobile number - check multiple possible locations in data
+    console.log('Admission data:', currentAdmission);
+    console.log('Enquiry data:', enquiry);
+    const mobile = enquiry.mobile || currentAdmission.mobile || currentAdmission.studentMobile || enquiry.phone || '-';
+    console.log('Found mobile:', mobile);
     const mobileEl = document.getElementById('studentMobile');
-    if (mobileEl && mobile !== '-') {
-        mobileEl.innerHTML = `
-            <span class="text-gray-700">${mobile}</span>
-            <button id="studentMobileBtn" class="ml-2 inline-flex items-center justify-center w-8 h-8 bg-green-500 hover:bg-green-600 text-white rounded-full transition-colors" title="Chat on WhatsApp">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21l1.65-3.8a9 9 0 1 1 3.4 2.9L3 21"/><path d="M9 10a.5.5 0 0 0 1 0V9a.5.5 0 0 0-1 0v1a5 5 0 0 0 5 5h1a.5.5 0 0 0 0-1h-1a.5.5 0 0 0 0 1"/></svg>
-            </button>
-        `;
-    } else if (mobileEl) {
+    if (mobileEl) {
         mobileEl.textContent = mobile;
+        // Store mobile in a data attribute for WhatsApp to use
+        mobileEl.dataset.mobile = mobile !== '-' ? mobile.replace(/\D/g, '') : '';
     }
 
     document.getElementById('studentCourse').querySelector('span').textContent = currentAdmission.course || enquiry.courseInterested || '-';
@@ -656,7 +657,8 @@ function generateWhatsAppMessage() {
     const counselorName = counselor.name?.split(' ')[0] || 'Counselor';
 
     const name = enquiry.name || 'Student';
-    const mobile = enquiry.mobile || '-';
+    // Check multiple possible locations for mobile
+    const mobile = enquiry.mobile || currentAdmission.mobile || currentAdmission.studentMobile || enquiry.phone || '-';
     const course = currentAdmission.course || enquiry.courseInterested || 'Course';
     const remaining = currentAdmission.pendingAmount || 0;
     const dueDate = currentAdmission.installments?.[0]?.dueDate || new Date();
@@ -701,9 +703,10 @@ function openWhatsApp() {
     if (!messageTextarea || !mobileSpan) return;
 
     const message = messageTextarea.value.trim();
-    const mobile = mobileSpan.textContent.trim().replace(/\D/g, ''); // Remove non-digits
+    // Get mobile from data attribute (clean number) or fall back to textContent
+    const mobile = mobileSpan.dataset.mobile || mobileSpan.textContent.trim().replace(/\D/g, '');
 
-    if (!mobile || mobile === '-') {
+    if (!mobile || mobile === '' || mobile === '-') {
         showToast('error', 'No mobile number available');
         return;
     }
