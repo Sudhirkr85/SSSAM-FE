@@ -79,27 +79,60 @@
             <!-- CONTENT -->
             <main class="p-6 space-y-6 overflow-y-auto">
 
+                <!-- HEADER WITH RANGE SELECTOR -->
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                    <div>
+                        <p id="dateRangeDisplay" class="text-sm text-gray-500"></p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-gray-600 font-medium">Period:</label>
+                        <select id="rangeSelector" class="px-4 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                            <option value="all">All Time</option>
+                            <option value="daily">Today</option>
+                            <option value="weekly">This Week</option>
+                            <option value="monthly">This Month</option>
+                            <option value="yearly">This Year</option>
+                        </select>
+                    </div>
+                </div>
+
                 <!-- TOP STATS -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
 
                     <div class="bg-white p-5 rounded-xl shadow">
-                        <p class="text-sm text-gray-500">Total Enquiries</p>
-                        <p id="reportTotalEnquiries" class="text-2xl font-bold">0</p>
+                        <p class="text-sm text-gray-500">Enquiries</p>
+                        <div class="flex items-baseline gap-2">
+                            <p id="reportTotalEnquiries" class="text-2xl font-bold">0</p>
+                            <span id="reportTotalEnquiriesAllTime" class="text-xs text-gray-400 hidden">(all: 0)</span>
+                        </div>
+                        <p id="reportEnquiriesGrowth" class="text-xs mt-1 hidden"></p>
                     </div>
 
                     <div class="bg-white p-5 rounded-xl shadow">
-                        <p class="text-sm text-gray-500">Total Admissions</p>
-                        <p id="reportTotalAdmissions" class="text-2xl font-bold">0</p>
+                        <p class="text-sm text-gray-500">Admissions</p>
+                        <div class="flex items-baseline gap-2">
+                            <p id="reportTotalAdmissions" class="text-2xl font-bold">0</p>
+                            <span id="reportTotalAdmissionsAllTime" class="text-xs text-gray-400 hidden">(all: 0)</span>
+                        </div>
+                        <p id="reportAdmissionsGrowth" class="text-xs mt-1 hidden"></p>
                     </div>
 
                     <div class="bg-white p-5 rounded-xl shadow">
-                        <p class="text-sm text-gray-500">Conversion %</p>
-                        <p id="reportConversionRate" class="text-2xl font-bold">0%</p>
+                        <p class="text-sm text-gray-500">Conversion Rate</p>
+                        <div class="flex items-baseline gap-2">
+                            <p id="reportConversionRate" class="text-2xl font-bold">0%</p>
+                            <span id="reportConversionRateAllTime" class="text-xs text-gray-400 hidden">(all: 0%)</span>
+                        </div>
+                        <p id="allTimeConversion" class="text-xs text-gray-400 mt-1">All-time rate</p>
                     </div>
 
                     <div class="bg-white p-5 rounded-xl shadow">
                         <p class="text-sm text-gray-500">Revenue</p>
-                        <p id="reportTotalRevenue" class="text-2xl font-bold text-green-600">₹0</p>
+                        <div class="flex items-baseline gap-2">
+                            <p id="reportTotalRevenue" class="text-2xl font-bold text-green-600">₹0</p>
+                            <span id="reportTotalRevenueAllTime" class="text-xs text-gray-400 hidden">(all: ₹0)</span>
+                        </div>
+                        <p id="reportRevenueGrowth" class="text-xs mt-1 hidden"></p>
                     </div>
 
                 </div>
