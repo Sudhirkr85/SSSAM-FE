@@ -1,4 +1,5 @@
-const BASE_URL = 'http://localhost:5000/api';
+// const BASE_URL = 'http://localhost:5000/api';
+const BASE_URL = 'https://sssam-r3pz.onrender.com/api'
 
 /* ======================
 ENDPOINTS
@@ -151,8 +152,8 @@ function isCounselor() {
 
 // Get dashboard endpoint based on user role
 function getDashboardEndpoint() {
-    return isCounselor() 
-        ? API_ENDPOINTS.DASHBOARD.COUNSELOR 
+    return isCounselor()
+        ? API_ENDPOINTS.DASHBOARD.COUNSELOR
         : API_ENDPOINTS.DASHBOARD.GET;
 }
 
