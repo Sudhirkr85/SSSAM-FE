@@ -307,7 +307,7 @@
 
         <!-- Follow-up Date -->
         <div class="relative">
-          <input type="date" id="followUpDate"
+          <input type="date" id="followUpDate" min="2022-01-01"
             class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
           <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
             Follow-up Date (Optional)
@@ -399,7 +399,7 @@
 
         <!-- Follow-up Date (Only for FOLLOW_UP status) -->
         <div id="quickFollowUpDateContainer" class="relative hidden">
-          <input type="date" id="quickFollowUpDate"
+          <input type="date" id="quickFollowUpDate" min="2022-01-01"
             class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
           <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
             Follow-up Date <span class="text-red-500">*</span>
@@ -672,6 +672,10 @@
 
   <script>
     lucide.createIcons();
+
+    // Set minimum date to today for all date inputs (prevent past dates)
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('input[type="date"]').forEach(dateInput => dateInput.min = today);
 
     // Mobile Menu Toggle
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
