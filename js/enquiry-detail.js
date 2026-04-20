@@ -518,7 +518,21 @@ function onInitialPaymentChange() {
 function addInstallmentRow() {
     const container = document.getElementById('installmentRows');
     const row = document.createElement('div');
-    const today = new Date().toISOString().split('T')[0];
+
+    // Get the last installment date and set min to next day
+    const rows = container.querySelectorAll('.installment-row');
+    let minDate = new Date().toISOString().split('T')[0];
+
+    if (rows.length > 0) {
+        const lastRow = rows[rows.length - 1];
+        const lastDateInput = lastRow.querySelector('.installment-date');
+        if (lastDateInput && lastDateInput.value) {
+            const lastDate = new Date(lastDateInput.value);
+            lastDate.setDate(lastDate.getDate() + 1); // Next day after last installment
+            minDate = lastDate.toISOString().split('T')[0];
+        }
+    }
+
     row.className = 'installment-row grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl';
     row.innerHTML = `
         <div class="relative">
@@ -527,7 +541,7 @@ function addInstallmentRow() {
         </div>
         <div class="relative flex gap-2">
             <input type="date" class="installment-date w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
-                required min="${today}">
+                required min="${minDate}" onchange="onInstallmentDateChange(this)">
             <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2">
                 <i data-lucide="x" class="w-4 h-4"></i>
             </button>
@@ -535,6 +549,33 @@ function addInstallmentRow() {
     `;
     container.appendChild(row);
     lucide.createIcons();
+}
+
+// Handle date change - update subsequent rows' min dates
+function onInstallmentDateChange(changedInput) {
+    const container = document.getElementById('installmentRows');
+    const rows = Array.from(container.querySelectorAll('.installment-row'));
+    const changedRowIndex = rows.findIndex(row => row.contains(changedInput));
+
+    // Update all subsequent rows
+    for (let i = changedRowIndex + 1; i < rows.length; i++) {
+        const prevRow = rows[i - 1];
+        const currentRow = rows[i];
+        const prevDateInput = prevRow.querySelector('.installment-date');
+        const currentDateInput = currentRow.querySelector('.installment-date');
+
+        if (prevDateInput && prevDateInput.value && currentDateInput) {
+            const prevDate = new Date(prevDateInput.value);
+            prevDate.setDate(prevDate.getDate() + 1);
+            const newMinDate = prevDate.toISOString().split('T')[0];
+            currentDateInput.min = newMinDate;
+
+            // If current value is before new min, clear it
+            if (currentDateInput.value && currentDateInput.value < newMinDate) {
+                currentDateInput.value = '';
+            }
+        }
+    }
 }
 
 // Remove Installment Row
@@ -927,6 +968,7 @@ window.onInitialPaymentChange = onInitialPaymentChange;
 window.onInstallmentAmountChange = onInstallmentAmountChange;
 window.addInstallmentRow = addInstallmentRow;
 window.removeInstallmentRow = removeInstallmentRow;
+window.onInstallmentDateChange = onInstallmentDateChange;
 window.closeConfirmModal = closeConfirmModal;
 window.executeConfirmAction = executeConfirmAction;
 window.showErrorModal = showErrorModal;
