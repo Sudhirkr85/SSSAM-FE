@@ -138,48 +138,13 @@ function renderTimeline(timeline, notes = []) {
         'CONVERTED': 'bg-emerald-50 text-emerald-700 border-emerald-200'
     };
 
-    // Activity type configuration
+    // Activity config - simple icons
     const activityConfig = {
-        'created': {
-            icon: 'user-plus',
-            iconBg: 'bg-blue-500',
-            iconColor: 'text-white',
-            label: 'Enquiry Created',
-            labelColor: 'text-blue-600',
-            borderColor: 'border-blue-500'
-        },
-        'status_change': {
-            icon: 'refresh-cw',
-            iconBg: 'bg-amber-500',
-            iconColor: 'text-white',
-            label: 'Status Updated',
-            labelColor: 'text-amber-600',
-            borderColor: 'border-amber-500'
-        },
-        'note': {
-            icon: 'message-square',
-            iconBg: 'bg-green-500',
-            iconColor: 'text-white',
-            label: 'Note Added',
-            labelColor: 'text-green-600',
-            borderColor: 'border-green-500'
-        },
-        'assigned': {
-            icon: 'user-check',
-            iconBg: 'bg-purple-500',
-            iconColor: 'text-white',
-            label: 'Assigned',
-            labelColor: 'text-purple-600',
-            borderColor: 'border-purple-500'
-        },
-        'follow_up': {
-            icon: 'calendar-clock',
-            iconBg: 'bg-cyan-500',
-            iconColor: 'text-white',
-            label: 'Follow-up Updated',
-            labelColor: 'text-cyan-600',
-            borderColor: 'border-cyan-500'
-        }
+        'created': { icon: 'user-plus', color: 'text-blue-600' },
+        'status_change': { icon: 'refresh-cw', color: 'text-amber-600' },
+        'note': { icon: 'message-square', color: 'text-green-600' },
+        'assigned': { icon: 'user-check', color: 'text-purple-600' },
+        'follow_up': { icon: 'calendar-clock', color: 'text-cyan-600' }
     };
 
     // Sort timeline by timestamp descending (most recent first)
@@ -189,198 +154,99 @@ function renderTimeline(timeline, notes = []) {
         return dateB - dateA;
     });
 
-    // Group by date
-    const groupedByDate = {};
-    sortedTimeline.forEach(item => {
+    let html = '<div class="space-y-3">';
+
+    sortedTimeline.forEach((item) => {
+        const type = item.type || 'note';
+        const config = activityConfig[type] || activityConfig['note'];
+
         const dateObj = new Date(item.timestamp || item.createdAt);
-        const dateKey = dateObj.toDateString();
-        if (!groupedByDate[dateKey]) {
-            groupedByDate[dateKey] = [];
-        }
-        groupedByDate[dateKey].push(item);
-    });
-
-    let html = '';
-
-    Object.entries(groupedByDate).forEach(([dateKey, items]) => {
-        const dateObj = new Date(dateKey);
-        const today = new Date();
-        const isToday = dateObj.toDateString() === today.toDateString();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-        const isYesterday = dateObj.toDateString() === yesterday.toDateString();
-
-        const dateLabel = isToday ? 'Today' : isYesterday ? 'Yesterday' : dateObj.toLocaleDateString('en-IN', {
+        const dateStr = dateObj.toLocaleDateString('en-IN', {
             day: '2-digit',
-            month: 'long',
-            year: 'numeric'
+            month: 'short'
+        });
+        const timeStr = dateObj.toLocaleTimeString('en-IN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: true
         });
 
-        // === DATE WISE PARENT BOX ===
-        html += `
-            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden mb-4">
-                <!-- Date Header Box -->
-                <div class="bg-gray-50 px-4 py-3 border-b border-gray-200 flex items-center gap-3">
-                    <div class="w-8 h-8 bg-white rounded-lg border border-gray-200 flex items-center justify-center">
-                        <i data-lucide="calendar" class="w-4 h-4 text-gray-500"></i>
-                    </div>
-                    <span class="font-semibold text-gray-700">${dateLabel}</span>
-                    <span class="text-xs text-gray-400 bg-gray-200 px-2 py-0.5 rounded-full">${items.length} activities</span>
+        const userName = item.userName || item.user?.name || item.performedBy?.name || 'System';
+
+        // Build content based on activity type
+        let bodyContent = '';
+        let headerText = '';
+
+        if (type === 'created') {
+            headerText = 'Enquiry Created';
+            bodyContent = `<p class="text-sm text-gray-600">New enquiry created</p>`;
+        } else if (type === 'status_change' && item.metadata) {
+            const prevStatus = item.metadata.previousStatus || item.metadata.from;
+            const newStatus = item.metadata.newStatus || item.metadata.to;
+            const prevLabel = statusLabels[prevStatus] || prevStatus || 'New';
+            const newLabel = statusLabels[newStatus] || newStatus || 'Updated';
+            const prevColor = statusColors[prevStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
+            const newColor = statusColors[newStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
+
+            headerText = 'Status Updated';
+            bodyContent = `
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="px-2 py-1 rounded text-xs font-semibold border ${prevColor}">${prevLabel}</span>
+                    <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400"></i>
+                    <span class="px-2 py-1 rounded text-xs font-semibold border ${newColor}">${newLabel}</span>
                 </div>
-
-                <!-- Activity Child Boxes Container -->
-                <div class="p-4 space-y-3">
-        `;
-
-        items.forEach((item) => {
-            const type = item.type || 'note';
-            const config = activityConfig[type] || activityConfig['note'];
-
-            const dateObj = new Date(item.timestamp || item.createdAt);
-            const timeStr = dateObj.toLocaleTimeString('en-IN', {
-                hour: '2-digit',
-                minute: '2-digit',
-                hour12: true
-            });
-
-            const userName = item.userName || item.user?.name || item.performedBy?.name || 'System';
-            const userInitials = userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-
-            // Build content based on activity type
-            let contentHtml = '';
-
-            if (type === 'created') {
-                contentHtml = `
-                    <div class="text-sm text-gray-600">
-                        New enquiry created by <span class="font-medium text-gray-800">${userName}</span>
-                    </div>
-                `;
-            } else if (type === 'status_change' && item.metadata) {
-                const prevStatus = item.metadata.previousStatus || item.metadata.from;
-                const newStatus = item.metadata.newStatus || item.metadata.to;
-                const prevLabel = statusLabels[prevStatus] || prevStatus || 'New';
-                const newLabel = statusLabels[newStatus] || newStatus || 'Updated';
-                const prevColor = statusColors[prevStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
-                const newColor = statusColors[newStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
-
-                contentHtml = `
-                    <div class="flex flex-col gap-3">
-                        <!-- Status Change Row -->
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <span class="px-3 py-1.5 rounded-lg text-xs font-semibold border ${prevColor}">
-                                ${prevLabel}
-                            </span>
-                            <div class="flex items-center justify-center w-6 h-6 rounded-full bg-gray-100">
-                                <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-gray-500"></i>
-                            </div>
-                            <span class="px-3 py-1.5 rounded-lg text-xs font-semibold border ${newColor}">
-                                ${newLabel}
-                            </span>
-                        </div>
-                        
-                        <!-- Note (if present) -->
-                        ${item.metadata.note ? `
-                            <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                                <p class="text-xs text-gray-500 mb-1 font-medium">📝 Note:</p>
-                                <p class="text-sm text-gray-700">${item.metadata.note}</p>
-                            </div>
-                        ` : ''}
-                    </div>
-                `;
-            } else if (type === 'note') {
-                const noteText = item.metadata?.note || item.message || item.note || 'Note added';
-                contentHtml = `
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                        <p class="text-sm text-gray-700 leading-relaxed">${noteText}</p>
-                    </div>
-                `;
-            } else if (type === 'assigned') {
-                const assignedTo = item.metadata?.assignedToName || item.metadata?.to || item.message || 'Someone';
-                contentHtml = `
-                    <div class="text-sm text-gray-600">
-                        Assigned to <span class="font-semibold text-purple-600">${assignedTo}</span>
-                    </div>
-                `;
-            } else if (type === 'follow_up') {
-                const prevDate = item.metadata?.previousDate || item.metadata?.from;
-                const newDate = item.metadata?.newDate || item.metadata?.to;
-
-                if (prevDate && !newDate) {
-                    contentHtml = `
-                        <div class="text-sm text-gray-600">
-                            Follow-up date <span class="font-medium text-gray-800">${formatDate(prevDate)}</span> cleared
-                        </div>
-                    `;
-                } else if (!prevDate && newDate) {
-                    contentHtml = `
-                        <div class="text-sm text-gray-600">
-                            Follow-up scheduled for <span class="font-semibold text-cyan-600">${formatDate(newDate)}</span>
-                        </div>
-                    `;
-                } else {
-                    contentHtml = `
-                        <div class="flex flex-col gap-1">
-                            <p class="text-sm text-gray-600">Follow-up date changed:</p>
-                            <div class="flex items-center gap-2">
-                                <span class="text-sm text-gray-500 line-through">${formatDate(prevDate)}</span>
-                                <i data-lucide="arrow-right" class="w-3 h-3 text-gray-400"></i>
-                                <span class="text-sm font-medium text-cyan-600">${formatDate(newDate)}</span>
-                            </div>
-                        </div>
-                    `;
-                }
-            } else if (item.message || item.note) {
-                contentHtml = `
-                    <div class="bg-gray-50 rounded-lg p-3 border border-gray-100">
-                        <p class="text-sm text-gray-700 leading-relaxed">${item.message || item.note}</p>
-                    </div>
-                `;
-            }
-
-            // === CHILD ACTIVITY BOX ===
-            html += `
-                <div class="bg-white rounded-lg border ${config.borderColor} border-l-4 shadow-sm hover:shadow-md transition-shadow overflow-hidden">
-                    <!-- Activity Header -->
-                    <div class="px-4 py-3 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <!-- Icon -->
-                            <div class="w-8 h-8 ${config.iconBg} rounded-lg flex items-center justify-center">
-                                <i data-lucide="${config.icon}" class="w-4 h-4 ${config.iconColor}"></i>
-                            </div>
-                            <!-- Activity Label -->
-                            <span class="text-sm font-semibold ${config.labelColor}">${config.label}</span>
-                        </div>
-                        <!-- Time -->
-                        <div class="flex items-center gap-1.5 text-xs text-gray-500">
-                            <i data-lucide="clock" class="w-3.5 h-3.5"></i>
-                            <span class="font-medium">${timeStr}</span>
-                        </div>
-                    </div>
-
-                    <!-- Activity Body -->
-                    <div class="px-4 py-3">
-                        ${contentHtml}
-                    </div>
-
-                    <!-- Activity Footer - User Info -->
-                    <div class="px-4 py-2 border-t border-gray-100 bg-gray-50/30 flex items-center gap-2">
-                        <div class="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">
-                            ${userInitials}
-                        </div>
-                        <span class="text-xs text-gray-500">
-                            by <span class="font-medium text-gray-700">${userName}</span>
-                        </span>
-                    </div>
-                </div>
+                ${item.metadata.note ? `<p class="text-sm text-gray-600 mt-2"><span class="text-gray-400">Note:</span> ${item.metadata.note}</p>` : ''}
             `;
-        });
+        } else if (type === 'note') {
+            const noteText = item.metadata?.note || item.message || item.note || 'Note added';
+            headerText = 'Note Added';
+            bodyContent = `<p class="text-sm text-gray-700">${noteText}</p>`;
+        } else if (type === 'assigned') {
+            const assignedTo = item.metadata?.assignedToName || item.metadata?.to || item.message || 'Someone';
+            headerText = 'Assigned';
+            bodyContent = `<p class="text-sm text-gray-600">Assigned to <span class="font-medium text-purple-600">${assignedTo}</span></p>`;
+        } else if (type === 'follow_up') {
+            const prevDate = item.metadata?.previousDate || item.metadata?.from;
+            const newDate = item.metadata?.newDate || item.metadata?.to;
+            headerText = 'Follow-up Updated';
+            if (prevDate && !newDate) {
+                bodyContent = `<p class="text-sm text-gray-600">Follow-up cleared</p>`;
+            } else if (!prevDate && newDate) {
+                bodyContent = `<p class="text-sm text-gray-600">Follow-up: <span class="font-medium">${formatDate(newDate)}</span></p>`;
+            } else {
+                bodyContent = `<p class="text-sm text-gray-600">Changed: ${formatDate(prevDate)} → ${formatDate(newDate)}</p>`;
+            }
+        } else {
+            headerText = 'Activity';
+            bodyContent = `<p class="text-sm text-gray-700">${item.message || item.note || ''}</p>`;
+        }
 
+        // === SIMPLE BLOCK ===
         html += `
+            <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
+                <!-- Header: Icon + Type + Time -->
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="${config.icon}" class="w-4 h-4 ${config.color}"></i>
+                        <span class="font-medium text-gray-800">${headerText}</span>
+                    </div>
+                    <span class="text-xs text-gray-400">${dateStr} • ${timeStr}</span>
+                </div>
+
+                <!-- Body: Status/Note -->
+                <div class="mb-2">
+                    ${bodyContent}
+                </div>
+
+                <!-- Footer: User -->
+                <div class="text-xs text-gray-400">
+                    by <span class="text-gray-600">${userName}</span>
                 </div>
             </div>
         `;
     });
 
+    html += '</div>';
     container.innerHTML = html;
     lucide.createIcons();
 }
