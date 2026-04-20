@@ -1116,6 +1116,10 @@ function resetBulkUploadUI() {
   document.getElementById('uploadResultsArea').classList.add('hidden');
   document.getElementById('uploadArea').classList.remove('hidden');
 
+  // Clear error details
+  document.getElementById('errorDetails').classList.add('hidden');
+  document.getElementById('errorList').innerHTML = '';
+
   // Reset file input
   document.getElementById('bulkFileInput').value = '';
 
@@ -1312,10 +1316,10 @@ function showUploadResults(results) {
   document.getElementById('uploadProgressArea').classList.add('hidden');
   resultsArea.classList.remove('hidden');
 
-  // Update counts - backend uses successCount/failedCount/totalCount
+  // Update counts - backend uses successCount/failedCount/totalRows
   const successCount = results.successCount ?? results.success ?? 0;
   const failedCount = results.failedCount ?? results.failed ?? 0;
-  const totalCount = results.totalCount ?? results.total ?? (successCount + failedCount);
+  const totalCount = results.totalRows ?? results.totalCount ?? results.total ?? (successCount + failedCount);
 
   document.getElementById('successCount').textContent = successCount;
   document.getElementById('errorCount').textContent = failedCount;
@@ -1338,18 +1342,24 @@ function showUploadResults(results) {
     resultSubtitle.textContent = `${successCount} succeeded, ${failedCount} failed`;
 
     // Show error details
-    if (results.errors && results.errors.length > 0) {
+    const errors = results.errors || [];
+    if (errors.length > 0) {
       errorDetails.classList.remove('hidden');
-      errorList.innerHTML = results.errors.map(e => {
+      errorList.innerHTML = errors.map(e => {
         // Handle both string errors and object errors with row numbers
         if (typeof e === 'string') {
           return `<li>${e}</li>`;
         } else if (e.row && e.error) {
           return `<li class="flex gap-2"><span class="text-gray-400 font-mono">Row ${e.row}:</span><span>${e.error}</span></li>`;
+        } else if (e.error) {
+          return `<li>${e.error}</li>`;
         } else {
           return `<li>${JSON.stringify(e)}</li>`;
         }
       }).join('');
+    } else {
+      errorDetails.classList.add('hidden');
+      errorList.innerHTML = '';
     }
   } else {
     resultIcon.className = 'w-10 h-10 bg-red-100 rounded-full flex items-center justify-center';
