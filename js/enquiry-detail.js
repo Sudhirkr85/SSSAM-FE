@@ -854,8 +854,12 @@ async function submitSetupFees() {
             // Add initial payment if provided
             if (initialPayment > 0) {
                 payload.initialPayment = initialPayment;
+                const initialPaymentMode = document.getElementById('initialPaymentMode')?.value;
+                if (initialPaymentMode) {
+                    payload.initialPaymentMode = initialPaymentMode;
+                }
                 if (initialPaymentDate) {
-                    payload.initialPaymentDate = initialPaymentDate;
+                    payload.paymentDate = initialPaymentDate;
                 }
             }
         }

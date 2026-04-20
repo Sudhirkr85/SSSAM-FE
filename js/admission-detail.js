@@ -497,6 +497,8 @@ function validateAmount() {
 async function submitPayment() {
     const amount = Number(document.getElementById('amount').value);
     const paymentMode = document.getElementById('paymentMode').value;
+    const paymentDate = document.getElementById('paymentDate')?.value;
+    const nextInstallmentDate = document.getElementById('nextInstallmentDate')?.value;
 
     if (!validateAmount()) {
         showToast('error', 'Enter a valid amount');
@@ -504,11 +506,28 @@ async function submitPayment() {
     }
 
     try {
-        await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, {
+        const payload = {
             admissionId: currentAdmissionId,
             amount,
             paymentMode: paymentMode.toUpperCase()
-        });
+        };
+
+        // Add optional payment date if provided
+        if (paymentDate) {
+            payload.paymentDate = paymentDate;
+        }
+
+        // Add installment index if paying specific installment
+        if (currentInstallmentIndex !== null && currentInstallmentIndex !== undefined) {
+            payload.installmentIndex = currentInstallmentIndex;
+        }
+
+        // Add optional next installment date
+        if (nextInstallmentDate) {
+            payload.nextInstallmentDate = nextInstallmentDate;
+        }
+
+        await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
 
         showToast('success', 'Payment added successfully');
         closePaymentModal();
