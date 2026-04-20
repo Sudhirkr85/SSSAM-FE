@@ -524,9 +524,10 @@ function openSetupFeesModal(id) {
 
     const enquiryIdField = document.getElementById('setupFeesEnquiryId');
     const totalFeesField = document.getElementById('totalFees');
-    const paymentDateField = document.getElementById('paymentDate');
     const paymentModeField = document.getElementById('paymentMode');
     const paymentTypeField = document.getElementById('paymentType');
+    const initialPaymentField = document.getElementById('initialPayment');
+    const initialPaymentDateField = document.getElementById('initialPaymentDate');
 
     if (!enquiryIdField || !totalFeesField) {
         console.error('Required form fields not found');
@@ -538,9 +539,14 @@ function openSetupFeesModal(id) {
 
     // Reset form
     totalFeesField.value = '';
-    if (paymentDateField) paymentDateField.value = '';
     if (paymentModeField) paymentModeField.value = 'CASH';
     if (paymentTypeField) paymentTypeField.value = 'ONE_TIME';
+    if (initialPaymentField) initialPaymentField.value = '';
+    if (initialPaymentDateField) {
+        const today = new Date().toISOString().split('T')[0];
+        initialPaymentDateField.value = today;
+        initialPaymentDateField.min = today;
+    }
 
     // Reset installments - remove extra rows, keep only one
     const container = document.getElementById('installmentRows');
@@ -554,7 +560,11 @@ function openSetupFeesModal(id) {
             const amountInput = firstRow.querySelector('.installment-amount');
             const dateInput = firstRow.querySelector('.installment-date');
             if (amountInput) amountInput.value = '';
-            if (dateInput) dateInput.value = '';
+            if (dateInput) {
+                dateInput.value = '';
+                const today = new Date().toISOString().split('T')[0];
+                dateInput.min = today;
+            }
         }
     }
 
@@ -618,18 +628,47 @@ function clearSetupFeesErrors() {
 function onPaymentTypeChange() {
     const paymentType = document.getElementById('paymentType').value;
     const installmentsSection = document.getElementById('installmentsSection');
+    const paymentModeSection = document.getElementById('paymentModeSection');
+    const initialPaymentSection = document.getElementById('initialPaymentSection');
 
     if (paymentType === 'INSTALLMENT') {
         installmentsSection.classList.remove('hidden');
+        // For installment, show initial payment as optional (no required attribute)
+        if (initialPaymentSection) {
+            initialPaymentSection.classList.remove('hidden');
+            const initialPaymentInput = document.getElementById('initialPayment');
+            if (initialPaymentInput) initialPaymentInput.removeAttribute('required');
+        }
     } else {
         installmentsSection.classList.add('hidden');
+        // For ONE_TIME, payment mode is required and initial payment = total fees
+        if (initialPaymentSection) {
+            initialPaymentSection.classList.add('hidden');
+        }
     }
+}
+
+// Handle Initial Payment Change - Update remaining amount display
+function onInitialPaymentChange() {
+    const totalFees = parseFloat(document.getElementById('totalFees').value) || 0;
+    const initialPayment = parseFloat(document.getElementById('initialPayment').value) || 0;
+    const remaining = Math.max(0, totalFees - initialPayment);
+
+    // Update remaining display if element exists
+    const remainingDisplay = document.getElementById('remainingAmountDisplay');
+    if (remainingDisplay) {
+        remainingDisplay.textContent = '₹' + remaining.toLocaleString('en-IN');
+    }
+
+    // Re-validate installments
+    onInstallmentAmountChange();
 }
 
 // Add Installment Row
 function addInstallmentRow() {
     const container = document.getElementById('installmentRows');
     const row = document.createElement('div');
+    const today = new Date().toISOString().split('T')[0];
     row.className = 'installment-row grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl';
     row.innerHTML = `
         <div class="relative">
@@ -638,7 +677,7 @@ function addInstallmentRow() {
         </div>
         <div class="relative flex gap-2">
             <input type="date" class="installment-date w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
-                required>
+                required min="${today}">
             <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2">
                 <i data-lucide="x" class="w-4 h-4"></i>
             </button>
@@ -677,13 +716,16 @@ function onInstallmentAmountChange() {
     if (paymentType !== 'INSTALLMENT') return;
 
     const totalFees = document.getElementById('totalFees');
+    const initialPayment = parseFloat(document.getElementById('initialPayment')?.value) || 0;
     const installments = getInstallmentsData();
     const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
     const feeValue = parseFloat(totalFees.value) || 0;
+    const remainingAmount = feeValue - initialPayment;
     const totalMismatchError = document.getElementById('installmentsTotalError');
     const allInstallmentInputs = document.querySelectorAll('.installment-amount');
 
-    if (Math.abs(totalInstallments - feeValue) < 0.01 && totalMismatchError) {
+    // Validate: installments total should equal remaining amount (total - initial payment)
+    if (Math.abs(totalInstallments - remainingAmount) < 0.01 && totalMismatchError) {
         // Totals match - clear errors
         totalMismatchError.classList.add('hidden');
         totalFees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
@@ -700,6 +742,8 @@ function validateSetupFeesForm() {
 
     const totalFees = document.getElementById('totalFees');
     const paymentType = document.getElementById('paymentType').value;
+    const initialPaymentField = document.getElementById('initialPayment');
+    const initialPayment = parseFloat(initialPaymentField?.value) || 0;
 
     // Validate Total Fees (always required)
     if (!totalFees.value || parseFloat(totalFees.value) <= 0) {
@@ -713,6 +757,21 @@ function validateSetupFeesForm() {
         totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
     }
 
+    // Validate initial payment doesn't exceed total
+    if (initialPaymentField && initialPayment > parseFloat(totalFees.value || 0)) {
+        document.getElementById('initialPaymentError')?.classList.remove('hidden');
+        initialPaymentField.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        initialPaymentField.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        showToast('error', 'Initial payment cannot exceed total fees');
+        valid = false;
+    } else {
+        document.getElementById('initialPaymentError')?.classList.add('hidden');
+        if (initialPaymentField) {
+            initialPaymentField.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+            initialPaymentField.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        }
+    }
+
     if (paymentType === 'INSTALLMENT') {
         // For INSTALLMENT, validate installments
         const installments = getInstallmentsData();
@@ -723,14 +782,15 @@ function validateSetupFeesForm() {
             document.getElementById('installmentsError').classList.add('hidden');
         }
 
-        // Check if total installments equals total fees
+        // Check if total installments equals REMAINING amount (total - initial payment)
         const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
         const totalMismatchError = document.getElementById('installmentsTotalError');
-        const feeValue = parseFloat(totalFees.value);
+        const feeValue = parseFloat(totalFees.value) || 0;
+        const remainingAmount = feeValue - initialPayment;
         const allInstallmentInputs = document.querySelectorAll('.installment-amount');
 
-        if (Math.abs(totalInstallments - feeValue) > 0.01) {
-            const errorMsg = `Installments total must equal total fees (₹${feeValue})`;
+        if (Math.abs(totalInstallments - remainingAmount) > 0.01) {
+            const errorMsg = `Installments total (₹${totalInstallments}) must equal remaining amount (₹${remainingAmount}) after initial payment`;
             if (totalMismatchError) {
                 totalMismatchError.textContent = errorMsg;
                 totalMismatchError.classList.remove('hidden');
@@ -770,22 +830,34 @@ async function submitSetupFees() {
     const totalFees = parseFloat(document.getElementById('totalFees').value);
     const paymentType = document.getElementById('paymentType').value;
 
-    // Get payment mode (required for ONE_TIME)
+    // Get payment mode
     const paymentMode = document.getElementById('paymentMode')?.value || 'CASH';
+
+    // Get initial payment details for INSTALLMENT
+    const initialPaymentField = document.getElementById('initialPayment');
+    const initialPaymentDateField = document.getElementById('initialPaymentDate');
+    const initialPayment = initialPaymentField ? parseFloat(initialPaymentField.value) || 0 : 0;
+    const initialPaymentDate = initialPaymentDateField?.value;
 
     try {
         // Build request payload based on payment type
         const payload = {
             totalFees: totalFees,
-            paymentType: paymentType
+            paymentType: paymentType,
+            paymentMethod: paymentMode
         };
 
-        // For INSTALLMENT, add installments array
+        // For INSTALLMENT, add installments array and optional initial payment
         if (paymentType === 'INSTALLMENT') {
             payload.installments = getInstallmentsData();
-        } else {
-            // ONE_TIME: add paymentMethod (required by backend API)
-            payload.paymentMethod = paymentMode;
+
+            // Add initial payment if provided
+            if (initialPayment > 0) {
+                payload.initialPayment = initialPayment;
+                if (initialPaymentDate) {
+                    payload.initialPaymentDate = initialPaymentDate;
+                }
+            }
         }
 
         // DEBUG: Log exact payload being sent
@@ -997,6 +1069,7 @@ window.openConvertModal = openConvertModal;
 window.closeSetupFeesModal = closeSetupFeesModal;
 window.submitSetupFees = submitSetupFees;
 window.onPaymentTypeChange = onPaymentTypeChange;
+window.onInitialPaymentChange = onInitialPaymentChange;
 window.onInstallmentAmountChange = onInstallmentAmountChange;
 window.addInstallmentRow = addInstallmentRow;
 window.removeInstallmentRow = removeInstallmentRow;
