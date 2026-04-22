@@ -450,7 +450,6 @@ function renderTable(data) {
       <td class="px-6 py-4 text-gray-700">${e.courseInterested || '-'}</td>
       <td class="px-6 py-4 text-gray-600">${counselorName}</td>
       <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
-      <td class="px-6 py-4 text-gray-600">${!isConverted && e.followUpDate ? formatDate(e.followUpDate) : '-'}</td>
       <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
         ${getActionButtons(e._id, e.status, e.assignedTo?._id || e.assignedTo || e.counselorId?._id || e.counselorId)}
       </td>
@@ -462,7 +461,7 @@ function renderEmptyState() {
   const table = document.getElementById('enquiryTable');
   table.innerHTML = `
     <tr>
-      <td colspan="6" class="text-center py-12">
+      <td colspan="5" class="text-center py-12">
         <div class="flex flex-col items-center gap-3">
           <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
             <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
@@ -623,6 +622,7 @@ async function createEnquiry() {
   const mobile = document.getElementById('mobile').value;
   const email = document.getElementById('email').value.trim();
   let course = document.getElementById('course').value;
+  const source = document.getElementById('source').value;
 
   // If Other, use custom course
   if (course === 'Other') {
@@ -634,7 +634,8 @@ async function createEnquiry() {
       name,
       mobile,
       email: email || undefined,
-      courseInterested: course
+      courseInterested: course,
+      source
     });
 
     showToast('success', 'Enquiry created successfully');

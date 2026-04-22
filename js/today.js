@@ -19,31 +19,20 @@ LOAD DATA
 ====================== */
 async function loadTodayCalls() {
     try {
-        // Fetch both today's calls and new enquiries
-        const [todayCallsRes, newEnquiriesRes] = await Promise.allSettled([
-            apiGet(API_ENDPOINTS.DASHBOARD.TODAY_CALLS).catch(() => ({})),
-            apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { status: 'NEW', limit: 100 }).catch(() => ({}))
-        ]);
+        // Per API contract: GET /api/enquiries?followUpToday=true&followUpOverdue=true
+        const params = {
+            page: currentPage,
+            limit: ITEMS_PER_PAGE,
+            followUpToday: true,
+            followUpOverdue: true
+        };
 
-        // Extract today's calls
-        const todayCallsData = todayCallsRes.status === 'fulfilled' ? todayCallsRes.value : {};
-        const todayCalls = todayCallsData.todayCalls?.calls || todayCallsData.calls || [];
+        const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
 
-        // Extract new enquiries
-        const newEnquiriesData = newEnquiriesRes.status === 'fulfilled' ? newEnquiriesRes.value : {};
-        const newEnquiries = newEnquiriesData.enquiries || [];
-
-        // Combine and remove duplicates (by _id)
-        const combined = [...todayCalls, ...newEnquiries];
-        const uniqueIds = new Set();
-        enquiries = combined.filter(e => {
-            if (!e._id || uniqueIds.has(e._id)) return false;
-            uniqueIds.add(e._id);
-            return true;
-        });
-
-        paginationData = { page: 1, totalPages: 1, totalCount: enquiries.length };
-        totalPages = 1;
+        // API returns { enquiries: [...], pagination: {...} }
+        enquiries = res.enquiries || [];
+        paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
+        totalPages = paginationData.totalPages || 1;
 
         renderTable();
         renderStats();
