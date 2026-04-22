@@ -374,10 +374,11 @@ function openSetupFeesModal(id) {
 
     const enquiryIdField = document.getElementById('setupFeesEnquiryId');
     const totalFeesField = document.getElementById('totalFees');
-    const paymentModeField = document.getElementById('paymentMode');
     const paymentTypeField = document.getElementById('paymentType');
     const initialPaymentField = document.getElementById('initialPayment');
     const initialPaymentDateField = document.getElementById('initialPaymentDate');
+    const initialPaymentModeField = document.getElementById('initialPaymentMode');
+    const pendingDueDateField = document.getElementById('pendingDueDate');
 
     if (!enquiryIdField || !totalFeesField) {
         console.error('Required form fields not found');
@@ -389,14 +390,15 @@ function openSetupFeesModal(id) {
 
     // Reset form
     totalFeesField.value = '';
-    if (paymentModeField) paymentModeField.value = 'CASH';
     if (paymentTypeField) paymentTypeField.value = 'ONE_TIME';
     if (initialPaymentField) initialPaymentField.value = '';
+    if (initialPaymentModeField) initialPaymentModeField.value = 'CASH';
     if (initialPaymentDateField) {
         const today = new Date().toISOString().split('T')[0];
         initialPaymentDateField.value = today;
         initialPaymentDateField.min = today;
     }
+    if (pendingDueDateField) pendingDueDateField.value = '';
 
     // Reset installments - remove extra rows, keep only one
     const container = document.getElementById('installmentRows');
@@ -417,6 +419,10 @@ function openSetupFeesModal(id) {
             }
         }
     }
+
+    // Reset remaining display
+    const remainingDisplay = document.getElementById('remainingAmountDisplay');
+    if (remainingDisplay) remainingDisplay.textContent = '₹0';
 
     // Show/hide sections based on default ONE_TIME
     onPaymentTypeChange();
@@ -478,40 +484,76 @@ function clearSetupFeesErrors() {
 function onPaymentTypeChange() {
     const paymentType = document.getElementById('paymentType').value;
     const installmentsSection = document.getElementById('installmentsSection');
-    const paymentModeSection = document.getElementById('paymentModeSection');
-    const initialPaymentSection = document.getElementById('initialPaymentSection');
+    const pendingAmountSection = document.getElementById('pendingAmountSection');
 
     if (paymentType === 'INSTALLMENT') {
         installmentsSection.classList.remove('hidden');
-        // For installment, show initial payment as optional (no required attribute)
-        if (initialPaymentSection) {
-            initialPaymentSection.classList.remove('hidden');
-            const initialPaymentInput = document.getElementById('initialPayment');
-            if (initialPaymentInput) initialPaymentInput.removeAttribute('required');
-        }
+        if (pendingAmountSection) pendingAmountSection.classList.add('hidden');
     } else {
         installmentsSection.classList.add('hidden');
-        // For ONE_TIME, payment mode is required and initial payment = total fees
-        if (initialPaymentSection) {
-            initialPaymentSection.classList.add('hidden');
+        // For ONE_TIME, show pending amount section if there will be remaining
+        updatePendingAmountSection();
+    }
+
+    // Recalculate remaining amount
+    updateRemainingAmount();
+}
+
+// Handle Total Fees Change
+function onTotalFeesChange() {
+    updateRemainingAmount();
+}
+
+// Update Pending Amount Section visibility and value (for ONE_TIME payment)
+function updatePendingAmountSection() {
+    const paymentType = document.getElementById('paymentType').value;
+    const pendingAmountSection = document.getElementById('pendingAmountSection');
+    const pendingAmountField = document.getElementById('pendingAmount');
+    const initialPayment = parseFloat(document.getElementById('initialPayment')?.value) || 0;
+    const totalFees = parseFloat(document.getElementById('totalFees')?.value) || 0;
+
+    if (paymentType === 'ONE_TIME' && pendingAmountSection && pendingAmountField) {
+        const remaining = Math.max(0, totalFees - initialPayment);
+        pendingAmountField.value = remaining > 0 ? remaining : '';
+
+        if (remaining > 0) {
+            pendingAmountSection.classList.remove('hidden');
+        } else {
+            pendingAmountSection.classList.add('hidden');
         }
+    } else if (pendingAmountSection) {
+        pendingAmountSection.classList.add('hidden');
     }
 }
 
 // Handle Initial Payment Change - Update remaining amount display
 function onInitialPaymentChange() {
-    const totalFees = parseFloat(document.getElementById('totalFees').value) || 0;
-    const initialPayment = parseFloat(document.getElementById('initialPayment').value) || 0;
-    const remaining = Math.max(0, totalFees - initialPayment);
+    updateRemainingAmount();
+}
 
-    // Update remaining display if element exists
+// Calculate and update remaining amount (Total - Initial - Installments)
+function updateRemainingAmount() {
+    const totalFees = parseFloat(document.getElementById('totalFees')?.value) || 0;
+    const initialPayment = parseFloat(document.getElementById('initialPayment')?.value) || 0;
+
+    // Calculate total installments
+    const installments = getInstallmentsData();
+    const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
+
+    // Remaining = Total - Initial - Installments
+    const remaining = Math.max(0, totalFees - initialPayment - totalInstallments);
+
+    // Update remaining display
     const remainingDisplay = document.getElementById('remainingAmountDisplay');
     if (remainingDisplay) {
         remainingDisplay.textContent = '₹' + remaining.toLocaleString('en-IN');
     }
 
-    // Re-validate installments
-    onInstallmentAmountChange();
+    // Update pending amount section for ONE_TIME payments
+    updatePendingAmountSection();
+
+    // Validate that total doesn't exceed
+    validateTotalAmount();
 }
 
 // Add Installment Row
@@ -533,22 +575,23 @@ function addInstallmentRow() {
         }
     }
 
-    row.className = 'installment-row grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl';
+    row.className = 'installment-row grid grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-gray-50 rounded-lg items-center';
     row.innerHTML = `
         <div class="relative">
-            <input type="number" class="installment-amount w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
-                placeholder="Amount" min="0" step="0.01" required oninput="onInstallmentAmountChange()">
+            <input type="number" class="installment-amount w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
+                placeholder="Amount" min="0" step="0.01" oninput="onInstallmentAmountChange()">
         </div>
-        <div class="relative flex gap-2">
-            <input type="date" class="installment-date w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
-                required min="${minDate}" onchange="onInstallmentDateChange(this)">
-            <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2">
-                <i data-lucide="x" class="w-4 h-4"></i>
-            </button>
+        <div class="relative">
+            <input type="date" class="installment-date w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
+                min="${minDate}" onchange="onInstallmentDateChange(this)">
         </div>
+        <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2 h-[40px] flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
     `;
     container.appendChild(row);
     lucide.createIcons();
+    updateRemainingAmount();
 }
 
 // Handle date change - update subsequent rows' min dates
@@ -584,6 +627,8 @@ function removeInstallmentRow(btn) {
     const container = document.getElementById('installmentRows');
     if (container.children.length > 1) {
         row.remove();
+        updateRemainingAmount();
+        onInstallmentAmountChange();
     }
 }
 
@@ -601,30 +646,61 @@ function getInstallmentsData() {
     return installments;
 }
 
-// Handle installment amount change - re-validate totals
+// Handle installment amount change - validate total not exceeded
 function onInstallmentAmountChange() {
-    const paymentType = document.getElementById('paymentType').value;
-    if (paymentType !== 'INSTALLMENT') return;
+    updateRemainingAmount();
+}
 
-    const totalFees = document.getElementById('totalFees');
+// Validate that total amount (initial + installments) doesn't exceed total fees
+function validateTotalAmount() {
+    const totalFees = parseFloat(document.getElementById('totalFees')?.value) || 0;
     const initialPayment = parseFloat(document.getElementById('initialPayment')?.value) || 0;
     const installments = getInstallmentsData();
     const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
-    const feeValue = parseFloat(totalFees.value) || 0;
-    const remainingAmount = feeValue - initialPayment;
+    const totalEntered = initialPayment + totalInstallments;
+
     const totalMismatchError = document.getElementById('installmentsTotalError');
+    const totalFeesField = document.getElementById('totalFees');
+    const initialPaymentField = document.getElementById('initialPayment');
     const allInstallmentInputs = document.querySelectorAll('.installment-amount');
 
-    // Validate: installments total should equal remaining amount (total - initial payment)
-    if (Math.abs(totalInstallments - remainingAmount) < 0.01 && totalMismatchError) {
-        // Totals match - clear errors
-        totalMismatchError.classList.add('hidden');
-        totalFees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+    if (totalEntered > totalFees) {
+        const excess = totalEntered - totalFees;
+        const errorMsg = `Total amount exceeds fees by ₹${excess.toLocaleString('en-IN')}`;
+        if (totalMismatchError) {
+            totalMismatchError.textContent = errorMsg;
+            totalMismatchError.classList.remove('hidden');
+        }
+        // Add red borders
+        if (totalFeesField) {
+            totalFeesField.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+            totalFeesField.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        }
+        if (initialPaymentField) {
+            initialPaymentField.classList.remove('border-blue-200', 'focus:border-blue-500');
+            initialPaymentField.classList.add('border-red-500', 'focus:border-red-500');
+        }
+        allInstallmentInputs.forEach(input => {
+            input.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+            input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        });
+        return false;
+    } else {
+        // Clear errors
+        if (totalMismatchError) totalMismatchError.classList.add('hidden');
+        if (totalFeesField) {
+            totalFeesField.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+            totalFeesField.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+        }
+        if (initialPaymentField) {
+            initialPaymentField.classList.remove('border-red-500', 'focus:border-red-500');
+            initialPaymentField.classList.add('border-blue-200', 'focus:border-blue-500');
+        }
         allInstallmentInputs.forEach(input => {
             input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
             input.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
         });
+        return true;
     }
 }
 
@@ -634,6 +710,8 @@ function validateSetupFeesForm() {
     const totalFees = document.getElementById('totalFees');
     const paymentType = document.getElementById('paymentType').value;
     const initialPaymentField = document.getElementById('initialPayment');
+    const initialPaymentDateField = document.getElementById('initialPaymentDate');
+    const initialPaymentModeField = document.getElementById('initialPaymentMode');
     const initialPayment = parseFloat(initialPaymentField?.value) || 0;
 
     // Validate Total Fees (always required)
@@ -648,63 +726,56 @@ function validateSetupFeesForm() {
         totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
     }
 
-    // Validate initial payment doesn't exceed total
-    if (initialPaymentField && initialPayment > parseFloat(totalFees.value || 0)) {
+    // Validate Initial Payment (always required now)
+    if (initialPaymentField && (!initialPaymentField.value || initialPayment < 0)) {
         document.getElementById('initialPaymentError')?.classList.remove('hidden');
-        initialPaymentField.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-        initialPaymentField.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        showToast('error', 'Initial payment cannot exceed total fees');
+        document.getElementById('initialPaymentError').textContent = 'Initial payment is required';
+        initialPaymentField.classList.remove('border-blue-200', 'focus:border-blue-500');
+        initialPaymentField.classList.add('border-red-500', 'focus:border-red-500');
+        valid = false;
+    } else if (initialPayment > parseFloat(totalFees.value || 0)) {
+        document.getElementById('initialPaymentError')?.classList.remove('hidden');
+        document.getElementById('initialPaymentError').textContent = 'Cannot exceed total fees';
+        initialPaymentField.classList.remove('border-blue-200', 'focus:border-blue-500');
+        initialPaymentField.classList.add('border-red-500', 'focus:border-red-500');
         valid = false;
     } else {
         document.getElementById('initialPaymentError')?.classList.add('hidden');
         if (initialPaymentField) {
-            initialPaymentField.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-            initialPaymentField.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
+            initialPaymentField.classList.remove('border-red-500', 'focus:border-red-500');
+            initialPaymentField.classList.add('border-blue-200', 'focus:border-blue-500');
         }
     }
 
+    // Validate Initial Payment Date (required)
+    if (initialPaymentDateField && !initialPaymentDateField.value) {
+        initialPaymentDateField.classList.add('border-red-500', 'focus:border-red-500');
+        valid = false;
+    } else if (initialPaymentDateField) {
+        initialPaymentDateField.classList.remove('border-red-500', 'focus:border-red-500');
+    }
+
+    // Validate Initial Payment Mode (required)
+    if (initialPaymentModeField && !initialPaymentModeField.value) {
+        initialPaymentModeField.classList.add('border-red-500', 'focus:border-red-500');
+        valid = false;
+    } else if (initialPaymentModeField) {
+        initialPaymentModeField.classList.remove('border-red-500', 'focus:border-red-500');
+    }
+
+    // Validate that total entered amount doesn't exceed total fees
+    if (!validateTotalAmount()) {
+        valid = false;
+    }
+
     if (paymentType === 'INSTALLMENT') {
-        // For INSTALLMENT, validate installments
+        // For INSTALLMENT, validate installments exist
         const installments = getInstallmentsData();
         if (installments.length === 0) {
             document.getElementById('installmentsError').classList.remove('hidden');
             valid = false;
         } else {
             document.getElementById('installmentsError').classList.add('hidden');
-        }
-
-        // Check if total installments equals REMAINING amount (total - initial payment)
-        const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
-        const totalMismatchError = document.getElementById('installmentsTotalError');
-        const feeValue = parseFloat(totalFees.value) || 0;
-        const remainingAmount = feeValue - initialPayment;
-        const allInstallmentInputs = document.querySelectorAll('.installment-amount');
-
-        if (Math.abs(totalInstallments - remainingAmount) > 0.01) {
-            const errorMsg = `Installments total (₹${totalInstallments}) must equal remaining amount (₹${remainingAmount}) after initial payment`;
-            if (totalMismatchError) {
-                totalMismatchError.textContent = errorMsg;
-                totalMismatchError.classList.remove('hidden');
-            }
-            // Add red border to total fees field
-            totalFees.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-            totalFees.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-            // Add red border to all installment amount inputs
-            allInstallmentInputs.forEach(input => {
-                input.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-                input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-            });
-            showToast('error', errorMsg);
-            valid = false;
-        } else {
-            if (totalMismatchError) totalMismatchError.classList.add('hidden');
-            // Clear red borders
-            totalFees.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-            totalFees.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-            allInstallmentInputs.forEach(input => {
-                input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-                input.classList.add('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
-            });
         }
     }
 
@@ -721,37 +792,43 @@ async function submitSetupFees() {
     const totalFees = parseFloat(document.getElementById('totalFees').value);
     const paymentType = document.getElementById('paymentType').value;
 
-    // Get payment mode
-    const paymentMode = document.getElementById('paymentMode')?.value || 'CASH';
-
-    // Get initial payment details for INSTALLMENT
+    // Get initial payment details (always required now)
     const initialPaymentField = document.getElementById('initialPayment');
     const initialPaymentDateField = document.getElementById('initialPaymentDate');
+    const initialPaymentModeField = document.getElementById('initialPaymentMode');
     const initialPayment = initialPaymentField ? parseFloat(initialPaymentField.value) || 0 : 0;
     const initialPaymentDate = initialPaymentDateField?.value;
+    const initialPaymentMode = initialPaymentModeField?.value || 'CASH';
 
     try {
-        // Build request payload based on payment type
+        // Build request payload
         const payload = {
             totalFees: totalFees,
             paymentType: paymentType,
-            paymentMethod: paymentMode
+            paymentMethod: initialPaymentMode,  // Use initial payment mode as main payment method
+            initialPayment: initialPayment,
+            initialPaymentMode: initialPaymentMode,
+            paymentDate: initialPaymentDate
         };
 
-        // For INSTALLMENT, add installments array and optional initial payment
+        // For INSTALLMENT, add installments array
         if (paymentType === 'INSTALLMENT') {
             payload.installments = getInstallmentsData();
+        }
 
-            // Add initial payment if provided
-            if (initialPayment > 0) {
-                payload.initialPayment = initialPayment;
-                const initialPaymentMode = document.getElementById('initialPaymentMode')?.value;
-                if (initialPaymentMode) {
-                    payload.initialPaymentMode = initialPaymentMode;
-                }
-                if (initialPaymentDate) {
-                    payload.paymentDate = initialPaymentDate;
-                }
+        // For ONE_TIME with remaining amount, add pending installment
+        if (paymentType === 'ONE_TIME') {
+            const pendingAmountField = document.getElementById('pendingAmount');
+            const pendingDueDateField = document.getElementById('pendingDueDate');
+            const pendingAmount = pendingAmountField?.value ? parseFloat(pendingAmountField.value) : 0;
+            const pendingDueDate = pendingDueDateField?.value;
+
+            if (pendingAmount > 0 && pendingDueDate) {
+                // Create a pending installment for remaining amount
+                payload.pendingInstallment = {
+                    amount: pendingAmount,
+                    dueDate: pendingDueDate
+                };
             }
         }
 
@@ -964,11 +1041,15 @@ window.openConvertModal = openConvertModal;
 window.closeSetupFeesModal = closeSetupFeesModal;
 window.submitSetupFees = submitSetupFees;
 window.onPaymentTypeChange = onPaymentTypeChange;
+window.onTotalFeesChange = onTotalFeesChange;
 window.onInitialPaymentChange = onInitialPaymentChange;
 window.onInstallmentAmountChange = onInstallmentAmountChange;
 window.addInstallmentRow = addInstallmentRow;
 window.removeInstallmentRow = removeInstallmentRow;
 window.onInstallmentDateChange = onInstallmentDateChange;
+window.updateRemainingAmount = updateRemainingAmount;
+window.updatePendingAmountSection = updatePendingAmountSection;
+window.validateTotalAmount = validateTotalAmount;
 window.closeConfirmModal = closeConfirmModal;
 window.executeConfirmAction = executeConfirmAction;
 window.showErrorModal = showErrorModal;

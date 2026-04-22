@@ -10,11 +10,20 @@
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
 
+    <!-- Google Fonts - Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Axios -->
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
 
     <!-- Lucide -->
     <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        body { font-family: 'Inter', system-ui, -apple-system, sans-serif; }
+    </style>
 
 </head>
 
@@ -165,63 +174,51 @@
                 </div>
 
                 <!-- Payment Summary Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-5 gap-6">
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="receipt" class="w-6 h-6 text-blue-600"></i>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20">
+                                <i data-lucide="receipt" class="w-6 h-6 text-white"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500">Total Fees</p>
-                                <p id="totalFees" class="text-2xl font-bold text-gray-800">₹0</p>
+                                <p class="text-xs font-semibold tracking-wide text-gray-400 uppercase">Total Fees</p>
+                                <p id="totalFees" class="text-xl font-bold text-gray-900 tracking-tight">₹0</p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="wallet" class="w-6 h-6 text-emerald-600"></i>
+                    <div class="bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center shadow-lg shadow-emerald-500/20">
+                                <i data-lucide="wallet" class="w-6 h-6 text-white"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500">Paid Amount</p>
-                                <p id="paidAmount" class="text-2xl font-bold text-emerald-600">₹0</p>
+                                <p class="text-xs font-semibold tracking-wide text-emerald-400 uppercase">Paid Amount</p>
+                                <p id="paidAmount" class="text-xl font-bold text-emerald-600 tracking-tight">₹0</p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="clock" class="w-6 h-6 text-red-600"></i>
+                    <div class="bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-red-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg shadow-red-500/20">
+                                <i data-lucide="clock" class="w-6 h-6 text-white"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500">Remaining</p>
-                                <p id="remainingAmount" class="text-2xl font-bold text-red-600">₹0</p>
+                                <p class="text-xs font-semibold tracking-wide text-red-400 uppercase">Remaining</p>
+                                <p id="remainingAmount" class="text-xl font-bold text-red-600 tracking-tight">₹0</p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="calendar" class="w-6 h-6 text-purple-600"></i>
+                    <div class="bg-white p-5 rounded-2xl shadow-[0_2px_8px_rgba(0,0,0,0.04)] border border-gray-100/50 hover:shadow-[0_4px_16px_rgba(0,0,0,0.06)] transition-shadow">
+                        <div class="flex items-center gap-4">
+                            <div class="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/20">
+                                <i data-lucide="calendar" class="w-6 h-6 text-white"></i>
                             </div>
                             <div>
-                                <p class="text-sm text-gray-500">Admission Date</p>
-                                <p id="admissionDate" class="text-2xl font-bold text-gray-800">-</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="credit-card" class="w-6 h-6 text-cyan-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Payment Mode</p>
-                                <p id="paymentMode" class="text-2xl font-bold text-gray-800">-</p>
+                                <p class="text-xs font-semibold tracking-wide text-purple-400 uppercase">Admission Date</p>
+                                <p id="admissionDate" class="text-lg font-bold text-gray-900 tracking-tight">-</p>
                             </div>
                         </div>
                     </div>
@@ -244,7 +241,6 @@
                                 <div>
                                     <p class="font-semibold text-green-800">Payment Fully Completed</p>
                                     <p class="text-sm text-green-600">Completed on <span id="completionDate">-</span></p>
-                                    <p class="text-sm text-green-600 mt-1">Payment Method: <span id="paymentMethodDisplay" class="font-medium">-</span></p>
                                 </div>
                             </div>
                         </div>
@@ -287,7 +283,7 @@
 
                         <!-- Payment Buttons -->
                         <div class="flex flex-wrap gap-3 mt-6">
-                            <button onclick="openPaymentModal()" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-lg shadow-green-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                            <button onclick="openPaymentModal()" id="addPaymentBtn" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-lg shadow-green-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
                                 <i data-lucide="plus" class="w-4 h-4"></i>
                                 Add Payment
                             </button>
@@ -295,6 +291,27 @@
                                 <i data-lucide="wallet" class="w-4 h-4"></i>
                                 Pay Full Amount
                             </button>
+                            <button onclick="openRefundModal()" id="refundBtn" class="hidden px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-lg shadow-amber-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                                <i data-lucide="undo-2" class="w-4 h-4"></i>
+                                Refund
+                            </button>
+                            <button onclick="cancelAdmission()" id="cancelAdmissionBtn" class="hidden px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl shadow-lg shadow-red-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                                <i data-lucide="ban" class="w-4 h-4"></i>
+                                Cancel Admission
+                            </button>
+                        </div>
+
+                        <!-- Cancelled Status Badge -->
+                        <div id="cancelledStatusBadge" class="hidden mt-4 bg-red-50 border border-red-200 rounded-xl p-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                    <i data-lucide="ban" class="w-5 h-5 text-red-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-semibold text-red-800">Admission Cancelled</p>
+                                    <p id="cancelledDate" class="text-sm text-red-600">-</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -469,6 +486,68 @@
                 <button onclick="submitEdit()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
                     <i data-lucide="check" class="w-4 h-4"></i>
                     Save Changes
+                </button>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- REFUND MODAL -->
+    <div id="refundModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="refundModalContent">
+
+            <!-- Header -->
+            <div class="flex items-center gap-3 mb-6">
+                <div class="w-10 h-10 bg-amber-600 rounded-xl flex items-center justify-center">
+                    <i data-lucide="undo-2" class="text-white w-5 h-5"></i>
+                </div>
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800">Process Refund</h2>
+                    <p class="text-sm text-gray-500">Enter refund details</p>
+                </div>
+            </div>
+
+            <!-- Refund Info -->
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-5">
+                <p class="text-sm text-amber-700">Maximum refundable: <span id="maxRefundAmount" class="font-semibold">₹0</span></p>
+            </div>
+
+            <!-- Form -->
+            <div class="space-y-4">
+
+                <!-- Refund Amount -->
+                <div class="relative">
+                    <input type="number" id="refundAmount" min="1" step="0.01"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all"
+                        placeholder="Amount">
+                    <label for="refundAmount"
+                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-amber-600">
+                        Refund Amount (₹) <span class="text-red-500">*</span>
+                    </label>
+                    <p id="refundAmountError" class="hidden text-red-500 text-xs mt-1 ml-1">Invalid amount</p>
+                </div>
+
+                <!-- Refund Note -->
+                <div class="relative">
+                    <textarea id="refundNote" rows="2"
+                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 transition-all resize-none"
+                        placeholder="Note"></textarea>
+                    <label for="refundNote"
+                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-amber-600">
+                        Note (Optional)
+                    </label>
+                </div>
+
+            </div>
+
+            <!-- Actions -->
+            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+                <button onclick="closeRefundModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Cancel
+                </button>
+                <button onclick="submitRefund()" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-lg shadow-amber-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                    <i data-lucide="check" class="w-4 h-4"></i>
+                    Process Refund
                 </button>
             </div>
 

@@ -298,7 +298,7 @@
 
     <!-- SETUP FEES MODAL -->
     <div id="setupFeesModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="setupFeesModalContent">
+        <div class="bg-white rounded-2xl w-full max-w-[520px] p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="setupFeesModalContent">
 
             <!-- Header -->
             <div class="flex items-center gap-3 mb-6">
@@ -311,17 +311,17 @@
             <input type="hidden" id="setupFeesEnquiryId">
 
             <!-- Form -->
-            <div class="space-y-5">
+            <div class="space-y-4">
 
                 <!-- Payment Type Selection -->
                 <div class="relative">
                     <select id="paymentType" required onchange="onPaymentTypeChange()"
-                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all appearance-none bg-white">
-                        <option value="ONE_TIME">One Time Payment</option>
+                        class="peer w-full px-4 py-2.5 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all appearance-none bg-white text-sm">
+                        <option value="ONE_TIME">Full Payment</option>
                         <option value="INSTALLMENT">Installment Payment</option>
                     </select>
-                    <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
-                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
+                    <i data-lucide="chevron-down" class="absolute right-4 top-2.5 text-gray-400 pointer-events-none w-5 h-5"></i>
+                    <label class="absolute left-4 -top-2 bg-white px-1 text-xs text-gray-500">
                         Payment Type <span class="text-red-500">*</span>
                     </label>
                 </div>
@@ -329,104 +329,112 @@
                 <!-- Total Fees (Always shown) -->
                 <div class="relative">
                     <input type="number" id="totalFees" required min="0" step="0.01"
-                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all"
-                        placeholder="Total Fees">
+                        class="peer w-full px-4 py-2.5 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all text-sm"
+                        placeholder="Total Fees" oninput="onTotalFeesChange()">
                     <label for="totalFees"
-                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-purple-600">
+                        class="absolute left-4 -top-2 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-sm peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-2.5 peer-focus:-top-2 peer-focus:text-xs peer-focus:text-purple-600">
                         Total Fees (Rs.) <span class="text-red-500">*</span>
                     </label>
                     <p id="totalFeesError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter valid amount</p>
                 </div>
 
-                <!-- Payment Mode (for ONE_TIME and initial payment) -->
-                <div id="paymentModeSection" class="relative">
-                    <select id="paymentMode"
-                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all appearance-none bg-white">
-                        <option value="CASH">💵 Cash</option>
-                        <option value="UPI">📱 UPI</option>
-                        <option value="CARD">💳 Card</option>
-                        <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
-                    </select>
-                    <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
-                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-                        Payment Mode <span class="text-red-500">*</span>
+                <!-- Initial Payment Section (Always Visible, Required) -->
+                <div id="initialPaymentSection" class="bg-blue-50 rounded-xl p-3 space-y-3">
+                    <label class="text-sm font-medium text-blue-800 flex items-center gap-2">
+                        <i data-lucide="wallet" class="w-4 h-4"></i>
+                        Initial Payment <span class="text-xs font-normal text-blue-600">(Required)</span>
                     </label>
-                </div>
 
-                <!-- Installments Section (Hidden for ONE_TIME) -->
-                <div id="installmentsSection" class="space-y-4 hidden">
-
-                    <!-- Pay Now Section (Initial Payment) -->
-                    <div class="bg-blue-50 rounded-xl p-4 space-y-3">
-                        <label class="text-sm font-medium text-blue-800 flex items-center gap-2">
-                            <i data-lucide="wallet" class="w-4 h-4"></i>
-                            Pay Now (Optional)
-                        </label>
-                        <p class="text-xs text-blue-600">Record any initial payment collected today (e.g., registration fee)</p>
-
-                        <div class="grid grid-cols-2 gap-3">
-                            <div class="relative">
-                                <input type="number" id="initialPayment" min="0" step="0.01"
-                                    class="w-full px-3 py-2 rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500"
-                                    placeholder="Amount" oninput="onInitialPaymentChange()">
-                            </div>
-                            <div class="relative">
-                                <input type="date" id="initialPaymentDate"
-                                    class="w-full px-3 py-2 rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500">
-                            </div>
-                        </div>
-
-                        <!-- Initial Payment Mode -->
+                    <!-- Single Row: Amount + Date + Payment Mode -->
+                    <div class="grid grid-cols-[1fr_1fr_1fr] gap-2">
                         <div class="relative">
-                            <select id="initialPaymentMode"
-                                class="w-full px-3 py-2 rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500 bg-white">
+                            <input type="number" id="initialPayment" min="0" step="0.01" required
+                                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500"
+                                placeholder="Amount" oninput="onInitialPaymentChange()">
+                            <p id="initialPaymentError" class="hidden text-red-500 text-xs mt-0.5">Invalid amount</p>
+                        </div>
+                        <div class="relative">
+                            <input type="date" id="initialPaymentDate" required
+                                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500">
+                        </div>
+                        <div class="relative">
+                            <select id="initialPaymentMode" required
+                                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500 bg-white">
                                 <option value="CASH">💵 Cash</option>
                                 <option value="UPI">📱 UPI</option>
                                 <option value="CARD">💳 Card</option>
                                 <option value="BANK_TRANSFER">🏦 Bank Transfer</option>
                             </select>
-                            <label class="absolute left-3 -top-2 bg-blue-50 px-1 text-xs text-blue-700">Payment Mode</label>
-                        </div>
-
-                        <!-- Remaining Amount Display -->
-                        <div class="flex justify-between items-center py-2 border-t border-blue-200">
-                            <span class="text-sm text-blue-700">Remaining for Installments:</span>
-                            <span id="remainingAmountDisplay" class="font-semibold text-blue-800">₹0</span>
                         </div>
                     </div>
 
-                    <div class="flex justify-between items-center pt-2">
+                    <!-- Remaining Amount Display -->
+                    <div class="flex justify-between items-center pt-2 border-t border-blue-200">
+                        <span class="text-sm text-blue-700">Remaining Amount:</span>
+                        <span id="remainingAmountDisplay" class="font-semibold text-blue-800">₹0</span>
+                    </div>
+                </div>
+
+                <!-- Pending Amount Section (Shown for ONE_TIME when remaining > 0) -->
+                <div id="pendingAmountSection" class="hidden bg-amber-50 rounded-xl p-3 space-y-3">
+                    <label class="text-sm font-medium text-amber-800 flex items-center gap-2">
+                        <i data-lucide="clock" class="w-4 h-4"></i>
+                        Pending Amount
+                    </label>
+                    <div class="grid grid-cols-2 gap-2">
+                        <div class="relative">
+                            <input type="number" id="pendingAmount" min="0" step="0.01" readonly
+                                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-amber-200 text-gray-800 text-sm bg-gray-100"
+                                placeholder="Pending">
+                        </div>
+                        <div class="relative">
+                            <input type="date" id="pendingDueDate"
+                                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-amber-200 text-gray-800 text-sm focus:outline-none focus:border-amber-500">
+                            <label class="absolute left-3 -top-2 bg-amber-50 px-1 text-xs text-amber-700">Due Date</label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Installments Section (Hidden for ONE_TIME) -->
+                <div id="installmentsSection" class="space-y-3 hidden">
+
+                    <div class="flex justify-between items-center">
                         <label class="text-sm font-medium text-gray-700">Future Installments</label>
-                        <button type="button" onclick="addInstallmentRow()" class="text-sm text-purple-600 hover:text-purple-800 font-medium">+ Add Installment</button>
+                        <button type="button" onclick="addInstallmentRow()" class="text-sm text-purple-600 hover:text-purple-800 font-medium">+ Add</button>
                     </div>
 
                     <!-- Installment Rows Container -->
-                    <div id="installmentRows" class="space-y-3">
+                    <div id="installmentRows" class="space-y-2">
                         <!-- Initial Installment Row -->
-                        <div class="installment-row grid grid-cols-2 gap-3 p-3 bg-gray-50 rounded-xl">
+                        <div class="installment-row grid grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-gray-50 rounded-lg items-center">
                             <div class="relative">
-                                <input type="number" class="installment-amount w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
-                                    placeholder="Amount" min="0" step="0.01" required oninput="onInstallmentAmountChange()">
+                                <input type="number" class="installment-amount w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
+                                    placeholder="Amount" min="0" step="0.01" oninput="onInstallmentAmountChange()">
                             </div>
                             <div class="relative">
-                                <input type="date" class="installment-date w-full px-3 py-2 rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
-                                    required min="" onchange="onInstallmentDateChange(this)">
+                                <input type="date" class="installment-date w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
+                                    min="" onchange="onInstallmentDateChange(this)">
                             </div>
+                            <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2 h-[40px] flex items-center justify-center">
+                                <i data-lucide="x" class="w-4 h-4"></i>
+                            </button>
                         </div>
                     </div>
 
                     <p id="installmentsError" class="hidden text-red-500 text-xs">Add at least one installment</p>
-                    <p id="installmentsTotalError" class="hidden text-red-500 text-sm mt-2"></p>
                 </div>
+
+                <!-- Validation Error -->
+                <p id="installmentsTotalError" class="hidden text-red-500 text-sm"></p>
 
             </div>
 
             <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-                <button onclick="closeSetupFeesModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+            <div class="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
+                <button onclick="closeSetupFeesModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors font-medium text-sm">
                     Cancel
                 </button>
-                <button onclick="submitSetupFees()" class="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-lg shadow-purple-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                <button onclick="submitSetupFees()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg shadow-purple-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2 text-sm">
                     <i data-lucide="check" class="w-4 h-4"></i>
                     Save Admission
                 </button>

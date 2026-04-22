@@ -45,7 +45,8 @@ async function loadAdmissionDetails() {
         // Load admission details
         const response = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(currentAdmissionId));
         // Handle response wrapper or direct data
-        currentAdmission = response.admission || response.data?.admission || response;
+        // API returns nested structure: admission.admission contains the actual admission data
+        currentAdmission = response.admission?.admission || response.admission || response.data?.admission || response;
 
         // Load payments
         const paymentsResponse = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(currentAdmissionId));
@@ -167,7 +168,16 @@ function renderAdmissionDetails() {
 
     // Payment Type & Method
     const paymentType = currentAdmission.paymentType || 'ONE_TIME';
-    const paymentMethod = currentAdmission.paymentMethod || '-';
+    // Get payment method from admission or fallback to last payment's method
+    let paymentMethod = currentAdmission.paymentMethod;
+    if (!paymentMethod && payments.length > 0) {
+        // Get the most recent payment's method
+        const lastPayment = payments.reduce((latest, p) =>
+            new Date(p.createdAt) > new Date(latest.createdAt) ? p : latest
+        );
+        paymentMethod = lastPayment.paymentMethod || lastPayment.method || '-';
+    }
+    paymentMethod = paymentMethod || '-';
     document.getElementById('paymentMode').textContent = paymentType === 'ONE_TIME'
         ? paymentMethod
         : `${paymentType} (Installment)`;
@@ -207,13 +217,6 @@ function renderAdmissionDetails() {
             ? formatDate(lastPayment.createdAt)
             : formatDate(currentAdmission.updatedAt);
 
-        // Show payment method for ONE_TIME payments
-        const pmDisplay = document.getElementById('paymentMethodDisplay');
-        if (pmDisplay && currentAdmission.paymentType === 'ONE_TIME' && currentAdmission.paymentMethod) {
-            pmDisplay.textContent = currentAdmission.paymentMethod;
-        } else if (pmDisplay) {
-            pmDisplay.textContent = 'N/A';
-        }
     } else {
         fullyPaidSection.classList.add('hidden');
         pendingPaymentSection.classList.remove('hidden');
@@ -235,8 +238,62 @@ function renderAdmissionDetails() {
         }
     }
 
+    // Update Cancel and Refund buttons based on admission status
+    updateActionButtons();
+
     // Re-attach WhatsApp event listener since button was dynamically created
     setupWhatsAppIntegration();
+}
+
+/* ======================
+UPDATE ACTION BUTTONS (Cancel & Refund)
+====================== */
+function updateActionButtons() {
+    if (!currentAdmission) return;
+
+    const admissionStatus = currentAdmission.status || 'active';
+    const paidAmount = currentAdmission.paidAmount || 0;
+
+    const cancelBtn = document.getElementById('cancelAdmissionBtn');
+    const refundBtn = document.getElementById('refundBtn');
+    const addPaymentBtn = document.getElementById('addPaymentBtn');
+    const payFullBtn = document.getElementById('payFullBtn');
+    const cancelledBadge = document.getElementById('cancelledStatusBadge');
+    const cancelledDate = document.getElementById('cancelledDate');
+
+    // Show Cancel button only if admission is active
+    if (cancelBtn) {
+        if (admissionStatus === 'active') {
+            cancelBtn.classList.remove('hidden');
+        } else {
+            cancelBtn.classList.add('hidden');
+        }
+    }
+
+    // Show Refund button if paid amount > 0 (even if cancelled)
+    if (refundBtn) {
+        if (paidAmount > 0) {
+            refundBtn.classList.remove('hidden');
+        } else {
+            refundBtn.classList.add('hidden');
+        }
+    }
+
+    // Hide payment buttons if admission is cancelled
+    if (admissionStatus === 'cancelled') {
+        if (addPaymentBtn) addPaymentBtn.classList.add('hidden');
+        if (payFullBtn) payFullBtn.classList.add('hidden');
+
+        // Show cancelled badge
+        if (cancelledBadge) {
+            cancelledBadge.classList.remove('hidden');
+            if (cancelledDate && currentAdmission.cancelledAt) {
+                cancelledDate.textContent = formatDate(currentAdmission.cancelledAt);
+            }
+        }
+    } else {
+        if (cancelledBadge) cancelledBadge.classList.add('hidden');
+    }
 }
 
 /* ======================
@@ -750,6 +807,178 @@ function openWhatsApp() {
 }
 
 /* ======================
+CANCEL ADMISSION
+====================== */
+async function cancelAdmission() {
+    if (!currentAdmissionId) return;
+
+    // Confirm before cancelling
+    if (!confirm('Are you sure you want to cancel this admission?\n\nThis will stop all future payments and installments. Any paid amount will need to be refunded separately.')) {
+        return;
+    }
+
+    try {
+        await apiPatch(API_ENDPOINTS.ADMISSIONS.CANCEL(currentAdmissionId));
+
+        showToast('success', 'Admission cancelled successfully');
+
+        // Update current admission status
+        currentAdmission.status = 'cancelled';
+        currentAdmission.cancelledAt = new Date().toISOString();
+
+        // Update UI
+        updateActionButtons();
+
+        // Refresh data from server
+        loadAdmissionDetails();
+    } catch (err) {
+        showToast('error', err.response?.data?.message || 'Failed to cancel admission');
+        console.error(err);
+    }
+}
+
+/* ======================
+REFUND MODAL & FUNCTIONS
+====================== */
+function openRefundModal() {
+    if (!currentAdmission) return;
+
+    const modal = document.getElementById('refundModal');
+    const modalContent = document.getElementById('refundModalContent');
+    const maxRefundEl = document.getElementById('maxRefundAmount');
+    const refundAmountInput = document.getElementById('refundAmount');
+    const refundNoteInput = document.getElementById('refundNote');
+
+    // Calculate max refundable amount
+    const paidAmount = currentAdmission.paidAmount || 0;
+    const totalRefunded = calculateTotalRefunded();
+    const maxRefundable = Math.max(0, paidAmount - totalRefunded);
+
+    if (maxRefundEl) {
+        maxRefundEl.textContent = formatCurrency(maxRefundable);
+    }
+
+    // Reset form
+    if (refundAmountInput) {
+        refundAmountInput.value = '';
+        refundAmountInput.max = maxRefundable;
+        clearRefundAmountError();
+    }
+    if (refundNoteInput) refundNoteInput.value = '';
+
+    // Show modal with animation
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+}
+
+function closeRefundModal() {
+    const modal = document.getElementById('refundModal');
+    const modalContent = document.getElementById('refundModalContent');
+
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function calculateTotalRefunded() {
+    if (!payments || payments.length === 0) return 0;
+
+    return payments
+        .filter(p => p.type === 'refund' || p.isRefund || p.amount < 0)
+        .reduce((total, p) => total + Math.abs(p.amount), 0);
+}
+
+function validateRefundAmount() {
+    const input = document.getElementById('refundAmount');
+    const error = document.getElementById('refundAmountError');
+    const value = parseFloat(input.value);
+
+    if (!currentAdmission) return false;
+
+    const paidAmount = currentAdmission.paidAmount || 0;
+    const totalRefunded = calculateTotalRefunded();
+    const maxRefundable = Math.max(0, paidAmount - totalRefunded);
+
+    if (!value || value <= 0) {
+        error.textContent = 'Refund amount must be greater than 0';
+        error.classList.remove('hidden');
+        input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        input.classList.remove('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
+        return false;
+    }
+
+    if (value > maxRefundable) {
+        error.textContent = `Cannot exceed refundable amount (₹${maxRefundable.toLocaleString('en-IN')})`;
+        error.classList.remove('hidden');
+        input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        input.classList.remove('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
+        return false;
+    }
+
+    error.classList.add('hidden');
+    input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+    input.classList.add('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
+    return true;
+}
+
+function clearRefundAmountError() {
+    const input = document.getElementById('refundAmount');
+    const error = document.getElementById('refundAmountError');
+
+    if (error) error.classList.add('hidden');
+    if (input) {
+        input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+        input.classList.add('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
+    }
+}
+
+async function submitRefund() {
+    if (!currentAdmissionId || !currentAdmission) return;
+
+    // Validate refund amount
+    if (!validateRefundAmount()) {
+        return;
+    }
+
+    const refundAmount = parseFloat(document.getElementById('refundAmount').value);
+    const refundNote = document.getElementById('refundNote').value.trim();
+
+    try {
+        // Build refund payload
+        const payload = {
+            admissionId: currentAdmissionId,
+            amount: -refundAmount, // Negative amount for refund
+            type: 'refund',
+            note: refundNote || 'Refund processed'
+        };
+
+        await apiPost(API_ENDPOINTS.PAYMENTS.REFUND, payload);
+
+        showToast('success', `Refund of ₹${refundAmount.toLocaleString('en-IN')} processed successfully`);
+
+        // Close modal
+        closeRefundModal();
+
+        // Refresh data from server
+        await loadAdmissionDetails();
+
+        // Refresh payment history
+        await loadAdmissionDetails();
+
+    } catch (err) {
+        showToast('error', err.response?.data?.message || 'Failed to process refund');
+        console.error(err);
+    }
+}
+
+/* ======================
 EXPORT
 ====================== */
 window.openPaymentModal = openPaymentModal;
@@ -760,3 +989,7 @@ window.submitPayment = submitPayment;
 window.openEditModal = openEditModal;
 window.closeEditModal = closeEditModal;
 window.submitEdit = submitEdit;
+window.cancelAdmission = cancelAdmission;
+window.openRefundModal = openRefundModal;
+window.closeRefundModal = closeRefundModal;
+window.submitRefund = submitRefund;

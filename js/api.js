@@ -1,5 +1,5 @@
-// const BASE_URL = 'http://localhost:5000/api';
-const BASE_URL = 'https://sssam-r3pz.onrender.com/api'
+const BASE_URL = 'http://localhost:5000/api';
+// const BASE_URL = 'https://sssam-r3pz.onrender.com/api'
 
 /* ======================
 ENDPOINTS
@@ -18,18 +18,20 @@ const API_ENDPOINTS = {
         GET_ALL: '/admissions',
         GET_BY_ID: (id) => `/admissions/${id}`,
         GET_BY_ENQUIRY: (enquiryId) => `/admissions/by-enquiry/${enquiryId}`,
-        CREATE_FROM_ENQUIRY: (enquiryId) => `/admissions/from-enquiry/${enquiryId}`, // Correct endpoint
+        CREATE_FROM_ENQUIRY: (enquiryId) => `/admissions/from-enquiry/${enquiryId}`,
         UPDATE_FEES: (id) => `/admissions/${id}/fees`,
-        LOCK: (id) => `/admissions/${id}/lock`,           // Admin only
-        PAYMENT_PLAN: (id) => `/admissions/${id}/payment-plan`
+        LOCK: (id) => `/admissions/${id}/lock`,
+        PAYMENT_PLAN: (id) => `/admissions/${id}/payment-plan`,
+        CANCEL: (id) => `/admissions/${id}/cancel`
     },
     PAYMENTS: {
         CREATE: '/payments',
         GET_ALL: '/payments',
         GET_BY_ADMISSION: (admissionId) => `/payments/admission/${admissionId}`,
         GET_BY_ID: (id) => `/payments/${id}`,
-        UPDATE: (id) => `/payments/${id}`,               // Admin only
-        CHECK_OVERDUE: '/payments/check-overdue'         // Admin only
+        UPDATE: (id) => `/payments/${id}`,
+        CHECK_OVERDUE: '/payments/check-overdue',
+        REFUND: '/payments'
     },
     REPORTS: {
         SUMMARY: '/reports/summary',
