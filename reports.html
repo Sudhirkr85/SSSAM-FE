@@ -115,21 +115,30 @@
       <!-- CONTENT -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
         
-        <!-- FILTERS -->
+        <!-- DATE FILTER TABS -->
         <div class="bg-white rounded-xl shadow-sm p-4">
-          <div class="flex flex-wrap items-center gap-4">
-            <div class="flex items-center gap-2">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2 mr-4">
               <i data-lucide="calendar" class="w-5 h-5 text-gray-400"></i>
               <span class="text-sm font-medium text-gray-700">Date Range:</span>
             </div>
-            <div class="flex items-center gap-2">
-              <input type="date" id="startDate" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
-              <span class="text-gray-400">to</span>
-              <input type="date" id="endDate" class="px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500">
+            <div class="flex flex-wrap gap-2">
+              <button onclick="setDateFilter('today')" data-filter="today" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
+                Today
+              </button>
+              <button onclick="setDateFilter('last7days')" data-filter="last7days" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                Last 7 Days
+              </button>
+              <button onclick="setDateFilter('thisMonth')" data-filter="thisMonth" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                This Month
+              </button>
+              <button onclick="setDateFilter('thisYear')" data-filter="thisYear" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                This Year
+              </button>
+              <button onclick="setDateFilter('allTime')" data-filter="allTime" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                All Time
+              </button>
             </div>
-            <button onclick="loadReports()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">
-              Generate Report
-            </button>
           </div>
         </div>
 
@@ -292,6 +301,36 @@
           </div>
         </div>
 
+        <!-- COUNSELOR PERFORMANCE -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+              <i data-lucide="users" class="w-5 h-5 text-indigo-600"></i>
+              Counselor Performance
+              <span class="text-xs text-gray-400 font-normal ml-2">(Click row to view students)</span>
+            </h3>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                  <th class="px-4 py-3 text-left">Counselor Name</th>
+                  <th class="px-4 py-3 text-center">Total Leads</th>
+                  <th class="px-4 py-3 text-center">Converted</th>
+                  <th class="px-4 py-3 text-right">Revenue</th>
+                </tr>
+              </thead>
+              <tbody id="counselorTable" class="divide-y divide-gray-100">
+                <tr>
+                  <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                    No data available
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>
@@ -346,12 +385,6 @@
       localStorage.clear();
       window.location.href = 'index.html';
     });
-
-    // Set default date range (current month)
-    const today = new Date();
-    const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-    document.getElementById('startDate').valueAsDate = firstDay;
-    document.getElementById('endDate').valueAsDate = today;
   </script>
 
 </body>

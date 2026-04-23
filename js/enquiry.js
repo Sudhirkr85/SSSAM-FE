@@ -190,6 +190,7 @@ async function loadEnquiries() {
     renderTable();
     renderMobileCards();
     updatePagination();
+    updateCountDisplay();
   } catch (err) {
     console.error('Failed to load enquiries:', err);
     showError('Failed to load enquiries. Please try again.');
@@ -344,13 +345,38 @@ function updatePagination() {
   document.getElementById('nextPage').disabled = currentPage >= totalPages;
   document.getElementById('lastPage').disabled = currentPage >= totalPages;
 
+  renderPageNumbers();
+}
+
+// ==================== COUNT DISPLAY ====================
+function updateCountDisplay() {
+  const search = document.getElementById('searchInput').value.trim();
+  const status = document.getElementById('statusFilter').value;
+  const countDisplay = document.getElementById('enquiryCountDisplay');
+
+  // Check if filters are active
+  const hasFilters = search || status;
+
+  if (hasFilters) {
+    // Show filtered count
+    const currentCount = enquiries.length;
+    countDisplay.textContent = `Showing ${currentCount} of ${totalCount} Enquiries`;
+  } else {
+    // Show total count
+    countDisplay.textContent = `Total Enquiries: ${totalCount}`;
+  }
+}
+
+function renderPageNumbers() {
+  document.getElementById('lastPage').disabled = currentPage >= totalPages;
+
   // Page numbers
   const pageNumbers = document.getElementById('pageNumbers');
   let html = '';
-  
+
   let startPage = Math.max(1, currentPage - 2);
   let endPage = Math.min(totalPages, startPage + 4);
-  
+
   if (endPage - startPage < 4) {
     startPage = Math.max(1, endPage - 4);
   }
@@ -753,20 +779,20 @@ async function submitAddEnquiry() {
 function openUpdateModal(enquiryId, currentStatus) {
   const modal = document.getElementById('updateModal');
   const content = document.getElementById('updateModalContent');
-  
+
   // Set values
   document.getElementById('updateEnquiryId').value = enquiryId;
-  document.getElementById('updateStatus').value = currentStatus;
+  document.getElementById('updateStatus').value = ''; // Reset to placeholder
   document.getElementById('updateNote').value = '';
   document.getElementById('updateFollowUpDate').value = '';
-  
+
   // Hide errors
   document.getElementById('updateNoteError').classList.add('hidden');
   document.getElementById('followUpError').classList.add('hidden');
-  
+
   // Handle follow-up date visibility
   handleUpdateStatusChange();
-  
+
   // Show modal
   modal.classList.remove('hidden');
   modal.classList.add('flex');
@@ -996,27 +1022,60 @@ function showUploadResults(results) {
   const resultTitle = document.getElementById('resultTitle');
   const resultSubtitle = document.getElementById('resultSubtitle');
 
-  if (failed === 0) {
-    resultIcon.className = 'w-9 h-9 bg-green-100 rounded-full flex items-center justify-center';
-    resultIcon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>';
-    resultTitle.textContent = 'Upload Successful';
-    resultSubtitle.textContent = `All ${total} enquiries uploaded successfully`;
-  } else if (success === 0) {
+  // Handle ZERO case - no valid records found
+  if (total === 0) {
     resultIcon.className = 'w-9 h-9 bg-red-100 rounded-full flex items-center justify-center';
     resultIcon.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-red-600"></i>';
-    resultTitle.textContent = 'Upload Failed';
-    resultSubtitle.textContent = 'All uploads failed. Check errors below.';
-  } else {
+    resultTitle.textContent = 'No Valid Records';
+    resultSubtitle.textContent = 'No valid records found in file';
+  }
+  // Handle SUCCESS case - all records uploaded successfully
+  else if (success > 0 && failed === 0) {
+    resultIcon.className = 'w-9 h-9 bg-green-100 rounded-full flex items-center justify-center';
+    resultIcon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>';
+    resultTitle.textContent = 'All Records Uploaded';
+    resultSubtitle.textContent = 'All records uploaded successfully';
+  }
+  // Handle FAILURE case - all records failed
+  else if (success === 0 && failed > 0) {
+    resultIcon.className = 'w-9 h-9 bg-red-100 rounded-full flex items-center justify-center';
+    resultIcon.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-red-600"></i>';
+    resultTitle.textContent = 'All Records Failed';
+    resultSubtitle.textContent = 'All records failed to upload';
+  }
+  // Handle PARTIAL SUCCESS case - some uploaded, some failed
+  else if (success > 0 && failed > 0) {
     resultIcon.className = 'w-9 h-9 bg-yellow-100 rounded-full flex items-center justify-center';
     resultIcon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-yellow-600"></i>';
-    resultTitle.textContent = 'Partially Successful';
+    resultTitle.textContent = 'Some Records Uploaded';
     resultSubtitle.textContent = `${success} uploaded, ${failed} failed`;
   }
+  // Fallback
+  else {
+    resultIcon.className = 'w-9 h-9 bg-gray-100 rounded-full flex items-center justify-center';
+    resultIcon.innerHTML = '<i data-lucide="info" class="w-4 h-4 text-gray-600"></i>';
+    resultTitle.textContent = 'Upload Complete';
+    resultSubtitle.textContent = 'Upload process completed';
+  }
 
-  // Show error details
+  // Show error details with row numbers
   if (errors.length > 0) {
     const errorList = document.getElementById('errorList');
-    errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+    errorList.innerHTML = errors.map(err => {
+      // Format error with row number if available
+      if (err.row && err.message) {
+        return `<li class="flex items-start gap-2"><span class="font-medium">Row ${err.row}:</span><span>${err.message}</span></li>`;
+      } else if (typeof err === 'string') {
+        // Try to extract row number from string like "Row 3: Invalid mobile number"
+        const rowMatch = err.match(/Row\s+(\d+):\s*(.+)/);
+        if (rowMatch) {
+          return `<li class="flex items-start gap-2"><span class="font-medium">Row ${rowMatch[1]}:</span><span>${rowMatch[2]}</span></li>`;
+        }
+        return `<li>${err}</li>`;
+      } else {
+        return `<li>${JSON.stringify(err)}</li>`;
+      }
+    }).join('');
     document.getElementById('errorDetails').classList.remove('hidden');
   } else {
     document.getElementById('errorDetails').classList.add('hidden');

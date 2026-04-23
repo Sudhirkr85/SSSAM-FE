@@ -10,38 +10,104 @@ document.addEventListener('DOMContentLoaded', () => {
   if (user.role !== 'admin') {
     showToast('Warning', 'Reports are available for admin users only', 'warning');
   }
-  
-  // Load initial reports
-  loadReports();
+
+  // Set default filter to this month
+  setDateFilter('thisMonth');
 });
+
+// ==================== DATE FILTER LOGIC ====================
+let currentFilter = 'thisMonth';
+
+function setDateFilter(filterType) {
+  currentFilter = filterType;
+
+  // Update tab styles
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    if (tab.dataset.filter === filterType) {
+      tab.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+      tab.classList.add('bg-blue-600', 'text-white');
+    } else {
+      tab.classList.remove('bg-blue-600', 'text-white');
+      tab.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+    }
+  });
+
+  // Load reports with new filter
+  loadReports();
+}
+
+function getDateRangeForFilter(filterType) {
+  const today = new Date();
+  const startDate = new Date();
+  const endDate = new Date();
+
+  switch (filterType) {
+    case 'today':
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'last7days':
+      startDate.setDate(today.getDate() - 6);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'thisMonth':
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'thisYear':
+      startDate.setMonth(0, 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'allTime':
+      startDate.setFullYear(2020, 0, 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    default:
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+  }
+
+  return {
+    startDate: startDate.toISOString().split('T')[0],
+    endDate: endDate.toISOString().split('T')[0]
+  };
+}
 
 // ==================== LOAD REPORTS ====================
 async function loadReports() {
   showLoadingState();
-  
-  const startDate = document.getElementById('startDate').value;
-  const endDate = document.getElementById('endDate').value;
-  
+
+  const dateRange = getDateRangeForFilter(currentFilter);
+
   try {
     // Build params
-    const params = {};
-    if (startDate) params.startDate = startDate;
-    if (endDate) params.endDate = endDate;
-    
+    const params = {
+      startDate: dateRange.startDate,
+      endDate: dateRange.endDate
+    };
+
     // Fetch summary from backend
     const response = await apiGet(API_ENDPOINTS.REPORTS.SUMMARY, params);
-    
+
     renderSummaryCards(response);
     renderCourseTable(response.courseStats || []);
     renderPaymentTable(response.paymentStats || []);
     renderSourceTable(response.sourceStats || []);
-    
+
+    // Fetch counselor performance
+    await loadCounselorPerformance(params);
+
     hideLoadingState();
   } catch (err) {
     console.error('Failed to load reports:', err);
     hideLoadingState();
     showToast('Error', 'Failed to load reports', 'error');
-    
+
     // Use mock data for demo if API fails
     useMockData();
   }
@@ -117,7 +183,7 @@ function renderPaymentTable(payments) {
 
 function renderSourceTable(sources) {
   const table = document.getElementById('sourceTable');
-  
+
   if (sources.length === 0) {
     table.innerHTML = `
       <tr>
@@ -128,7 +194,7 @@ function renderSourceTable(sources) {
     `;
     return;
   }
-  
+
   const sourceLabels = {
     'website': 'Website',
     'walk_in': 'Walk In',
@@ -138,7 +204,7 @@ function renderSourceTable(sources) {
     'advertisement': 'Advertisement',
     'other': 'Other'
   };
-  
+
   table.innerHTML = sources.map(s => {
     const conversionRate = s.enquiries > 0 ? ((s.converted / s.enquiries) * 100).toFixed(1) : 0;
     return `
@@ -154,6 +220,60 @@ function renderSourceTable(sources) {
       </tr>
     `;
   }).join('');
+}
+
+// ==================== COUNSELOR PERFORMANCE ====================
+async function loadCounselorPerformance(params) {
+  try {
+    const counselorData = await apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, params);
+    renderCounselorTable(counselorData || []);
+  } catch (err) {
+    console.error('Failed to load counselor performance:', err);
+    // Use mock counselor data if API fails
+    renderCounselorTable(getMockCounselorData());
+  }
+}
+
+function renderCounselorTable(counselors) {
+  const table = document.getElementById('counselorTable');
+
+  if (counselors.length === 0) {
+    table.innerHTML = `
+      <tr>
+        <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+          No data available
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  table.innerHTML = counselors.map(c => `
+    <tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick="navigateToCounselorStudents('${escapeHtml(c.name)}', '${escapeHtml(c.id || '')}')">
+      <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.name)}</td>
+      <td class="px-4 py-3 text-center text-gray-600">${c.totalLeads || 0}</td>
+      <td class="px-4 py-3 text-center text-gray-600">${c.converted || 0}</td>
+      <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(c.revenue || 0)}</td>
+    </tr>
+  `).join('');
+}
+
+function navigateToCounselorStudents(counselorName, counselorId) {
+  const params = new URLSearchParams({
+    counselorName: counselorName,
+    counselorId: counselorId
+  });
+  window.location.href = `counselor-students.html?${params.toString()}`;
+}
+
+function getMockCounselorData() {
+  return [
+    { id: '1', name: 'Rajesh Kumar', totalLeads: 45, converted: 18, revenue: 180000 },
+    { id: '2', name: 'Priya Sharma', totalLeads: 38, converted: 15, revenue: 150000 },
+    { id: '3', name: 'Amit Patel', totalLeads: 32, converted: 9, revenue: 95000 },
+    { id: '4', name: 'Sneha Gupta', totalLeads: 28, converted: 8, revenue: 85000 },
+    { id: '5', name: 'Vikram Singh', totalLeads: 13, converted: 2, revenue: 25000 }
+  ];
 }
 
 // ==================== MOCK DATA (FOR DEMO) ====================
@@ -185,11 +305,12 @@ function useMockData() {
       { source: 'phone_call', enquiries: 6, converted: 0 }
     ]
   };
-  
+
   renderSummaryCards(mockData);
   renderCourseTable(mockData.courseStats);
   renderPaymentTable(mockData.paymentStats);
   renderSourceTable(mockData.sourceStats);
+  renderCounselorTable(getMockCounselorData());
 }
 
 // ==================== HELPER FUNCTIONS ====================

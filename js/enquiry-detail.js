@@ -1,5 +1,7 @@
 let currentId = null;
 let confirmCallback = null;
+let selectedStatus = null;
+let currentEnquiryData = null;
 
 /* ======================
 ROLE CHECK HELPERS
@@ -14,15 +16,27 @@ function isCounselor() {
     return user.role === 'counselor' || user.role === 'user';
 }
 
-// Status labels - text only, no icons
+// Status labels - exact mapping as per requirements
 const statusLabels = {
+    'NEW': { text: 'New Lead', color: 'blue' },
     'CONTACTED': { text: 'Contacted', color: 'blue' },
-    'NO_RESPONSE': { text: 'No Response', color: 'gray' },
-    'FOLLOW_UP': { text: 'Follow Up', color: 'amber' },
+    'NO_RESPONSE': { text: 'Call Not Picked', color: 'gray' },
+    'FOLLOW_UP': { text: 'Call Back', color: 'amber' },
     'INTERESTED': { text: 'Interested', color: 'green' },
     'NOT_INTERESTED': { text: 'Not Interested', color: 'red' },
-    'ADMISSION_PROCESS': { text: 'Admission Process', color: 'purple' },
-    'CONVERTED': { text: 'Converted', color: 'green' }
+    'ADMISSION_PROCESS': { text: 'Admission In Progress', color: 'purple' },
+    'CONVERTED': { text: 'Admission Done', color: 'green' }
+};
+
+// Source mapping for human readable display
+const sourceMap = {
+    'website': 'Website',
+    'facebook': 'Facebook',
+    'instagram': 'Instagram',
+    'google': 'Google Ads',
+    'referral': 'Referral',
+    'walk_in': 'Walk-in',
+    'other': 'Other'
 };
 
 /* ======================
@@ -63,7 +77,7 @@ async function loadEnquiryDetail(id) {
         }
 
         renderEnquiry(enquiry);
-        renderTimeline(enquiry.timeline || [], enquiry.notes || []);
+        renderTimeline(enquiry.statusHistory || []);
     } catch {
         showToast('error', 'Failed to load enquiry details');
     }
@@ -73,168 +87,163 @@ function renderEnquiry(e) {
     // Store enquiry data for WhatsApp
     window.currentEnquiryData = e;
 
+    // ===== BASIC DETAILS (Always Visible) =====
+    
     // Header info
     document.getElementById('detailName').textContent = e.name || '-';
-    document.getElementById('detailMobile').textContent = e.mobile || '-';
+    document.getElementById('detailMobile').querySelector('span').textContent = e.mobile || '-';
     document.getElementById('detailCourse').querySelector('span').textContent = e.courseInterested || '-';
 
-    // Status badge
+    // Status badge - styled
     const statusBadge = document.getElementById('detailStatusBadge');
-    statusBadge.innerHTML = getStatusBadge(e.status);
+    const statusInfo = statusLabels[e.status] || { text: e.status || 'New Lead', color: 'gray' };
+    const colorClass = {
+        'blue': 'bg-blue-100 text-blue-800',
+        'green': 'bg-green-100 text-green-800',
+        'amber': 'bg-amber-100 text-amber-800',
+        'red': 'bg-red-100 text-red-800',
+        'purple': 'bg-purple-100 text-purple-800',
+        'gray': 'bg-gray-100 text-gray-800'
+    }[statusInfo.color] || 'bg-gray-100 text-gray-800';
+    statusBadge.innerHTML = `<span class="px-2 py-1 rounded-full text-xs font-semibold ${colorClass}">${statusInfo.text}</span>`;
 
-    // Details grid
-    document.getElementById('infoEmail').textContent = e.email || '-';
+    // Basic Info Grid
+    document.getElementById('basicMobile').textContent = e.mobile || '-';
+    document.getElementById('basicStatus').innerHTML = `<span class="px-2 py-1 rounded-full text-xs font-semibold ${colorClass}">${statusInfo.text}</span>`;
+    
+    // Assigned To - handle null or isUnassigned
+    const assignedTo = (e.assignedTo === null || e.isUnassigned === true) 
+        ? 'Unassigned' 
+        : (typeof e.assignedTo === 'string' ? e.assignedTo : e.assignedTo?.name || 'Unassigned');
+    document.getElementById('basicAssigned').textContent = assignedTo;
+    
+    // Follow-up Date - handle null
+    document.getElementById('basicFollowUp').textContent = e.followUpDate 
+        ? formatDateTime(e.followUpDate) 
+        : 'Not Scheduled';
 
-    // Get assigned counselor name from various possible fields
-    const counselor = e.assignedTo || e.counselorId || e.counselor;
-    const counselorName = typeof counselor === 'string' ? counselor : (counselor?.name || counselor?.fullName || '-');
-    document.getElementById('infoAssigned').textContent = counselorName;
+    // ===== MORE DETAILS (Collapsible) =====
+    
+    // Email - handle empty
+    document.getElementById('infoEmail').textContent = e.email && e.email.trim() !== '' ? e.email : 'Not Provided';
+    
+    // Source - human readable
+    document.getElementById('infoSource').textContent = sourceMap[e.source] || e.source || '-';
+    
+    // Reference Info - show '-' if null
+    document.getElementById('infoRefName').textContent = e.referenceName || '-';
+    document.getElementById('infoRefContact').textContent = e.referenceContact || '-';
+    
+    // Created By
+    document.getElementById('infoCreatedBy').textContent = e.createdBy?.name || '-';
+    
+    // Created Date - formatted
+    document.getElementById('infoCreated').textContent = formatDateTime(e.createdAt);
 
-    document.getElementById('infoStatus').innerHTML = getStatusBadge(e.status);
-    document.getElementById('infoCreated').textContent = formatDate(e.createdAt);
+    // Conditional: Show Convert to Admission button if status is INTERESTED
+    const convertBtn = document.getElementById('convertToAdmissionBtn');
+    if (e.status === 'INTERESTED') {
+        convertBtn.classList.remove('hidden');
+    } else {
+        convertBtn.classList.add('hidden');
+    }
+
+    // Conditional: Show Delete Enquiry button only for admin users
+    const deleteBtn = document.getElementById('deleteEnquiryBtn');
+    if (isAdmin()) {
+        deleteBtn.classList.remove('hidden');
+    } else {
+        deleteBtn.classList.add('hidden');
+    }
 }
 
-function renderTimeline(timeline, notes = []) {
+function renderTimeline(statusHistory) {
     const container = document.getElementById('timelineList');
-
-    if (!timeline.length) {
-        container.innerHTML = `
-            <div class="text-center py-8 text-gray-400">
-                <i data-lucide="history" class="w-8 h-8 mx-auto mb-2 opacity-50"></i>
-                <p class="text-sm">No activity recorded yet</p>
-            </div>
-        `;
-        lucide.createIcons();
-        return;
-    }
 
     // Status labels mapping
     const statusLabels = {
-        'NEW': 'New',
+        'NEW': 'New Lead',
         'CONTACTED': 'Contacted',
-        'NO_RESPONSE': 'No Response',
+        'NO_RESPONSE': 'Call Not Picked',
         'FOLLOW_UP': 'Follow Up',
         'INTERESTED': 'Interested',
         'NOT_INTERESTED': 'Not Interested',
         'ADMISSION_PROCESS': 'Admission Process',
-        'CONVERTED': 'Converted'
+        'CONVERTED': 'Converted',
+        'CREATED': 'Enquiry Created'
     };
 
     // Status colors for badges
     const statusColors = {
-        'NEW': 'bg-gray-100 text-gray-700 border-gray-200',
+        'NEW': 'bg-blue-100 text-blue-800 border-blue-200',
         'CONTACTED': 'bg-blue-50 text-blue-700 border-blue-200',
-        'NO_RESPONSE': 'bg-red-50 text-red-700 border-red-200',
-        'FOLLOW_UP': 'bg-amber-50 text-amber-700 border-amber-200',
-        'INTERESTED': 'bg-green-50 text-green-700 border-green-200',
-        'NOT_INTERESTED': 'bg-slate-100 text-slate-700 border-slate-200',
-        'ADMISSION_PROCESS': 'bg-purple-50 text-purple-700 border-purple-200',
-        'CONVERTED': 'bg-emerald-50 text-emerald-700 border-emerald-200'
+        'NO_RESPONSE': 'bg-gray-100 text-gray-700 border-gray-200',
+        'FOLLOW_UP': 'bg-amber-100 text-amber-800 border-amber-200',
+        'INTERESTED': 'bg-green-100 text-green-800 border-green-200',
+        'NOT_INTERESTED': 'bg-red-100 text-red-800 border-red-200',
+        'ADMISSION_PROCESS': 'bg-purple-100 text-purple-800 border-purple-200',
+        'CONVERTED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        'CREATED': 'bg-indigo-100 text-indigo-800 border-indigo-200'
     };
 
-    // Activity config - simple icons
-    const activityConfig = {
-        'created': { icon: 'user-plus', color: 'text-blue-600' },
-        'status_change': { icon: 'refresh-cw', color: 'text-amber-600' },
-        'note': { icon: 'message-square', color: 'text-green-600' },
-        'assigned': { icon: 'user-check', color: 'text-purple-600' },
-        'follow_up': { icon: 'calendar-clock', color: 'text-cyan-600' }
+    // Status colors for timeline dots
+    const dotColors = {
+        'NEW': 'bg-blue-500',
+        'CONTACTED': 'bg-blue-400',
+        'NO_RESPONSE': 'bg-gray-400',
+        'FOLLOW_UP': 'bg-amber-500',
+        'INTERESTED': 'bg-green-500',
+        'NOT_INTERESTED': 'bg-red-500',
+        'ADMISSION_PROCESS': 'bg-purple-500',
+        'CONVERTED': 'bg-emerald-500',
+        'CREATED': 'bg-indigo-500'
     };
 
-    // Sort timeline by timestamp descending (most recent first)
-    const sortedTimeline = [...timeline].sort((a, b) => {
-        const dateA = new Date(a.timestamp || a.createdAt);
-        const dateB = new Date(b.timestamp || b.createdAt);
+    // Build timeline array - always include "Enquiry Created"
+    let timelineItems = [];
+    
+    // Add "Enquiry Created" entry
+    if (currentEnquiryData && currentEnquiryData.createdAt) {
+        timelineItems.push({
+            status: 'CREATED',
+            note: 'Enquiry created',
+            changedAt: currentEnquiryData.createdAt
+        });
+    }
+    
+    // Add status history entries
+    if (statusHistory && statusHistory.length) {
+        timelineItems = timelineItems.concat(statusHistory);
+    }
+
+    // Sort timeline by changedAt descending (most recent first)
+    const sortedHistory = timelineItems.sort((a, b) => {
+        const dateA = new Date(a.changedAt);
+        const dateB = new Date(b.changedAt);
         return dateB - dateA;
     });
 
-    let html = '<div class="space-y-3">';
+    let html = '<div class="relative pl-6 border-l-2 border-gray-200 space-y-6">';
 
-    sortedTimeline.forEach((item) => {
-        const type = item.type || 'note';
-        const config = activityConfig[type] || activityConfig['note'];
+    sortedHistory.forEach((item, index) => {
+        const statusLabel = statusLabels[item.status] || item.status;
+        const statusColor = statusColors[item.status] || 'bg-gray-100 text-gray-700 border-gray-200';
+        const dotColor = dotColors[item.status] || 'bg-gray-400';
+        const formattedDate = formatDateTime(item.changedAt);
 
-        const dateObj = new Date(item.timestamp || item.createdAt);
-        const dateStr = dateObj.toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short'
-        });
-        const timeStr = dateObj.toLocaleTimeString('en-IN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            hour12: true
-        });
-
-        const userName = item.userName || item.user?.name || item.performedBy?.name || 'System';
-
-        // Build content based on activity type
-        let bodyContent = '';
-        let headerText = '';
-
-        if (type === 'created') {
-            headerText = 'Enquiry Created';
-            bodyContent = `<p class="text-sm text-gray-600">New enquiry created</p>`;
-        } else if (type === 'status_change' && item.metadata) {
-            const prevStatus = item.metadata.previousStatus || item.metadata.from;
-            const newStatus = item.metadata.newStatus || item.metadata.to;
-            const prevLabel = statusLabels[prevStatus] || prevStatus || 'New';
-            const newLabel = statusLabels[newStatus] || newStatus || 'Updated';
-            const prevColor = statusColors[prevStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
-            const newColor = statusColors[newStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
-
-            headerText = 'Status Updated';
-            bodyContent = `
-                <div class="flex items-center gap-2 flex-wrap">
-                    <span class="px-2 py-1 rounded text-xs font-semibold border ${prevColor}">${prevLabel}</span>
-                    <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400"></i>
-                    <span class="px-2 py-1 rounded text-xs font-semibold border ${newColor}">${newLabel}</span>
-                </div>
-                ${item.metadata.note ? `<p class="text-sm text-gray-600 mt-2"><span class="text-gray-400">Note:</span> ${item.metadata.note}</p>` : ''}
-            `;
-        } else if (type === 'note') {
-            const noteText = item.metadata?.note || item.message || item.note || 'Note added';
-            headerText = 'Note Added';
-            bodyContent = `<p class="text-sm text-gray-700">${noteText}</p>`;
-        } else if (type === 'assigned') {
-            const assignedTo = item.metadata?.assignedToName || item.metadata?.to || item.message || 'Someone';
-            headerText = 'Assigned';
-            bodyContent = `<p class="text-sm text-gray-600">Assigned to <span class="font-medium text-purple-600">${assignedTo}</span></p>`;
-        } else if (type === 'follow_up') {
-            const prevDate = item.metadata?.previousDate || item.metadata?.from;
-            const newDate = item.metadata?.newDate || item.metadata?.to;
-            headerText = 'Follow-up Updated';
-            if (prevDate && !newDate) {
-                bodyContent = `<p class="text-sm text-gray-600">Follow-up cleared</p>`;
-            } else if (!prevDate && newDate) {
-                bodyContent = `<p class="text-sm text-gray-600">Follow-up: <span class="font-medium">${formatDate(newDate)}</span></p>`;
-            } else {
-                bodyContent = `<p class="text-sm text-gray-600">Changed: ${formatDate(prevDate)} → ${formatDate(newDate)}</p>`;
-            }
-        } else {
-            headerText = 'Activity';
-            bodyContent = `<p class="text-sm text-gray-700">${item.message || item.note || ''}</p>`;
-        }
-
-        // === SIMPLE BLOCK ===
         html += `
-            <div class="bg-white rounded-lg border border-gray-200 p-4 shadow-sm hover:shadow-md transition-shadow">
-                <!-- Header: Icon + Type + Time -->
-                <div class="flex items-center justify-between mb-3">
-                    <div class="flex items-center gap-2">
-                        <i data-lucide="${config.icon}" class="w-4 h-4 ${config.color}"></i>
-                        <span class="font-medium text-gray-800">${headerText}</span>
+            <div class="relative">
+                <!-- Timeline dot -->
+                <div class="absolute -left-[31px] w-4 h-4 rounded-full border-2 border-white ${dotColor} shadow-sm"></div>
+                
+                <!-- Timeline content -->
+                <div class="bg-gray-50 rounded-xl p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="px-3 py-1 rounded-full text-xs font-semibold border ${statusColor}">${statusLabel}</span>
+                        <span class="text-xs text-gray-500">${formattedDate}</span>
                     </div>
-                    <span class="text-xs text-gray-400">${dateStr} • ${timeStr}</span>
-                </div>
-
-                <!-- Body: Status/Note -->
-                <div class="mb-2">
-                    ${bodyContent}
-                </div>
-
-                <!-- Footer: User -->
-                <div class="text-xs text-gray-400">
-                    by <span class="text-gray-600">${userName}</span>
+                    
+                    ${item.note ? `<p class="text-sm text-gray-700 mt-2">${item.note}</p>` : ''}
                 </div>
             </div>
         `;
@@ -245,20 +254,280 @@ function renderTimeline(timeline, notes = []) {
     lucide.createIcons();
 }
 
+// Format date as "23 Apr, 01:51 PM"
+function formatDateTime(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-IN', { month: 'short' });
+    const hours = date.getHours();
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    const hours12 = hours % 12 || 12;
+    return `${day} ${month}, ${hours12}:${minutes} ${ampm}`;
+}
+
+// Toggle More Details section
+function toggleMoreDetails() {
+    const content = document.getElementById('moreDetailsContent');
+    const icon = document.getElementById('moreDetailsIcon');
+    
+    if (content.classList.contains('hidden')) {
+        content.classList.remove('hidden');
+        icon.classList.add('rotate-180');
+    } else {
+        content.classList.add('hidden');
+        icon.classList.remove('rotate-180');
+    }
+}
+
+// WhatsApp message function
+function sendWhatsAppMessage() {
+    const e = window.currentEnquiryData;
+    if (!e || !e.mobile) {
+        showToast('error', 'No mobile number available');
+        return;
+    }
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const counselorName = user.name || 'SSSAM Academy';
+
+    const message = `Hi ${e.name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+We tried reaching you regarding your enquiry for ${e.courseInterested}.
+Please let us know a convenient time to connect.`;
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/91${e.mobile}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+}
+
+/* ====================
+WHATSAPP MODAL
+==================== */
+function openWhatsAppModal() {
+    const modal = document.getElementById('whatsappModal');
+    const modalContent = document.getElementById('whatsappModalContent');
+    
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+    lucide.createIcons();
+}
+
+function closeWhatsAppModal() {
+    const modal = document.getElementById('whatsappModal');
+    const modalContent = document.getElementById('whatsappModalContent');
+    
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function selectWhatsAppMessage(type) {
+    const e = currentEnquiryData;
+    if (!e || !e.mobile) {
+        showToast('error', 'No mobile number available');
+        closeWhatsAppModal();
+        return;
+    }
+
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const counselorName = user.name || 'SSSAM Academy';
+    let message = '';
+
+    switch (type) {
+        case 'followup':
+            message = `Hi ${e.name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+We tried reaching you regarding your enquiry for ${e.courseInterested}.
+Please let us know a convenient time to connect.`;
+            break;
+        case 'fee_reminder':
+            message = `Hi ${e.name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+This is a gentle reminder about the pending fee payment for your ${e.courseInterested} course.
+Please let us know if you have any questions.`;
+            break;
+        case 'admission_confirmation':
+            message = `Hi ${e.name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+Congratulations! Your admission for ${e.courseInterested} has been confirmed.
+We look forward to having you with us.`;
+            break;
+        case 'custom':
+            const customMessage = prompt('Enter your custom message:');
+            if (customMessage) {
+                message = customMessage;
+            } else {
+                closeWhatsAppModal();
+                return;
+            }
+            break;
+    }
+
+    const encodedMessage = encodeURIComponent(message);
+    const whatsappUrl = `https://wa.me/91${e.mobile}?text=${encodedMessage}`;
+    window.open(whatsappUrl, '_blank');
+    closeWhatsAppModal();
+}
+
+/* ====================
+STATUS UPDATE MODAL
+==================== */
+function openStatusUpdateModal() {
+    selectedStatus = null;
+    document.getElementById('statusUpdateEnquiryId').value = currentId;
+    
+    // Reset form
+    document.getElementById('statusUpdateNote').value = '';
+    document.getElementById('statusUpdateFollowUpDate').value = '';
+    document.getElementById('followUpDateContainer').classList.add('hidden');
+    document.getElementById('statusUpdateNoteError').classList.add('hidden');
+    document.getElementById('followUpDateError').classList.add('hidden');
+    
+    // Reset status option selections
+    document.querySelectorAll('.status-option').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-50');
+        btn.classList.add('border-gray-200', 'bg-gray-50');
+    });
+    
+    // Show modal
+    const modal = document.getElementById('statusUpdateModal');
+    const modalContent = document.getElementById('statusUpdateModalContent');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+    lucide.createIcons();
+}
+
+function closeStatusUpdateModal() {
+    const modal = document.getElementById('statusUpdateModal');
+    const modalContent = document.getElementById('statusUpdateModalContent');
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+function selectStatus(status) {
+    selectedStatus = status;
+    
+    // Update button styles
+    document.querySelectorAll('.status-option').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-50');
+        btn.classList.add('border-gray-200', 'bg-gray-50');
+    });
+
+function submitStatusUpdate() {
+    if (!selectedStatus) {
+        /* ... */
+        showToast('error', 'Please select a status');
+        return;
+    }
+    
+    const note = document.getElementById('statusUpdateNote').value.trim();
+    const followUpDate = document.getElementById('statusUpdateFollowUpDate').value;
+    
+    // Validate note
+    if (!note) {
+        document.getElementById('statusUpdateNoteError').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('statusUpdateNoteError').classList.add('hidden');
+    
+    // Validate follow-up date if status is FOLLOW_UP
+    if (selectedStatus === 'FOLLOW_UP' && !followUpDate) {
+        document.getElementById('followUpDateError').classList.remove('hidden');
+        return;
+    }
+    document.getElementById('followUpDateError').classList.add('hidden');
+    
+    // Build payload
+    const payload = {
+        status: selectedStatus,
+        note: note
+    };
+    
+    if (followUpDate) {
+        payload.followUpDate = followUpDate;
+    }
+    
+    // Execute update
+    executeStatusUpdate(currentId, payload);
+}
+
+/* ====================
+DELETE ENQUIRY MODAL
+==================== */
+function openDeleteEnquiryModal() {
+    const modal = document.getElementById('deleteEnquiryModal');
+    const modalContent = document.getElementById('deleteEnquiryModalContent');
+    
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+    lucide.createIcons();
+}
+
+function closeDeleteEnquiryModal() {
+    const modal = document.getElementById('deleteEnquiryModal');
+    const modalContent = document.getElementById('deleteEnquiryModalContent');
+    
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+async function confirmDeleteEnquiry() {
+    try {
+        await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(currentId));
+        showToast('success', 'Enquiry deleted successfully');
+        closeDeleteEnquiryModal();
+        // Redirect to enquiries list after successful deletion
+        window.location.href = 'enquiries.html';
+    } catch (error) {
+        showToast('error', 'Failed to delete enquiry');
+        closeDeleteEnquiryModal();
+    }
+}
+
 /* ======================
-STATUS MODAL
+OLD STATUS MODAL (DEPRECATED - KEPT FOR REFERENCE)
 ====================== */
 function openStatusModal(id, status) {
     currentId = id;
     document.getElementById('statusEnquiryId').value = id;
     document.getElementById('statusTargetStatus').value = status;
 
-    // Show status display - text only, no icon
-    const statusInfo = statusLabels[status] || { text: status, color: 'gray' };
-    const colorClass = statusInfo.color === 'blue' ? 'text-blue-600' : statusInfo.color === 'green' ? 'text-green-600' : statusInfo.color === 'red' ? 'text-red-600' : statusInfo.color === 'amber' ? 'text-amber-600' : statusInfo.color === 'purple' ? 'text-purple-600' : 'text-gray-600';
-    document.getElementById('statusDisplay').innerHTML = `
-        <span class="${colorClass} font-medium">${statusInfo.text}</span>
-    `;
+    // Show status display - text only
+    const statusDisplay = document.getElementById('statusDisplay');
+    statusDisplay.innerHTML = getStatusBadge(status);
 
     // Reset form
     document.getElementById('statusNote').value = '';
@@ -332,16 +601,11 @@ function submitStatusUpdate() {
     executeStatusUpdate(currentId, status, note, followUpDate);
 }
 
-async function executeStatusUpdate(id, status, note, followUpDate) {
+async function executeStatusUpdate(id, payload) {
     try {
-        await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(id), {
-            status,
-            note,
-            followUpDate
-        });
-
+        await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(id), payload);
         showToast('success', 'Status updated successfully');
-        closeStatusModal();
+        closeStatusUpdateModal();
         loadEnquiryDetail(id);
     } catch {
         showToast('error', 'Failed to update status');

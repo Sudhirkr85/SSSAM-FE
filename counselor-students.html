@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Counselor Students • SSSAM CRM</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Axios -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    
+    /* Toast animations */
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+    .toast-enter { animation: slideIn 0.3s ease forwards; }
+    .toast-exit { animation: slideOut 0.3s ease forwards; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-800 font-sans">
+
+  <div class="flex h-screen overflow-hidden">
+    
+    <!-- Mobile Menu Toggle -->
+    <button id="mobileMenuToggle" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center shadow-lg">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
+
+    <!-- Mobile Overlay -->
+    <div id="mobileOverlay" class="lg:hidden fixed inset-0 bg-black/50 z-40 hidden transition-opacity opacity-0"></div>
+
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-64 bg-gray-900 text-gray-300 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50">
+      <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="graduation-cap" class="text-white w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-lg font-semibold text-white">SSSAM</span>
+          <p class="text-xs text-gray-500">CRM System</p>
+        </div>
+      </div>
+
+      <nav class="flex-1 py-4 space-y-1">
+        <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="phone-call" class="w-5 h-5"></i>
+          <span>Today Calls</span>
+        </a>
+        <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="message-square" class="w-5 h-5"></i>
+          <span>Enquiries</span>
+        </a>
+        <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="user-check" class="w-5 h-5"></i>
+          <span>Admissions</span>
+        </a>
+        <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+          <span>Payments</span>
+        </a>
+        <a href="reports.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          <span>Reports</span>
+        </a>
+      </nav>
+
+      <div class="p-4 border-t border-gray-800">
+        <p id="userName" class="text-sm text-white font-medium"></p>
+        <p id="userRole" class="text-xs text-gray-400"></p>
+      </div>
+
+      <button id="mobileCloseBtn" class="lg:hidden absolute top-4 right-4 w-8 h-8 bg-gray-800 text-gray-400 hover:text-white rounded-lg flex items-center justify-center">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col lg:ml-0 overflow-hidden">
+      
+      <!-- HEADER -->
+      <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
+        <div class="flex items-center gap-4">
+          <button onclick="window.location.href='reports.html'" class="flex items-center gap-2 text-gray-600 hover:text-gray-800 transition-colors">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+            <span class="text-sm font-medium">Back to Reports</span>
+          </button>
+          <div class="h-6 w-px bg-gray-200"></div>
+          <h1 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <i data-lucide="users" class="w-6 h-6 text-indigo-600"></i>
+            <span id="counselorName">Counselor Students</span>
+          </h1>
+        </div>
+        <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium text-sm">
+          <i data-lucide="log-out" class="w-5 h-5"></i>
+          <span>Logout</span>
+        </button>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+        
+        <!-- LOADING STATE -->
+        <div id="loadingState" class="flex flex-col items-center justify-center py-12">
+          <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mb-4">
+            <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
+          </div>
+          <p class="text-gray-500">Loading students...</p>
+        </div>
+
+        <!-- SUMMARY CARDS -->
+        <div id="summaryCards" class="hidden grid grid-cols-2 lg:grid-cols-4 gap-4">
+          
+          <!-- Total Students -->
+          <div class="bg-white rounded-xl shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="users" class="w-5 h-5 text-blue-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Total Students</span>
+            </div>
+            <p id="totalStudents" class="text-2xl font-bold text-gray-800">0</p>
+          </div>
+
+          <!-- Admitted -->
+          <div class="bg-white rounded-xl shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="user-check" class="w-5 h-5 text-green-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Admitted</span>
+            </div>
+            <p id="admittedCount" class="text-2xl font-bold text-green-600">0</p>
+          </div>
+
+          <!-- Pending -->
+          <div class="bg-white rounded-xl shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="clock" class="w-5 h-5 text-amber-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Pending</span>
+            </div>
+            <p id="pendingCount" class="text-2xl font-bold text-amber-600">0</p>
+          </div>
+
+          <!-- Revenue -->
+          <div class="bg-white rounded-xl shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="wallet" class="w-5 h-5 text-emerald-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Revenue</span>
+            </div>
+            <p id="totalRevenue" class="text-2xl font-bold text-emerald-600">₹0</p>
+          </div>
+
+        </div>
+
+        <!-- STUDENTS TABLE -->
+        <div id="studentsSection" class="hidden bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+              <i data-lucide="list" class="w-5 h-5 text-indigo-600"></i>
+              Student Details
+            </h3>
+            <div class="flex items-center gap-2">
+              <input type="text" id="searchInput" placeholder="Search students..." class="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 w-64">
+            </div>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                  <th class="px-4 py-3 text-left">Student Name</th>
+                  <th class="px-4 py-3 text-left">Phone</th>
+                  <th class="px-4 py-3 text-left">Course</th>
+                  <th class="px-4 py-3 text-center">Status</th>
+                  <th class="px-4 py-3 text-center">Admission</th>
+                  <th class="px-4 py-3 text-right">Fees Paid</th>
+                  <th class="px-4 py-3 text-right">Pending</th>
+                  <th class="px-4 py-3 text-left">Last Follow-up</th>
+                </tr>
+              </thead>
+              <tbody id="studentsTable" class="divide-y divide-gray-100">
+                <tr>
+                  <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+                    No data available
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3"></div>
+
+  <!-- SCRIPTS -->
+  <script src="js/api.js"></script>
+  <script src="js/counselor-students.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Mobile Menu
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const mobileCloseBtn = document.getElementById('mobileCloseBtn');
+    const sidebar = document.getElementById('sidebar');
+    const mobileOverlay = document.getElementById('mobileOverlay');
+
+    function openMobileMenu() {
+      sidebar.classList.remove('-translate-x-full');
+      mobileOverlay.classList.remove('hidden');
+      setTimeout(() => mobileOverlay.classList.remove('opacity-0'), 10);
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeMobileMenu() {
+      sidebar.classList.add('-translate-x-full');
+      mobileOverlay.classList.add('opacity-0');
+      setTimeout(() => mobileOverlay.classList.add('hidden'), 300);
+      document.body.style.overflow = '';
+    }
+
+    mobileMenuToggle?.addEventListener('click', openMobileMenu);
+    mobileCloseBtn?.addEventListener('click', closeMobileMenu);
+    mobileOverlay?.addEventListener('click', closeMobileMenu);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMobileMenu();
+    });
+
+    // Update user info
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userNameEl = document.getElementById('userName');
+    const userRoleEl = document.getElementById('userRole');
+    if (userNameEl) userNameEl.textContent = user.name || 'User';
+    if (userRoleEl) userRoleEl.textContent = user.role === 'admin' ? 'Administrator' : 'Counselor';
+
+    // Logout
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+      localStorage.clear();
+      window.location.href = 'index.html';
+    });
+
+    // Search functionality
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+      filterStudents(e.target.value);
+    });
+  </script>
+
+</body>
+</html>
