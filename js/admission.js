@@ -1,456 +1,959 @@
-let admissions = [];
-let selectedAdmissionId = null;
-let showCompletedWithRemaining = false;
+/**
+ * SSSAM CRM - Admissions Module
+ * Indian Institute Style - Production Ready
+ */
 
-// Pagination state
+// ==================== STATE ====================
 let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
-let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
+let totalCount = 0;
+let admissions = [];
+let enquiries = [];
+let selectedEnquiryId = null;
+let currentAdmissionId = null;
+let installmentRows = [];
 
-/* ======================
-INIT
-====================== */
+// ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    loadAdmissions();
-
-    // Amount validation on input
-    const amountInput = document.getElementById('amount');
-    if (amountInput) {
-        amountInput.addEventListener('input', clearAmountError);
-    }
-
-    // Filter checkbox listener
-    const filterCheckbox = document.getElementById('showCompletedWithRemaining');
-    if (filterCheckbox) {
-        filterCheckbox.addEventListener('change', (e) => {
-            showCompletedWithRemaining = e.target.checked;
-            currentPage = 1;
-            loadAdmissions();
-        });
-    }
+  initUserInfo();
+  initEventListeners();
+  loadAdmissions();
+  loadEnquiriesForDropdown();
 });
 
-/* ======================
-LOAD DATA
-====================== */
-async function loadAdmissions() {
-    try {
-        const params = {
-            page: currentPage,
-            limit: ITEMS_PER_PAGE
-        };
-
-        // Add filter for completed with remaining if checked
-        if (showCompletedWithRemaining) {
-            params.filter = 'completed_with_remaining';
-        }
-
-        const res = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, params);
-
-        admissions = res.admissions || [];
-        paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
-        totalPages = paginationData.totalPages || 1;
-
-        renderTable();
-        renderStats();
-        updatePaginationInfoFromServer(paginationData);
-
-        // Update completed with remaining count
-        updateCompletedWithRemainingCount();
-    } catch (err) {
-        showToast('error', 'Failed to load admissions');
-        renderEmptyState();
-    }
+function initUserInfo() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const nameEl = document.getElementById('userName');
+  const roleEl = document.getElementById('userRole');
+  if (nameEl) nameEl.textContent = user.name || 'User';
+  if (roleEl) roleEl.textContent = user.role === 'admin' ? 'Administrator' : 'Counselor';
 }
 
-/* ======================
-COMPLETED WITH REMAINING COUNT
-====================== */
-function updateCompletedWithRemainingCount() {
-    const countElement = document.getElementById('completedWithRemainingCount');
-    if (!countElement) return;
+function initEventListeners() {
+  // Search debounce
+  let searchTimeout;
+  document.getElementById('searchInput')?.addEventListener('input', (e) => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      currentPage = 1;
+      loadAdmissions(e.target.value);
+    }, 300);
+  });
 
-    // Calculate completed admissions with remaining payment
-    const completedWithRemaining = admissions.filter(a => {
-        const paid = a.paidAmount || 0;
-        const total = a.totalFees || 0;
-        // Completed but has remaining (anomaly)
-        return paid >= total && (total - paid) < 0;
+  // Registration amount validation
+  document.getElementById('registrationAmountInput')?.addEventListener('input', (e) => {
+    const total = parseFloat(document.getElementById('totalFeesInput')?.value) || 0;
+    const reg = parseFloat(e.target.value) || 0;
+    const errorEl = document.getElementById('registrationAmountError');
+    
+    if (reg > total) {
+      errorEl.textContent = 'Registration amount cannot exceed total fees';
+      errorEl.classList.remove('hidden');
+      e.target.classList.add('border-red-500');
+    } else {
+      errorEl.classList.add('hidden');
+      e.target.classList.remove('border-red-500');
+    }
+  });
+
+  // Total fees validation
+  document.getElementById('totalFeesInput')?.addEventListener('input', (e) => {
+    const total = parseFloat(e.target.value) || 0;
+    if (total > 0) {
+      e.target.classList.remove('border-red-500');
+      document.getElementById('totalFeesError')?.classList.add('hidden');
+    }
+  });
+}
+
+// ==================== API CALLS ====================
+async function loadAdmissions(search = '') {
+  try {
+    const params = {
+      page: currentPage,
+      limit: ITEMS_PER_PAGE
+    };
+    
+    if (search) {
+      params.search = search;
+    }
+
+    const response = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, params);
+    
+    admissions = response.admissions || [];
+    const pagination = response.pagination || {};
+    totalPages = pagination.totalPages || 1;
+    totalCount = pagination.totalCount || 0;
+
+    renderTable();
+    renderMobileCards();
+    updatePagination();
+  } catch (err) {
+    console.error('Failed to load admissions:', err);
+    showToast('Error', 'Failed to load admissions', 'error');
+    renderEmptyState();
+  }
+}
+
+async function loadEnquiriesForDropdown() {
+  try {
+    // Get enquiries that can be converted (NEW, INTERESTED, CONTACTED)
+    const response = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { 
+      limit: 100,
+      status: 'NEW,INTERESTED,CONTACTED,FOLLOW_UP'
     });
-
-    if (completedWithRemaining.length > 0) {
-        countElement.textContent = `${completedWithRemaining.length} completed with remaining`;
-        countElement.classList.remove('hidden');
-    } else {
-        countElement.classList.add('hidden');
-    }
+    enquiries = response.enquiries || [];
+    renderEnquiryDropdown();
+  } catch (err) {
+    console.error('Failed to load enquiries:', err);
+  }
 }
 
-/* ======================
-STATUS CALCULATION
-====================== */
-function getPaymentStatus(paid, total, dueDate) {
-    const remaining = total - paid;
-
-    if (remaining <= 0) {
-        return { status: 'Paid', color: 'green', bgClass: 'bg-green-50', textClass: 'text-green-700' };
-    }
-
-    if (paid > 0 && paid < total) {
-        return { status: 'Partial', color: 'amber', bgClass: 'bg-amber-50', textClass: 'text-amber-700' };
-    }
-
-    // Check if overdue
-    if (dueDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const due = new Date(dueDate);
-        due.setHours(0, 0, 0, 0);
-
-        if (today > due) {
-            const daysOverdue = Math.floor((today - due) / (1000 * 60 * 60 * 24));
-            return { status: 'Overdue', color: 'red', bgClass: 'bg-red-50', textClass: 'text-red-700', daysOverdue };
-        }
-    }
-
-    return { status: 'Pending', color: 'gray', bgClass: 'bg-gray-50', textClass: 'text-gray-600' };
-}
-
-function getStatusBadge(statusInfo) {
-    const { status, color, daysOverdue } = statusInfo;
-    const icons = {
-        'Paid': 'check-circle',
-        'Partial': 'clock',
-        'Overdue': 'alert-circle',
-        'Pending': 'circle'
-    };
-
-    let extraText = '';
-    if (status === 'Overdue' && daysOverdue) {
-        extraText = ` (${daysOverdue}d)`;
-    }
-
-    return `
-        <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-${color}-100 ${statusInfo.textClass} rounded-lg text-xs font-medium">
-            <i data-lucide="${icons[status]}" class="w-3.5 h-3.5"></i>
-            ${status}${extraText}
-        </span>
-    `;
-}
-
-function getRowBgClass(status) {
-    const bgClasses = {
-        'Paid': 'bg-green-50/30 hover:bg-green-50/50',
-        'Partial': 'bg-amber-50/30 hover:bg-amber-50/50',
-        'Overdue': 'bg-red-50/30 hover:bg-red-50/50',
-        'Pending': 'hover:bg-gray-50'
-    };
-    return bgClasses[status] || 'hover:bg-gray-50';
-}
-
-/* ======================
-RENDER
-====================== */
+// ==================== RENDER FUNCTIONS ====================
 function renderTable() {
-    const table = document.getElementById('admissionTable');
-    const thead = document.querySelector('thead tr');
+  const table = document.getElementById('admissionTable');
+  
+  if (!admissions.length) {
+    renderEmptyState();
+    return;
+  }
 
-    if (!admissions.length) {
-        renderEmptyState();
-        return;
-    }
+  document.getElementById('emptyState')?.classList.add('hidden');
 
-    // Update table headers based on filter
-    if (showCompletedWithRemaining) {
-        thead.innerHTML = `
-            <th class="px-6 py-3 text-left">Name</th>
-            <th class="px-6 py-3">Course</th>
-            <th class="px-6 py-3">Counselor</th>
-            <th class="px-6 py-3">Total Fees</th>
-            <th class="px-6 py-3">Paid</th>
-            <th class="px-6 py-3">Remaining</th>
-            <th class="px-6 py-3 text-center">Status</th>
-        `;
-    } else {
-        thead.innerHTML = `
-            <th class="px-6 py-3 text-left">Name</th>
-            <th class="px-6 py-3">Course</th>
-            <th class="px-6 py-3">Total Fees</th>
-            <th class="px-6 py-3">Paid</th>
-            <th class="px-6 py-3">Pending</th>
-            <th class="px-6 py-3">Due Date</th>
-            <th class="px-6 py-3 text-center">Status</th>
-        `;
-    }
+  table.innerHTML = admissions.map(admission => {
+    const student = admission.enquiryId || {};
+    const name = student.name || 'Unknown';
+    const mobile = student.mobile || '';
+    const course = admission.course || '-';
+    const totalFees = admission.totalFees || 0;
+    const paidAmount = admission.paidAmount || 0;
+    const remaining = totalFees - paidAmount;
+    const paymentType = admission.paymentType || 'ONE_TIME';
+    
+    return `
+      <tr class="finance-row border-b border-gray-50 last:border-0">
+        <td class="px-6 py-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="user" class="w-5 h-5 text-blue-600"></i>
+            </div>
+            <div>
+              <div class="font-medium text-gray-800">${escapeHtml(name)}</div>
+              <div class="text-xs text-gray-500">${mobile}</div>
+            </div>
+          </div>
+        </td>
+        <td class="px-6 py-4 text-gray-600">${escapeHtml(course)}</td>
+        <td class="px-6 py-4 text-right font-medium text-gray-800">${formatCurrency(totalFees)}</td>
+        <td class="px-6 py-4 text-right font-medium text-green-600">${formatCurrency(paidAmount)}</td>
+        <td class="px-6 py-4 text-right font-medium ${remaining > 0 ? 'text-red-600' : 'text-gray-400'}">${remaining > 0 ? formatCurrency(remaining) : 'Paid'}</td>
+        <td class="px-6 py-4 text-center">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${getPaymentTypeBadgeClass(paymentType)}">
+            ${getPaymentTypeIcon(paymentType)}
+            ${paymentType === 'ONE_TIME' ? 'One Time' : 'Installment'}
+          </span>
+        </td>
+        <td class="px-6 py-4">
+          <div class="flex items-center justify-center gap-2">
+            <a href="admission-detail.html?id=${admission._id}" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Detail">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </a>
+            <button onclick="openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Add Payment">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            </button>
+            <button onclick="openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payments">
+              <i data-lucide="receipt" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
-    table.innerHTML = admissions.map(a => {
-        const paid = a.paidAmount || 0;
-        const total = a.totalFees || 0;
-        const pending = total - paid;
-        const counselor = a.enquiryId?.assignedTo;
+  lucide.createIcons();
+}
 
-        // Get due date from installments or admission
-        const dueDate = a.installments?.[0]?.dueDate || a.dueDate || a.createdAt;
-        const statusInfo = getPaymentStatus(paid, total, dueDate);
-        const rowBgClass = getRowBgClass(statusInfo.status);
+function renderMobileCards() {
+  const container = document.getElementById('mobileCards');
+  
+  if (!admissions.length) {
+    container.innerHTML = '';
+    return;
+  }
 
-        if (showCompletedWithRemaining) {
-            // Show counselor details in this mode
-            return `
-                <tr class="${rowBgClass} transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
-                    <td class="px-6 py-4">
-                        <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
-                        ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
-                    </td>
-                    <td class="px-6 py-4 text-gray-700 max-w-[150px] truncate" title="${a.course || '-'}">${a.course || '-'}</td>
-                    <td class="px-6 py-4">
-                        <div class="text-sm text-gray-800">${counselor?.name || 'Unassigned'}</div>
-                        ${counselor?.email ? `<div class="text-xs text-gray-500">${counselor.email}</div>` : ''}
-                    </td>
-                    <td class="px-6 py-4 font-medium text-gray-800">${formatCurrency(total)}</td>
-                    <td class="px-6 py-4 text-green-600 font-medium">${formatCurrency(paid)}</td>
-                    <td class="px-6 py-4 ${pending <= 0 ? 'text-green-600' : 'text-red-600'} font-medium">
-                        ${pending <= 0 ? formatCurrency(Math.abs(pending)) + ' (overpaid)' : formatCurrency(pending)}
-                    </td>
-                    <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-                        ${getStatusBadge(statusInfo)}
-                    </td>
-                </tr>
-            `;
-        }
+  container.innerHTML = admissions.map(admission => {
+    const student = admission.enquiryId || {};
+    const name = student.name || 'Unknown';
+    const mobile = student.mobile || '';
+    const course = admission.course || '-';
+    const totalFees = admission.totalFees || 0;
+    const paidAmount = admission.paidAmount || 0;
+    const remaining = totalFees - paidAmount;
+    const paymentType = admission.paymentType || 'ONE_TIME';
+    
+    return `
+      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+              <i data-lucide="user" class="w-5 h-5 text-blue-600"></i>
+            </div>
+            <div>
+              <div class="font-medium text-gray-800">${escapeHtml(name)}</div>
+              <div class="text-xs text-gray-500">${mobile}</div>
+            </div>
+          </div>
+          <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${getPaymentTypeBadgeClass(paymentType)}">
+            ${paymentType === 'ONE_TIME' ? 'One Time' : 'Installment'}
+          </span>
+        </div>
+        
+        <div class="grid grid-cols-3 gap-2 text-center">
+          <div class="bg-gray-50 rounded-lg p-2">
+            <div class="text-xs text-gray-500">Total</div>
+            <div class="font-medium text-sm">${formatCurrency(totalFees)}</div>
+          </div>
+          <div class="bg-green-50 rounded-lg p-2">
+            <div class="text-xs text-green-600">Paid</div>
+            <div class="font-medium text-sm text-green-700">${formatCurrency(paidAmount)}</div>
+          </div>
+          <div class="bg-blue-50 rounded-lg p-2">
+            <div class="text-xs text-blue-600">Remaining</div>
+            <div class="font-medium text-sm text-blue-700">${remaining > 0 ? formatCurrency(remaining) : 'Paid'}</div>
+          </div>
+        </div>
+        
+        <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+          <div class="text-sm text-gray-600">${escapeHtml(course)}</div>
+          <div class="flex items-center gap-1">
+            <a href="admission-detail.html?id=${admission._id}" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </a>
+            <button onclick="openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+              <i data-lucide="plus-circle" class="w-4 h-4"></i>
+            </button>
+            <button onclick="openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+              <i data-lucide="receipt" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
 
-        return `
-            <tr class="${rowBgClass} transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='admission-detail.html?id=${a._id}'">
-                <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">${a.enquiryId?.name || '-'}</div>
-                    ${a.enquiryId?.mobile ? `<div class="text-xs text-gray-500">${a.enquiryId.mobile}</div>` : ''}
-                </td>
-                <td class="px-6 py-4 text-gray-700 max-w-[150px] truncate" title="${a.course || '-'}">${a.course || '-'}</td>
-                <td class="px-6 py-4 font-medium text-gray-800">${formatCurrency(total)}</td>
-                <td class="px-6 py-4 text-green-600 font-medium">${formatCurrency(paid)}</td>
-                <td class="px-6 py-4 ${pending <= 0 ? 'text-green-600' : 'text-red-600'} font-medium">
-                    ${pending <= 0 ? '✓ Paid' : formatCurrency(pending)}
-                </td>
-                <td class="px-6 py-4 text-gray-600">
-                    ${formatDate(dueDate)}
-                </td>
-                <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-                    ${getStatusBadge(statusInfo)}
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    lucide.createIcons();
+  lucide.createIcons();
 }
 
 function renderEmptyState() {
-    const table = document.getElementById('admissionTable');
-    const colSpan = 7;
-    const message = showCompletedWithRemaining
-        ? 'No completed admissions with remaining payment found'
-        : 'Convert enquiries to see them here';
-    table.innerHTML = `
-        <tr>
-            <td colspan="${colSpan}" class="text-center py-12">
-                <div class="flex flex-col items-center gap-3">
-                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-                        <i data-lucide="graduation-cap" class="w-8 h-8 text-gray-400"></i>
-                    </div>
-                    <div>
-                        <p class="text-gray-800 font-medium">No admissions yet</p>
-                        <p class="text-gray-500 text-sm">${message}</p>
-                    </div>
-                </div>
-            </td>
-        </tr>
-    `;
-    lucide.createIcons();
+  document.getElementById('admissionTable').innerHTML = `
+    <tr>
+      <td colspan="7" class="text-center py-12">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+            <i data-lucide="inbox" class="w-6 h-6 text-gray-400"></i>
+          </div>
+          <p class="text-gray-500">No admissions found</p>
+        </div>
+      </td>
+    </tr>
+  `;
+  document.getElementById('emptyState')?.classList.remove('hidden');
+  document.getElementById('mobileCards').innerHTML = '';
+  lucide.createIcons();
 }
 
-/* ======================
-STATS
-====================== */
-function renderStats() {
-    const total = paginationData.totalCount || 0;
-    const completed = admissions.filter(a => (a.paidAmount || 0) >= (a.totalFees || 0)).length;
-    const pending = admissions.length - completed;
+function updatePagination() {
+  const from = totalCount === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1;
+  const to = Math.min(currentPage * ITEMS_PER_PAGE, totalCount);
+  
+  document.getElementById('showingFrom').textContent = from;
+  document.getElementById('showingTo').textContent = to;
+  document.getElementById('totalItems').textContent = totalCount;
 
-    // Calculate total received and remaining from all admissions data
-    let totalReceived = 0;
-    let totalRemaining = 0;
+  document.getElementById('firstPage').disabled = currentPage === 1;
+  document.getElementById('prevPage').disabled = currentPage === 1;
+  document.getElementById('nextPage').disabled = currentPage === totalPages;
+  document.getElementById('lastPage').disabled = currentPage === totalPages;
 
-    admissions.forEach(a => {
-        const paid = a.paidAmount || 0;
-        const totalFees = a.totalFees || 0;
-        totalReceived += paid;
-        totalRemaining += Math.max(0, totalFees - paid);
-    });
-
-    document.getElementById('totalAdmissions').textContent = total;
-    document.getElementById('pendingCount').textContent = pending;
-    document.getElementById('completedCount').textContent = completed;
-    document.getElementById('totalReceived').textContent = formatCurrency(totalReceived);
-    document.getElementById('totalRemaining').textContent = formatCurrency(totalRemaining);
-}
-
-/* ======================
-PAGINATION
-====================== */
-function changePage(direction) {
-    const newPage = currentPage + direction;
-    if (newPage >= 1 && newPage <= totalPages) {
-        currentPage = newPage;
-        loadAdmissions();
+  // Page numbers
+  const pageNumbers = document.getElementById('pageNumbers');
+  let html = '';
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === currentPage) {
+      html += `<span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">${i}</span>`;
+    } else if (i === 1 || i === totalPages || (i >= currentPage - 1 && i <= currentPage + 1)) {
+      html += `<button onclick="goToPage(${i})" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">${i}</button>`;
+    } else if (i === currentPage - 2 || i === currentPage + 2) {
+      html += `<span class="px-2 text-gray-400">...</span>`;
     }
+  }
+  pageNumbers.innerHTML = html;
+}
+
+// ==================== HELPER FUNCTIONS ====================
+function formatCurrency(amount) {
+  if (!amount || amount === 0) return '₹0';
+  return '₹' + amount.toLocaleString('en-IN');
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getPaymentTypeBadgeClass(type) {
+  return type === 'ONE_TIME' ? 'badge-onetime' : 'badge-installment';
+}
+
+function getPaymentTypeIcon(type) {
+  return type === 'ONE_TIME' 
+    ? '<i data-lucide="check-circle" class="w-3.5 h-3.5"></i>' 
+    : '<i data-lucide="calendar" class="w-3.5 h-3.5"></i>';
+}
+
+// ==================== PAGINATION CONTROLS ====================
+function changePage(delta) {
+  const newPage = currentPage + delta;
+  if (newPage >= 1 && newPage <= totalPages) {
+    currentPage = newPage;
+    loadAdmissions(document.getElementById('searchInput')?.value || '');
+  }
 }
 
 function goToPage(page) {
-    if (page >= 1 && page <= totalPages) {
-        currentPage = page;
-        loadAdmissions();
-    }
+  if (page >= 1 && page <= totalPages) {
+    currentPage = page;
+    loadAdmissions(document.getElementById('searchInput')?.value || '');
+  }
 }
 
 function goToLastPage() {
-    currentPage = totalPages;
+  currentPage = totalPages;
+  loadAdmissions(document.getElementById('searchInput')?.value || '');
+}
+
+// ==================== ADD ADMISSION MODAL ====================
+function openAddModal() {
+  // Reset form
+  document.getElementById('selectedEnquiryId').value = '';
+  document.getElementById('enquirySelectText').textContent = 'Select an enquiry...';
+  document.getElementById('enquirySelectText').classList.add('text-gray-500');
+  document.getElementById('courseInput').value = '';
+  document.getElementById('totalFeesInput').value = '';
+  document.getElementById('registrationAmountInput').value = '';
+  document.querySelector('input[name="paymentType"][value="ONE_TIME"]').checked = true;
+  
+  // Clear errors
+  clearAddErrors();
+  
+  // Show modal
+  const modal = document.getElementById('addModal');
+  const content = document.getElementById('addModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
+}
+
+function closeAddModal() {
+  const modal = document.getElementById('addModal');
+  const content = document.getElementById('addModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+    document.getElementById('enquiryDropdown')?.classList.add('hidden');
+  }, 200);
+}
+
+function clearAddErrors() {
+  ['enquiry', 'course', 'totalFees', 'registrationAmount'].forEach(id => {
+    document.getElementById(`${id}Error`)?.classList.add('hidden');
+    document.getElementById(`${id}Input`)?.classList.remove('border-red-500');
+  });
+}
+
+function toggleEnquiryDropdown() {
+  const dropdown = document.getElementById('enquiryDropdown');
+  dropdown.classList.toggle('hidden');
+  if (!dropdown.classList.contains('hidden')) {
+    document.getElementById('enquirySearch')?.focus();
+  }
+}
+
+function filterEnquiries(search) {
+  renderEnquiryDropdown(search);
+}
+
+function renderEnquiryDropdown(search = '') {
+  const list = document.getElementById('enquiryList');
+  
+  const filtered = search 
+    ? enquiries.filter(e => 
+        e.name?.toLowerCase().includes(search.toLowerCase()) ||
+        e.mobile?.includes(search)
+      )
+    : enquiries;
+  
+  if (filtered.length === 0) {
+    list.innerHTML = `
+      <div class="p-4 text-center text-gray-500 text-sm">
+        No enquiries found
+      </div>
+    `;
+    return;
+  }
+  
+  list.innerHTML = filtered.map(e => {
+    const isSelected = selectedEnquiryId === e._id;
+    return `
+      <div 
+        class="enquiry-option p-3 cursor-pointer ${isSelected ? 'selected' : ''}"
+        onclick="selectEnquiry('${e._id}', '${escapeHtml(e.name)}', '${e.mobile || ''}')"
+      >
+        <div class="font-medium text-gray-800">${escapeHtml(e.name)}</div>
+        <div class="text-xs text-gray-500 flex items-center gap-2">
+          <span>${e.mobile || 'No mobile'}</span>
+          ${e.courseInterested ? `<span class="text-blue-600">• ${escapeHtml(e.courseInterested)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+function selectEnquiry(id, name, mobile) {
+  selectedEnquiryId = id;
+  document.getElementById('selectedEnquiryId').value = id;
+  
+  const displayText = mobile ? `${name} (${mobile})` : name;
+  const textEl = document.getElementById('enquirySelectText');
+  textEl.textContent = displayText;
+  textEl.classList.remove('text-gray-500');
+  textEl.classList.add('text-gray-800');
+  
+  document.getElementById('enquiryDropdown').classList.add('hidden');
+  document.getElementById('enquiryError')?.classList.add('hidden');
+  
+  // Auto-fill course if enquiry has courseInterested
+  const enquiry = enquiries.find(e => e._id === id);
+  if (enquiry?.courseInterested) {
+    document.getElementById('courseInput').value = enquiry.courseInterested;
+  }
+}
+
+function handlePaymentTypeChange(value) {
+  // Can be used to show/hide installment fields immediately if needed
+}
+
+async function submitAddAdmission() {
+  clearAddErrors();
+  
+  const enquiryId = document.getElementById('selectedEnquiryId').value;
+  const course = document.getElementById('courseInput').value.trim();
+  const totalFees = parseFloat(document.getElementById('totalFeesInput').value) || 0;
+  const registrationAmount = parseFloat(document.getElementById('registrationAmountInput').value) || 0;
+  const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value || 'ONE_TIME';
+  
+  let hasError = false;
+  
+  if (!enquiryId) {
+    document.getElementById('enquiryError').classList.remove('hidden');
+    hasError = true;
+  }
+  
+  if (!course) {
+    document.getElementById('courseError').classList.remove('hidden');
+    document.getElementById('courseInput').classList.add('border-red-500');
+    hasError = true;
+  }
+  
+  if (totalFees <= 0) {
+    document.getElementById('totalFeesError').classList.remove('hidden');
+    document.getElementById('totalFeesInput').classList.add('border-red-500');
+    hasError = true;
+  }
+  
+  if (registrationAmount > totalFees) {
+    document.getElementById('registrationAmountError').textContent = 'Registration amount cannot exceed total fees';
+    document.getElementById('registrationAmountError').classList.remove('hidden');
+    document.getElementById('registrationAmountInput').classList.add('border-red-500');
+    hasError = true;
+  }
+  
+  if (hasError) return;
+  
+  // Submit
+  const submitBtn = document.getElementById('addSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
+  
+  try {
+    const payload = {
+      enquiryId,
+      course,
+      totalFees,
+      registrationAmount,
+      paymentType
+    };
+    
+    await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(enquiryId), payload);
+    
+    closeAddModal();
+    showToast('Success', 'Admission created successfully', 'success');
     loadAdmissions();
+    loadEnquiriesForDropdown(); // Refresh dropdown
+  } catch (err) {
+    console.error('Failed to create admission:', err);
+    const message = err.response?.data?.message || 'Failed to create admission';
+    showToast('Error', message, 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Admission';
+    lucide.createIcons();
+  }
 }
 
-function updatePaginationInfoFromServer(pagination) {
-    const total = pagination.totalCount || 0;
-    const start = total > 0 ? ((pagination.page - 1) * ITEMS_PER_PAGE) + 1 : 0;
-    const end = Math.min(start + ITEMS_PER_PAGE - 1, total);
-
-    // Update showing text
-    document.getElementById('showingFrom').textContent = start;
-    document.getElementById('showingTo').textContent = end;
-    document.getElementById('totalItems').textContent = total;
-
-    // Update button states
-    document.getElementById('firstPage').disabled = currentPage === 1;
-    document.getElementById('prevPage').disabled = currentPage === 1;
-    document.getElementById('nextPage').disabled = currentPage >= totalPages;
-    document.getElementById('lastPage').disabled = currentPage >= totalPages;
-
-    // Update page numbers display
-    const pageNumbers = document.getElementById('pageNumbers');
-    let html = '';
-
-    // Show max 5 page numbers centered around current page
-    let startPage = Math.max(1, currentPage - 2);
-    let endPage = Math.min(totalPages, startPage + 4);
-
-    if (endPage - startPage < 4) {
-        startPage = Math.max(1, endPage - 4);
-    }
-
-    for (let i = startPage; i <= endPage; i++) {
-        if (i === currentPage) {
-            html += `<span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">${i}</span>`;
-        } else {
-            html += `<button onclick="goToPage(${i})" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">${i}</button>`;
-        }
-    }
-
-    pageNumbers.innerHTML = html;
+// ==================== PAYMENT PLAN MODAL (INSTALLMENTS) ====================
+function openPaymentPlanModal(admissionId) {
+  currentAdmissionId = admissionId;
+  const admission = admissions.find(a => a._id === admissionId);
+  
+  if (!admission) return;
+  
+  // Set summary values
+  const totalFees = admission.totalFees || 0;
+  const registrationAmount = admission.registrationAmount || 0;
+  const remaining = totalFees - registrationAmount;
+  
+  document.getElementById('planTotalFees').textContent = formatCurrency(totalFees);
+  document.getElementById('planRegistration').textContent = formatCurrency(registrationAmount);
+  document.getElementById('planRemaining').textContent = formatCurrency(remaining);
+  
+  // Initialize installment rows
+  installmentRows = [{ amount: '', dueDate: '' }];
+  renderInstallmentRows();
+  
+  document.getElementById('planError').classList.add('hidden');
+  
+  // Show modal
+  const modal = document.getElementById('paymentPlanModal');
+  const content = document.getElementById('paymentPlanModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
 }
 
-/* ======================
-PAYMENT MODAL
-====================== */
-function openPaymentModal(id) {
-    selectedAdmissionId = id;
-    document.getElementById('paymentAdmissionId').value = id;
+function closePaymentPlanModal() {
+  const modal = document.getElementById('paymentPlanModal');
+  const content = document.getElementById('paymentPlanModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
 
-    // Reset form
-    document.getElementById('amount').value = '';
-    document.getElementById('paymentMode').value = 'CASH';
-    clearAmountError();
+function renderInstallmentRows() {
+  const container = document.getElementById('installmentRows');
+  
+  container.innerHTML = installmentRows.map((row, index) => `
+    <div class="installment-row flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+      <div class="flex-1">
+        <label class="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
+          <input 
+            type="number" 
+            value="${row.amount}"
+            onchange="updateInstallmentRow(${index}, 'amount', this.value)"
+            class="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+            placeholder="Amount"
+            min="1"
+          >
+        </div>
+      </div>
+      <div class="flex-1">
+        <label class="text-xs text-gray-500 mb-1 block">Due Date</label>
+        <input 
+          type="date" 
+          value="${row.dueDate}"
+          onchange="updateInstallmentRow(${index}, 'dueDate', this.value)"
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+        >
+      </div>
+      <button 
+        onclick="removeInstallmentRow(${index})"
+        class="mt-5 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+        ${installmentRows.length === 1 ? 'disabled' : ''}
+      >
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+      </button>
+    </div>
+  `).join('');
+  
+  lucide.createIcons();
+}
 
-    // Show modal with animation
-    const modal = document.getElementById('paymentModal');
-    const modalContent = document.getElementById('paymentModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
+function addInstallmentRow() {
+  installmentRows.push({ amount: '', dueDate: '' });
+  renderInstallmentRows();
+}
+
+function removeInstallmentRow(index) {
+  if (installmentRows.length > 1) {
+    installmentRows.splice(index, 1);
+    renderInstallmentRows();
+  }
+}
+
+function updateInstallmentRow(index, field, value) {
+  installmentRows[index][field] = value;
+}
+
+async function submitPaymentPlan() {
+  const errorEl = document.getElementById('planError');
+  
+  // Validate all rows
+  for (const row of installmentRows) {
+    if (!row.amount || parseFloat(row.amount) <= 0) {
+      errorEl.textContent = 'All installments must have a valid amount';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    if (!row.dueDate) {
+      errorEl.textContent = 'All installments must have a due date';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+  }
+  
+  // Check sum matches remaining
+  const admission = admissions.find(a => a._id === currentAdmissionId);
+  const remaining = (admission.totalFees || 0) - (admission.registrationAmount || 0);
+  const totalInstallments = installmentRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+  
+  if (totalInstallments !== remaining) {
+    errorEl.textContent = `Installments total (${formatCurrency(totalInstallments)}) must equal remaining amount (${formatCurrency(remaining)})`;
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  // Submit
+  const submitBtn = document.getElementById('planSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
+  
+  try {
+    const payload = {
+      installments: installmentRows.map(row => ({
+        amount: parseFloat(row.amount),
+        dueDate: row.dueDate
+      }))
+    };
+    
+    await apiPost(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(currentAdmissionId), payload);
+    
+    closePaymentPlanModal();
+    showToast('Success', 'Payment plan saved successfully', 'success');
+    loadAdmissions();
+  } catch (err) {
+    console.error('Failed to save payment plan:', err);
+    const message = err.response?.data?.message || 'Failed to save payment plan';
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Plan';
+    lucide.createIcons();
+  }
+}
+
+// ==================== ADD PAYMENT MODAL ====================
+function openPaymentModal(admissionId) {
+  currentAdmissionId = admissionId;
+  
+  // Reset form
+  document.getElementById('paymentAmount').value = '';
+  document.getElementById('paymentMode').value = 'CASH';
+  document.getElementById('paymentType').value = 'installment';
+  document.getElementById('paymentNote').value = '';
+  document.getElementById('paymentAmountError')?.classList.add('hidden');
+  document.getElementById('paymentAmount')?.classList.remove('border-red-500');
+  
+  // Show modal
+  const modal = document.getElementById('paymentModal');
+  const content = document.getElementById('paymentModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
 }
 
 function closePaymentModal() {
-    const modal = document.getElementById('paymentModal');
-    const modalContent = document.getElementById('paymentModalContent');
-    modal.classList.add('opacity-0');
-    modalContent.classList.remove('scale-100');
-    modalContent.classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
+  const modal = document.getElementById('paymentModal');
+  const content = document.getElementById('paymentModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
 }
 
-function clearAmountError() {
-    const error = document.getElementById('amountError');
-    const input = document.getElementById('amount');
-    error.classList.add('hidden');
-    input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    input.classList.add('border-gray-200', 'focus:border-green-500', 'focus:ring-green-100');
-}
-
-function validateAmount() {
-    const amount = document.getElementById('amount');
-    const error = document.getElementById('amountError');
-    const value = Number(amount.value);
-
-    if (!value || value <= 0) {
-        error.classList.remove('hidden');
-        amount.classList.remove('border-gray-200', 'focus:border-green-500', 'focus:ring-green-100');
-        amount.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        return false;
-    }
-    error.classList.add('hidden');
-    amount.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    amount.classList.add('border-gray-200', 'focus:border-green-500', 'focus:ring-green-100');
-    return true;
-}
-
-/* ======================
-SUBMIT PAYMENT
-====================== */
 async function submitPayment() {
-    const amount = Number(document.getElementById('amount').value);
-    const paymentMode = document.getElementById('paymentMode').value;
-
-    if (!validateAmount()) {
-        showToast('error', 'Enter a valid amount');
-        return;
-    }
-
-    try {
-        await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, {
-            admissionId: selectedAdmissionId,
-            amount,
-            paymentMode: paymentMode.toUpperCase()
-        });
-
-        showToast('success', 'Payment added successfully');
-        closePaymentModal();
-        loadAdmissions();
-    } catch (err) {
-        showToast('error', err?.message || 'Payment failed');
-    }
+  const amount = parseFloat(document.getElementById('paymentAmount').value) || 0;
+  const mode = document.getElementById('paymentMode').value;
+  const type = document.getElementById('paymentType').value;
+  const note = document.getElementById('paymentNote').value.trim();
+  
+  // Validate
+  if (amount <= 0) {
+    document.getElementById('paymentAmountError').classList.remove('hidden');
+    document.getElementById('paymentAmount').classList.add('border-red-500');
+    return;
+  }
+  
+  // Submit
+  const submitBtn = document.getElementById('paymentSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
+  
+  try {
+    const payload = {
+      admissionId: currentAdmissionId,
+      amount,
+      paymentMode: mode,
+      type,
+      note: note || undefined
+    };
+    
+    await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
+    
+    closePaymentModal();
+    showToast('Success', 'Payment recorded successfully', 'success');
+    loadAdmissions();
+  } catch (err) {
+    console.error('Failed to record payment:', err);
+    const message = err.response?.data?.message || 'Failed to record payment';
+    showToast('Error', message, 'error');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Payment';
+    lucide.createIcons();
+  }
 }
 
-/* ======================
-EXPORT
-====================== */
-window.openPaymentModal = openPaymentModal;
-window.closePaymentModal = closePaymentModal;
-window.submitPayment = submitPayment;
-window.changePage = changePage;
-window.goToPage = goToPage;
-window.goToLastPage = goToLastPage;
-window.renderEmptyState = renderEmptyState;
-window.updateCompletedWithRemainingCount = updateCompletedWithRemainingCount;
+// ==================== VIEW PAYMENTS MODAL ====================
+async function openViewPaymentsModal(admissionId) {
+  currentAdmissionId = admissionId;
+  const admission = admissions.find(a => a._id === admissionId);
+  
+  if (!admission) return;
+  
+  const student = admission.enquiryId || {};
+  document.getElementById('viewPaymentsStudent').textContent = student.name || 'Unknown';
+  
+  // Set summary
+  const total = admission.totalFees || 0;
+  const paid = admission.paidAmount || 0;
+  const remaining = total - paid;
+  
+  document.getElementById('viewTotal').textContent = formatCurrency(total);
+  document.getElementById('viewPaid').textContent = formatCurrency(paid);
+  document.getElementById('viewRemaining').textContent = formatCurrency(remaining);
+  
+  // Load payments
+  const list = document.getElementById('paymentsList');
+  list.innerHTML = `
+    <div class="flex justify-center py-4">
+      <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
+    </div>
+  `;
+  document.getElementById('noPaymentsState').classList.add('hidden');
+  
+  // Show modal
+  const modal = document.getElementById('viewPaymentsModal');
+  const content = document.getElementById('viewPaymentsModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
+  
+  try {
+    const payments = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(admissionId));
+    renderPaymentsList(payments.payments || []);
+  } catch (err) {
+    console.error('Failed to load payments:', err);
+    list.innerHTML = `
+      <div class="text-center py-4 text-red-500 text-sm">
+        Failed to load payments
+      </div>
+    `;
+  }
+}
+
+function renderPaymentsList(payments) {
+  const list = document.getElementById('paymentsList');
+  
+  if (payments.length === 0) {
+    list.innerHTML = '';
+    document.getElementById('noPaymentsState').classList.remove('hidden');
+    return;
+  }
+  
+  document.getElementById('noPaymentsState').classList.add('hidden');
+  
+  // Sort by date (newest first)
+  payments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  
+  list.innerHTML = payments.map(p => {
+    const date = new Date(p.createdAt).toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric'
+    });
+    
+    const typeColors = {
+      'initial': 'bg-blue-100 text-blue-700',
+      'installment': 'bg-amber-100 text-amber-700',
+      'full': 'bg-green-100 text-green-700',
+      'refund': 'bg-red-100 text-red-700'
+    };
+    
+    const typeLabels = {
+      'initial': 'Registration',
+      'installment': 'Installment',
+      'full': 'Full Payment',
+      'refund': 'Refund'
+    };
+    
+    return `
+      <div class="payment-card bg-gray-50 rounded-xl p-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 ${typeColors[p.type] || 'bg-gray-100 text-gray-600'} rounded-xl flex items-center justify-center">
+            <i data-lucide="${getPaymentIcon(p.type)}" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="font-medium text-gray-800">${formatCurrency(p.amount)}</div>
+            <div class="text-xs text-gray-500">${date} • ${p.paymentMode}</div>
+            ${p.note ? `<div class="text-xs text-gray-400 mt-0.5">${escapeHtml(p.note)}</div>` : ''}
+          </div>
+        </div>
+        <span class="px-2.5 py-1 rounded-lg text-xs font-medium ${typeColors[p.type] || 'bg-gray-100 text-gray-600'}">
+          ${typeLabels[p.type] || p.type}
+        </span>
+      </div>
+    `;
+  }).join('');
+  
+  lucide.createIcons();
+}
+
+function getPaymentIcon(type) {
+  const icons = {
+    'initial': 'wallet',
+    'installment': 'calendar',
+    'full': 'check-circle',
+    'refund': 'arrow-left'
+  };
+  return icons[type] || 'credit-card';
+}
+
+function closeViewPaymentsModal() {
+  const modal = document.getElementById('viewPaymentsModal');
+  const content = document.getElementById('viewPaymentsModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+// ==================== TOAST SYSTEM ====================
+function showToast(title, message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  
+  const colors = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-amber-500',
+    info: 'bg-blue-500'
+  };
+  
+  const icons = {
+    success: 'check-circle',
+    error: 'x-circle',
+    warning: 'alert-triangle',
+    info: 'info'
+  };
+  
+  const toast = document.createElement('div');
+  toast.className = `${colors[type]} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 min-w-[300px] max-w-[400px] toast-enter`;
+  toast.innerHTML = `
+    <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i>
+    <div class="flex-1">
+      <div class="font-medium text-sm">${title}</div>
+      <div class="text-xs opacity-90">${message}</div>
+    </div>
+    <button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+  `;
+  
+  container.appendChild(toast);
+  lucide.createIcons();
+  
+  // Auto remove
+  setTimeout(() => {
+    toast.classList.remove('toast-enter');
+    toast.classList.add('toast-exit');
+    setTimeout(() => toast.remove(), 300);
+  }, type === 'error' ? 4000 : 3000);
+}
+

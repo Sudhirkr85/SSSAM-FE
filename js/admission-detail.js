@@ -1,995 +1,810 @@
-let currentAdmissionId = null;
-let currentAdmission = null;
+/**
+ * SSSAM CRM - Admission Detail Page
+ * Indian Institute Style - Production Ready
+ */
+
+// ==================== STATE ====================
+let admissionId = null;
+let admissionData = null;
 let payments = [];
+let installmentRows = [];
 
-/* ======================
-INIT
-====================== */
+// ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
-    // Get admission ID from URL
-    const urlParams = new URLSearchParams(window.location.search);
-    currentAdmissionId = urlParams.get('id');
-
-    if (!currentAdmissionId) {
-        showToast('error', 'No admission ID provided');
-        window.location.href = 'admissions.html';
-        return;
-    }
-
-    loadAdmissionDetails();
-    checkAdminAccess();
-    setupWhatsAppIntegration();
-
-    // Amount validation on input
-    const amountInput = document.getElementById('amount');
-    if (amountInput) {
-        amountInput.addEventListener('input', clearAmountError);
-    }
+  // Get admission ID from URL
+  const urlParams = new URLSearchParams(window.location.search);
+  admissionId = urlParams.get('id');
+  
+  if (!admissionId) {
+    showErrorState('No admission ID provided');
+    return;
+  }
+  
+  loadAdmissionDetail();
 });
 
-/* ======================
-CHECK ADMIN ACCESS
-====================== */
-function checkAdminAccess() {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    if (user.role === 'admin') {
-        document.getElementById('editBtn')?.classList.remove('hidden');
-    }
+// ==================== DATA LOADING ====================
+async function loadAdmissionDetail() {
+  showLoadingState();
+  
+  try {
+    // Load admission details
+    const admissionRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(admissionId));
+    admissionData = admissionRes.admission || admissionRes;
+    
+    // Load payments
+    const paymentsRes = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(admissionId));
+    payments = paymentsRes.payments || [];
+    
+    renderAdmissionDetail();
+    showContentState();
+  } catch (err) {
+    console.error('Failed to load admission detail:', err);
+    showErrorState('Failed to load admission details');
+  }
 }
 
-/* ======================
-LOAD DATA
-====================== */
-async function loadAdmissionDetails() {
-    try {
-        // Load admission details
-        const response = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(currentAdmissionId));
-        // Handle response wrapper or direct data
-        // API returns nested structure: admission.admission contains the actual admission data
-        currentAdmission = response.admission?.admission || response.admission || response.data?.admission || response;
-
-        // Load payments
-        const paymentsResponse = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(currentAdmissionId));
-        payments = paymentsResponse.payments || paymentsResponse.data?.payments || paymentsResponse || [];
-
-        renderAdmissionDetails();
-        renderPaymentHistory();
-
-        // Re-setup WhatsApp after dynamic button is created
-        setupWhatsAppIntegration();
-    } catch (err) {
-        showToast('error', 'Failed to load admission details');
-        console.error(err);
-    }
+// ==================== RENDER FUNCTIONS ====================
+function renderAdmissionDetail() {
+  if (!admissionData) return;
+  
+  const enquiry = admissionData.enquiryId || {};
+  const studentName = enquiry.name || 'Unknown';
+  const studentMobile = enquiry.mobile || '--';
+  const course = admissionData.course || '--';
+  const paymentType = admissionData.paymentType || 'ONE_TIME';
+  
+  const totalFees = admissionData.totalFees || 0;
+  const paidAmount = admissionData.paidAmount || 0;
+  const remaining = totalFees - paidAmount;
+  
+  // Student info
+  document.getElementById('studentName').textContent = studentName;
+  document.getElementById('studentMobile').textContent = `Mobile: ${studentMobile}`;
+  document.getElementById('courseBadge').textContent = course;
+  
+  const typeBadge = document.getElementById('paymentTypeBadge');
+  if (paymentType === 'ONE_TIME') {
+    typeBadge.className = 'px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium';
+    typeBadge.textContent = 'One Time';
+  } else {
+    typeBadge.className = 'px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-sm font-medium';
+    typeBadge.textContent = 'Installment';
+  }
+  
+  // Fully paid badge
+  const fullyPaidBadge = document.getElementById('fullyPaidBadge');
+  if (remaining <= 0) {
+    fullyPaidBadge.classList.remove('hidden');
+  } else {
+    fullyPaidBadge.classList.add('hidden');
+  }
+  
+  // Finance summary cards
+  document.getElementById('totalFees').textContent = formatCurrency(totalFees);
+  document.getElementById('totalPaid').textContent = formatCurrency(paidAmount);
+  document.getElementById('remainingAmount').textContent = formatCurrency(Math.max(0, remaining));
+  
+  // Calculate next due
+  const nextDue = calculateNextDue(admissionData, payments);
+  document.getElementById('nextDueAmount').textContent = formatCurrency(nextDue.amount);
+  document.getElementById('nextDueDate').textContent = nextDue.date || '--';
+  
+  // Action buttons - disable add payment if fully paid
+  const addPaymentBtn = document.getElementById('addPaymentBtn');
+  if (remaining <= 0) {
+    addPaymentBtn.disabled = true;
+    addPaymentBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    addPaymentBtn.title = 'Admission is fully paid';
+  } else {
+    addPaymentBtn.disabled = false;
+    addPaymentBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+    addPaymentBtn.title = '';
+  }
+  
+  // Installment table
+  renderInstallmentTable();
+  
+  // Payment history
+  renderPaymentHistory();
 }
 
-/* ======================
-STATUS CALCULATION
-====================== */
-function getAdmissionStatus(paid, total, dueDate) {
-    const remaining = total - paid;
-
-    if (remaining <= 0) {
-        return { status: 'Paid', color: 'green', bgClass: 'bg-green-100', textClass: 'text-green-700', icon: 'check-circle' };
+function calculateNextDue(admission, paymentsList) {
+  const totalFees = admission.totalFees || 0;
+  const paidAmount = admission.paidAmount || 0;
+  const remaining = totalFees - paidAmount;
+  
+  if (remaining <= 0) {
+    return { amount: 0, date: 'Paid' };
+  }
+  
+  // Check if there are installments
+  const installments = admission.installments || [];
+  if (installments.length === 0) {
+    return { amount: remaining, date: 'On Demand' };
+  }
+  
+  // Find first unpaid installment
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // Calculate how much has been paid toward installments
+  let paidTowardInstallments = admission.registrationAmount || 0;
+  const installmentPayments = paymentsList.filter(p => p.type === 'installment');
+  paidTowardInstallments += installmentPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  
+  let cumulativeAmount = admission.registrationAmount || 0;
+  
+  for (const inst of installments) {
+    cumulativeAmount += inst.amount;
+    
+    if (paidAmount < cumulativeAmount) {
+      const dueDate = new Date(inst.dueDate);
+      const isOverdue = dueDate < today;
+      
+      return {
+        amount: Math.min(remaining, inst.amount),
+        date: formatDate(inst.dueDate),
+        isOverdue
+      };
     }
-
-    if (paid > 0 && paid < total) {
-        return { status: 'Partial', color: 'amber', bgClass: 'bg-amber-100', textClass: 'text-amber-700', icon: 'clock' };
-    }
-
-    // Check if overdue
-    if (dueDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const due = new Date(dueDate);
-        due.setHours(0, 0, 0, 0);
-
-        if (today > due) {
-            const daysOverdue = Math.floor((today - due) / (1000 * 60 * 60 * 24));
-            return { status: 'Overdue', color: 'red', bgClass: 'bg-red-100', textClass: 'text-red-700', icon: 'alert-circle', daysOverdue };
-        }
-    }
-
-    return { status: 'Pending', color: 'gray', bgClass: 'bg-gray-100', textClass: 'text-gray-600', icon: 'circle' };
+  }
+  
+  // All installments covered but still remaining (shouldn't happen with proper validation)
+  return { amount: remaining, date: 'On Demand' };
 }
 
-function getInstallmentStatus(inst, index, paidAmount, previousCumulative) {
-    const cumulativeForThis = previousCumulative + inst.amount;
-    const isPaid = paidAmount >= cumulativeForThis;
-    const isPartial = paidAmount > previousCumulative && paidAmount < cumulativeForThis;
-
+function renderInstallmentTable() {
+  const table = document.getElementById('installmentTable');
+  const section = document.getElementById('installmentSection');
+  const noInstallments = document.getElementById('noInstallments');
+  
+  const installments = admissionData?.installments || [];
+  const totalFees = admissionData?.totalFees || 0;
+  const paidAmount = admissionData?.paidAmount || 0;
+  const registrationAmount = admissionData?.registrationAmount || 0;
+  
+  document.getElementById('installmentCount').textContent = `${installments.length} installments`;
+  
+  if (installments.length === 0) {
+    section.classList.add('hidden');
+    noInstallments.classList.remove('hidden');
+    return;
+  }
+  
+  section.classList.remove('hidden');
+  noInstallments.classList.add('hidden');
+  
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  let cumulativeAmount = registrationAmount;
+  
+  table.innerHTML = installments.map((inst, index) => {
+    cumulativeAmount += inst.amount;
+    
+    const isPaid = paidAmount >= cumulativeAmount;
+    const dueDate = new Date(inst.dueDate);
+    const isOverdue = !isPaid && dueDate < today;
+    
+    let statusClass, statusText, statusIcon;
     if (isPaid) {
-        return { status: 'Paid', color: 'green', bgClass: 'bg-green-100', textClass: 'text-green-700', icon: 'check-circle', isPaid: true };
+      statusClass = 'status-paid';
+      statusText = 'Paid';
+      statusIcon = 'check-circle';
+    } else if (isOverdue) {
+      statusClass = 'status-overdue';
+      statusText = 'Overdue';
+      statusIcon = 'alert-circle';
+    } else {
+      statusClass = 'status-pending';
+      statusText = 'Pending';
+      statusIcon = 'clock';
     }
-
-    if (isPartial) {
-        const paidForThis = paidAmount - previousCumulative;
-        const remaining = inst.amount - paidForThis;
-        return { status: 'Partial', color: 'blue', bgClass: 'bg-blue-100', textClass: 'text-blue-700', icon: 'clock', isPaid: false, paidForThis, remaining };
-    }
-
-    // Check if overdue
-    if (inst.dueDate) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const due = new Date(inst.dueDate);
-        due.setHours(0, 0, 0, 0);
-
-        if (today > due) {
-            const daysOverdue = Math.floor((today - due) / (1000 * 60 * 60 * 24));
-            return { status: 'Overdue', color: 'red', bgClass: 'bg-red-100', textClass: 'text-red-700', icon: 'alert-circle', isPaid: false, daysOverdue };
-        }
-    }
-
-    return { status: 'Pending', color: 'gray', bgClass: 'bg-gray-100', textClass: 'text-gray-600', icon: 'circle', isPaid: false };
-}
-
-/* ======================
-RENDER ADMISSION DETAILS
-====================== */
-function renderAdmissionDetails() {
-    if (!currentAdmission) return;
-
-    const enquiry = currentAdmission.enquiryId || {};
-    const counselor = currentAdmission.counselorId || {};
-
-    // Student Info
-    document.getElementById('studentName').textContent = enquiry.name || '-';
-
-    // Mobile number - check multiple possible locations in data
-    console.log('Admission data:', currentAdmission);
-    console.log('Enquiry data:', enquiry);
-    const mobile = enquiry.mobile || currentAdmission.mobile || currentAdmission.studentMobile || enquiry.phone || '-';
-    console.log('Found mobile:', mobile);
-    const mobileEl = document.getElementById('studentMobile');
-    if (mobileEl) {
-        mobileEl.textContent = mobile;
-        // Store mobile in a data attribute for WhatsApp to use
-        mobileEl.dataset.mobile = mobile !== '-' ? mobile.replace(/\D/g, '') : '';
-    }
-
-    document.getElementById('studentCourse').querySelector('span').textContent = currentAdmission.course || enquiry.courseInterested || '-';
-
-    // Counselor Info
-    document.getElementById('counselorName').textContent = counselor.name || 'Unassigned';
-
-    // Payment Summary
-    const totalFees = currentAdmission.totalFees || 0;
-    const paidAmount = currentAdmission.paidAmount || 0;
-    const remaining = currentAdmission.pendingAmount !== undefined
-        ? currentAdmission.pendingAmount
-        : Math.max(0, totalFees - paidAmount);
-    const isComplete = remaining <= 0;
-
-    document.getElementById('totalFees').textContent = formatCurrency(totalFees);
-    document.getElementById('paidAmount').textContent = formatCurrency(paidAmount);
-    document.getElementById('remainingAmount').textContent = formatCurrency(remaining);
-    document.getElementById('admissionDate').textContent = formatDate(currentAdmission.createdAt);
-
-    // Payment Type & Method
-    const paymentType = currentAdmission.paymentType || 'ONE_TIME';
-    // Get payment method from admission or fallback to last payment's method
-    let paymentMethod = currentAdmission.paymentMethod;
-    if (!paymentMethod && payments.length > 0) {
-        // Get the most recent payment's method
-        const lastPayment = payments.reduce((latest, p) =>
-            new Date(p.createdAt) > new Date(latest.createdAt) ? p : latest
-        );
-        paymentMethod = lastPayment.paymentMethod || lastPayment.method || '-';
-    }
-    paymentMethod = paymentMethod || '-';
-    document.getElementById('paymentMode').textContent = paymentType === 'ONE_TIME'
-        ? paymentMethod
-        : `${paymentType} (Installment)`;
-
-    // Get due date for status calculation
-    const dueDate = currentAdmission.installments?.[0]?.dueDate || currentAdmission.dueDate || currentAdmission.createdAt;
-    const statusInfo = getAdmissionStatus(paidAmount, totalFees, dueDate);
-
-    // Payment Status Badge
-    const badgeContainer = document.getElementById('paymentStatusBadge');
-    let extraText = '';
-    if (statusInfo.status === 'Overdue' && statusInfo.daysOverdue) {
-        extraText = ` (${statusInfo.daysOverdue}d)`;
-    }
-
-    badgeContainer.innerHTML = `
-        <span class="inline-flex items-center gap-1.5 px-4 py-2 ${statusInfo.bgClass} ${statusInfo.textClass} rounded-xl text-sm font-medium">
-            <i data-lucide="${statusInfo.icon}" class="w-4 h-4"></i>
-            ${statusInfo.status}${extraText}
-        </span>
+    
+    return `
+      <tr class="${isOverdue ? 'bg-red-50/50' : ''}">
+        <td class="px-4 py-3 text-gray-800 font-medium">${index + 1}</td>
+        <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(inst.amount)}</td>
+        <td class="px-4 py-3 text-center text-gray-600">${formatDate(inst.dueDate)}</td>
+        <td class="px-4 py-3 text-center">
+          <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${statusClass}">
+            <i data-lucide="${statusIcon}" class="w-3.5 h-3.5"></i>
+            ${statusText}
+          </span>
+        </td>
+      </tr>
     `;
-    lucide.createIcons();
-
-    // Payment Status Section
-    const fullyPaidSection = document.getElementById('fullyPaidSection');
-    const pendingPaymentSection = document.getElementById('pendingPaymentSection');
-
-    if (isComplete) {
-        fullyPaidSection.classList.remove('hidden');
-        pendingPaymentSection.classList.add('hidden');
-
-        // Find completion date (date of last payment)
-        const lastPayment = payments.length > 0
-            ? payments.reduce((latest, p) => new Date(p.createdAt) > new Date(latest.createdAt) ? p : latest)
-            : null;
-        document.getElementById('completionDate').textContent = lastPayment
-            ? formatDate(lastPayment.createdAt)
-            : formatDate(currentAdmission.updatedAt);
-
-    } else {
-        fullyPaidSection.classList.add('hidden');
-        pendingPaymentSection.classList.remove('hidden');
-        document.getElementById('pendingRemaining').textContent = formatCurrency(remaining);
-
-        // Show installments if available
-        const installmentSection = document.getElementById('installmentSection');
-        if (currentAdmission.installments?.length > 0) {
-            installmentSection.classList.remove('hidden');
-            renderInstallments(currentAdmission.installments, paidAmount);
-        } else {
-            installmentSection.classList.add('hidden');
-        }
-
-        // Update Pay Full button visibility
-        const payFullBtn = document.getElementById('payFullBtn');
-        if (payFullBtn) {
-            payFullBtn.style.display = remaining > 0 ? 'flex' : 'none';
-        }
-    }
-
-    // Update Cancel and Refund buttons based on admission status
-    updateActionButtons();
-
-    // Re-attach WhatsApp event listener since button was dynamically created
-    setupWhatsAppIntegration();
+  }).join('');
+  
+  lucide.createIcons();
 }
 
-/* ======================
-UPDATE ACTION BUTTONS (Cancel & Refund)
-====================== */
-function updateActionButtons() {
-    if (!currentAdmission) return;
-
-    const admissionStatus = currentAdmission.status || 'active';
-    const paidAmount = currentAdmission.paidAmount || 0;
-
-    const cancelBtn = document.getElementById('cancelAdmissionBtn');
-    const refundBtn = document.getElementById('refundBtn');
-    const addPaymentBtn = document.getElementById('addPaymentBtn');
-    const payFullBtn = document.getElementById('payFullBtn');
-    const cancelledBadge = document.getElementById('cancelledStatusBadge');
-    const cancelledDate = document.getElementById('cancelledDate');
-
-    // Show Cancel button only if admission is active
-    if (cancelBtn) {
-        if (admissionStatus === 'active') {
-            cancelBtn.classList.remove('hidden');
-        } else {
-            cancelBtn.classList.add('hidden');
-        }
-    }
-
-    // Show Refund button if paid amount > 0 (even if cancelled)
-    if (refundBtn) {
-        if (paidAmount > 0) {
-            refundBtn.classList.remove('hidden');
-        } else {
-            refundBtn.classList.add('hidden');
-        }
-    }
-
-    // Hide payment buttons if admission is cancelled
-    if (admissionStatus === 'cancelled') {
-        if (addPaymentBtn) addPaymentBtn.classList.add('hidden');
-        if (payFullBtn) payFullBtn.classList.add('hidden');
-
-        // Show cancelled badge
-        if (cancelledBadge) {
-            cancelledBadge.classList.remove('hidden');
-            if (cancelledDate && currentAdmission.cancelledAt) {
-                cancelledDate.textContent = formatDate(currentAdmission.cancelledAt);
-            }
-        }
-    } else {
-        if (cancelledBadge) cancelledBadge.classList.add('hidden');
-    }
-}
-
-/* ======================
-RENDER INSTALLMENTS
-====================== */
-function renderInstallments(installments, paidAmount) {
-    const container = document.getElementById('installmentList');
-
-    let cumulativePaid = 0;
-
-    const html = installments.map((inst, index) => {
-        const statusInfo = getInstallmentStatus(inst, index, paidAmount, cumulativePaid);
-        cumulativePaid += inst.amount;
-
-        // Build status text with extra info
-        let statusText = statusInfo.status;
-        let extraInfo = '';
-
-        if (statusInfo.status === 'Partial' && statusInfo.paidForThis !== undefined) {
-            extraInfo = `<span class="text-xs text-blue-600">Paid: ${formatCurrency(statusInfo.paidForThis)} / Rem: ${formatCurrency(statusInfo.remaining)}</span>`;
-        } else if (statusInfo.status === 'Overdue' && statusInfo.daysOverdue) {
-            extraInfo = `<span class="text-xs text-red-600">Overdue by ${statusInfo.daysOverdue} days</span>`;
-        }
-
-        // Row background based on status
-        const rowBgClass = statusInfo.status === 'Overdue' ? 'bg-red-50/50' :
-                          statusInfo.status === 'Paid' ? 'bg-green-50/50' :
-                          statusInfo.status === 'Partial' ? 'bg-blue-50/50' : '';
-
-        // Action button
-        let actionButton = '';
-        if (!statusInfo.isPaid) {
-            const amountToPay = statusInfo.status === 'Partial' ? statusInfo.remaining : inst.amount;
-            actionButton = `
-                <button onclick="event.stopPropagation(); openPaymentModalForInstallment(${index}, ${amountToPay})"
-                    class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white rounded-lg text-xs font-medium transition-colors shadow-sm">
-                    Pay
-                </button>
-            `;
-        } else {
-            actionButton = `<span class="text-gray-400 text-xs">-</span>`;
-        }
-
-        return `
-            <tr class="${rowBgClass} border-b border-gray-100 last:border-0 hover:bg-gray-50/50 transition-colors">
-                <td class="px-4 py-3 text-gray-800 font-medium">${index + 1}</td>
-                <td class="px-4 py-3 text-gray-600">${formatDate(inst.dueDate)}</td>
-                <td class="px-4 py-3 font-medium text-gray-800">${formatCurrency(inst.amount)}</td>
-                <td class="px-4 py-3 text-center">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 ${statusInfo.bgClass} ${statusInfo.textClass} rounded-lg text-xs font-medium">
-                        <i data-lucide="${statusInfo.icon}" class="w-3.5 h-3.5"></i>
-                        ${statusText}
-                    </span>
-                    ${extraInfo ? `<div class="mt-1">${extraInfo}</div>` : ''}
-                </td>
-                <td class="px-4 py-3 text-center">
-                    ${actionButton}
-                </td>
-            </tr>
-        `;
-    }).join('');
-
-    container.innerHTML = html;
-    lucide.createIcons();
-}
-
-/* ======================
-RENDER PAYMENT HISTORY
-====================== */
 function renderPaymentHistory() {
-    const container = document.getElementById('paymentHistory');
-
-    if (!payments || payments.length === 0) {
-        container.innerHTML = `
-            <div class="text-center py-8 text-gray-500">
-                <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <i data-lucide="credit-card" class="w-8 h-8 text-gray-400"></i>
-                </div>
-                <p>No payments recorded yet</p>
+  const section = document.getElementById('paymentHistorySection');
+  const noPayments = document.getElementById('noPayments');
+  
+  document.getElementById('paymentCount').textContent = `${payments.length} payments`;
+  
+  if (payments.length === 0) {
+    section.innerHTML = '';
+    noPayments.classList.remove('hidden');
+    return;
+  }
+  
+  noPayments.classList.add('hidden');
+  
+  // Sort by date (newest first)
+  const sortedPayments = [...payments].sort((a, b) => 
+    new Date(b.createdAt) - new Date(a.createdAt)
+  );
+  
+  section.innerHTML = sortedPayments.map(p => {
+    const date = formatDateTime(p.createdAt);
+    
+    const typeColors = {
+      'initial': 'bg-blue-100 text-blue-700 border-blue-200',
+      'installment': 'bg-amber-100 text-amber-700 border-amber-200',
+      'full': 'bg-green-100 text-green-700 border-green-200',
+      'refund': 'bg-red-100 text-red-700 border-red-200'
+    };
+    
+    const typeLabels = {
+      'initial': 'Registration',
+      'installment': 'Installment',
+      'full': 'Full Payment',
+      'refund': 'Refund'
+    };
+    
+    const typeClass = typeColors[p.type] || 'bg-gray-100 text-gray-700';
+    const typeLabel = typeLabels[p.type] || p.type;
+    
+    return `
+      <div class="payment-row px-6 py-4 border-b border-gray-50 last:border-0">
+        <div class="flex items-center justify-between mb-2">
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 ${typeClass.split(' ')[0]} rounded-lg flex items-center justify-center">
+              <i data-lucide="${getPaymentIcon(p.type)}" class="w-4 h-4 ${typeClass.split(' ')[1]}"></i>
             </div>
-        `;
-        lucide.createIcons();
-        return;
-    }
-
-    // Sort payments by date (newest first)
-    const sortedPayments = [...payments].sort((a, b) =>
-        new Date(b.createdAt) - new Date(a.createdAt)
-    );
-
-    const html = sortedPayments.map((p, index) => `
-        <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
-                    <i data-lucide="wallet" class="w-5 h-5 text-green-600"></i>
-                </div>
-                <div>
-                    <p class="font-medium text-gray-800">${formatCurrency(p.amount)}</p>
-                    <p class="text-xs text-gray-500">${p.paymentMode || 'Cash'} • ${formatDate(p.createdAt)}</p>
-                </div>
+            <div>
+              <div class="font-semibold text-gray-800">${formatCurrency(p.amount)}</div>
+              <div class="text-xs text-gray-500">${date}</div>
             </div>
-            <span class="px-3 py-1 bg-green-100 text-green-700 rounded-lg text-xs font-medium">
-                Payment #${sortedPayments.length - index}
-            </span>
+          </div>
+          <span class="px-2.5 py-1 rounded-lg text-xs font-medium border ${typeClass}">
+            ${typeLabel}
+          </span>
         </div>
-    `).join('');
+        <div class="flex items-center justify-between text-sm">
+          <span class="text-gray-500">${p.paymentMode}</span>
+          ${p.note ? `<span class="text-gray-400 italic">${escapeHtml(p.note)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  lucide.createIcons();
+}
 
-    container.innerHTML = html;
+// ==================== ADD PAYMENT MODAL ====================
+function openAddPaymentModal() {
+  const remaining = (admissionData?.totalFees || 0) - (admissionData?.paidAmount || 0);
+  
+  if (remaining <= 0) {
+    showToast('Info', 'This admission is fully paid', 'info');
+    return;
+  }
+  
+  // Reset form
+  document.getElementById('paymentAmount').value = '';
+  document.getElementById('paymentMode').value = 'CASH';
+  document.getElementById('paymentTypeSelect').value = 'installment';
+  document.getElementById('paymentNote').value = '';
+  document.getElementById('paymentAmountError').classList.add('hidden');
+  
+  // Set remaining info
+  document.getElementById('modalRemaining').textContent = formatCurrency(remaining);
+  
+  // Show modal
+  const modal = document.getElementById('addPaymentModal');
+  const content = document.getElementById('addPaymentModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
+}
+
+function closeAddPaymentModal() {
+  const modal = document.getElementById('addPaymentModal');
+  const content = document.getElementById('addPaymentModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+async function submitAddPayment() {
+  const amount = parseFloat(document.getElementById('paymentAmount').value) || 0;
+  const mode = document.getElementById('paymentMode').value;
+  const type = document.getElementById('paymentTypeSelect').value;
+  const note = document.getElementById('paymentNote').value.trim();
+  
+  const remaining = (admissionData?.totalFees || 0) - (admissionData?.paidAmount || 0);
+  
+  // Validation
+  const errorEl = document.getElementById('paymentAmountError');
+  
+  if (amount <= 0) {
+    errorEl.textContent = 'Please enter a valid amount';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  if (amount > remaining) {
+    errorEl.textContent = `Amount cannot exceed remaining balance (${formatCurrency(remaining)})`;
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  // Block full payment if it's not actually full
+  if (type === 'full' && amount < remaining) {
+    errorEl.textContent = 'For "Full Payment" type, amount must equal remaining balance';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  errorEl.classList.add('hidden');
+  
+  // Submit
+  const submitBtn = document.getElementById('addPaymentSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
+  
+  try {
+    const payload = {
+      admissionId: admissionId,
+      amount: amount,
+      paymentMode: mode,
+      type: type,
+      note: note || undefined
+    };
+    
+    await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
+    
+    closeAddPaymentModal();
+    showToast('Success', 'Payment recorded successfully', 'success');
+    
+    // Reload data
+    await loadAdmissionDetail();
+  } catch (err) {
+    console.error('Failed to record payment:', err);
+    const message = err.response?.data?.message || 'Failed to record payment';
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Payment';
     lucide.createIcons();
+  }
 }
 
-/* ======================
-PAYMENT MODAL
-====================== */
-let currentInstallmentIndex = null;
-
-function openPaymentModal() {
-    currentInstallmentIndex = null;
-
-    // Reset form
-    document.getElementById('amount').value = '';
-    const paymentModeField = document.getElementById('paymentMode');
-    if (paymentModeField) paymentModeField.value = 'CASH';
-    document.getElementById('installmentIndex').value = '';
-    clearAmountError();
-
-    // Reset modal title and hide installment info
-    document.getElementById('paymentModalTitle').textContent = 'Add Payment';
-    document.getElementById('paymentModalSubtitle').textContent = 'Enter payment details';
-    document.getElementById('installmentInfo').classList.add('hidden');
-
-    // Show modal with animation
-    const modal = document.getElementById('paymentModal');
-    const modalContent = document.getElementById('paymentModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
+// ==================== SET INSTALLMENTS MODAL ====================
+function openSetInstallmentsModal() {
+  if (!admissionData) return;
+  
+  const totalFees = admissionData.totalFees || 0;
+  const registrationAmount = admissionData.registrationAmount || 0;
+  const remaining = totalFees - registrationAmount;
+  
+  // Set summary
+  document.getElementById('planTotalFees').textContent = formatCurrency(totalFees);
+  document.getElementById('planRegistration').textContent = formatCurrency(registrationAmount);
+  document.getElementById('planRemaining').textContent = formatCurrency(remaining);
+  
+  // Initialize rows (default 2 installments)
+  installmentRows = [
+    { amount: Math.floor(remaining / 2), dueDate: '' },
+    { amount: Math.ceil(remaining / 2), dueDate: '' }
+  ];
+  
+  renderInstallmentRows();
+  document.getElementById('planError').classList.add('hidden');
+  
+  // Show modal
+  const modal = document.getElementById('setInstallmentsModal');
+  const content = document.getElementById('setInstallmentsModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
 }
 
-function openPaymentModalForInstallment(index, amount) {
-    currentInstallmentIndex = index;
-
-    // Pre-fill amount
-    document.getElementById('amount').value = amount;
-    const paymentModeField = document.getElementById('paymentMode');
-    if (paymentModeField) paymentModeField.value = 'CASH';
-    document.getElementById('installmentIndex').value = index;
-    clearAmountError();
-
-    // Update modal title and show installment info
-    document.getElementById('paymentModalTitle').textContent = 'Pay Installment';
-    document.getElementById('paymentModalSubtitle').textContent = `Installment #${index + 1}`;
-    document.getElementById('installmentNumber').textContent = index + 1;
-    document.getElementById('installmentAmountDue').textContent = formatCurrency(amount);
-    document.getElementById('installmentInfo').classList.remove('hidden');
-
-    // Show modal with animation
-    const modal = document.getElementById('paymentModal');
-    const modalContent = document.getElementById('paymentModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
+function closeSetInstallmentsModal() {
+  const modal = document.getElementById('setInstallmentsModal');
+  const content = document.getElementById('setInstallmentsModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
 }
 
-function openPayFullModal() {
-    if (!currentAdmission) return;
+function renderInstallmentRows() {
+  const container = document.getElementById('installmentRows');
+  
+  container.innerHTML = installmentRows.map((row, index) => `
+    <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+      <div class="flex-1">
+        <label class="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
+          <input 
+            type="number" 
+            value="${row.amount || ''}"
+            onchange="updateInstallmentRow(${index}, 'amount', this.value)"
+            class="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+            placeholder="Amount"
+            min="1"
+          >
+        </div>
+      </div>
+      <div class="flex-1">
+        <label class="text-xs text-gray-500 mb-1 block">Due Date</label>
+        <input 
+          type="date" 
+          value="${row.dueDate}"
+          onchange="updateInstallmentRow(${index}, 'dueDate', this.value)"
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
+        >
+      </div>
+      <button 
+        onclick="removeInstallmentRow(${index})"
+        class="mt-5 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+        ${installmentRows.length === 1 ? 'disabled style="opacity:0.3"' : ''}
+      >
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+      </button>
+    </div>
+  `).join('');
+  
+  lucide.createIcons();
+}
 
-    const totalFees = currentAdmission.totalFees || 0;
-    const paidAmount = currentAdmission.paidAmount || 0;
-    const remaining = Math.max(0, totalFees - paidAmount);
+function addInstallmentRow() {
+  installmentRows.push({ amount: '', dueDate: '' });
+  renderInstallmentRows();
+}
 
-    if (remaining <= 0) {
-        showToast('info', 'Payment already complete');
-        return;
+function removeInstallmentRow(index) {
+  if (installmentRows.length > 1) {
+    installmentRows.splice(index, 1);
+    renderInstallmentRows();
+  }
+}
+
+function updateInstallmentRow(index, field, value) {
+  installmentRows[index][field] = value;
+}
+
+async function submitInstallmentPlan() {
+  const errorEl = document.getElementById('planError');
+  
+  const totalFees = admissionData.totalFees || 0;
+  const registrationAmount = admissionData.registrationAmount || 0;
+  const remaining = totalFees - registrationAmount;
+  
+  // Validate all rows
+  for (let i = 0; i < installmentRows.length; i++) {
+    const row = installmentRows[i];
+    if (!row.amount || parseFloat(row.amount) <= 0) {
+      errorEl.textContent = `Installment ${i + 1}: Please enter a valid amount`;
+      errorEl.classList.remove('hidden');
+      return;
     }
-
-    currentInstallmentIndex = null;
-
-    // Pre-fill with remaining amount
-    document.getElementById('amount').value = remaining;
-    const paymentModeField = document.getElementById('paymentMode');
-    if (paymentModeField) paymentModeField.value = 'CASH';
-    document.getElementById('installmentIndex').value = '';
-    clearAmountError();
-
-    // Update modal title
-    document.getElementById('paymentModalTitle').textContent = 'Pay Full Amount';
-    document.getElementById('paymentModalSubtitle').textContent = `Clear remaining balance: ${formatCurrency(remaining)}`;
-    document.getElementById('installmentInfo').classList.add('hidden');
-
-    // Show modal with animation
-    const modal = document.getElementById('paymentModal');
-    const modalContent = document.getElementById('paymentModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
+    if (!row.dueDate) {
+      errorEl.textContent = `Installment ${i + 1}: Please select a due date`;
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    
+    // Check date is in future
+    const dueDate = new Date(row.dueDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (dueDate < today) {
+      errorEl.textContent = `Installment ${i + 1}: Due date must be in the future`;
+      errorEl.classList.remove('hidden');
+      return;
+    }
+  }
+  
+  // Check sum matches remaining
+  const totalInstallments = installmentRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+  
+  if (totalInstallments !== remaining) {
+    errorEl.textContent = `Total installments (${formatCurrency(totalInstallments)}) must equal remaining amount (${formatCurrency(remaining)})`;
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  errorEl.classList.add('hidden');
+  
+  // Submit
+  const submitBtn = document.getElementById('planSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
+  
+  try {
+    const payload = {
+      installments: installmentRows.map(row => ({
+        amount: parseFloat(row.amount),
+        dueDate: row.dueDate
+      }))
+    };
+    
+    await apiPost(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(admissionId), payload);
+    
+    closeSetInstallmentsModal();
+    showToast('Success', 'Installment plan saved successfully', 'success');
+    
+    // Reload data
+    await loadAdmissionDetail();
+  } catch (err) {
+    console.error('Failed to save payment plan:', err);
+    const message = err.response?.data?.message || 'Failed to save payment plan';
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Plan';
+    lucide.createIcons();
+  }
 }
 
-function closePaymentModal() {
-    const modal = document.getElementById('paymentModal');
-    const modalContent = document.getElementById('paymentModalContent');
-    modal.classList.add('opacity-0');
-    modalContent.classList.remove('scale-100');
-    modalContent.classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
-}
-
-function clearAmountError() {
-    const error = document.getElementById('amountError');
-    const input = document.getElementById('amount');
-    error.classList.add('hidden');
-    input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    input.classList.add('border-gray-200', 'focus:border-green-500', 'focus:ring-green-100');
-}
-
-function validateAmount() {
-    const amount = document.getElementById('amount');
-    const error = document.getElementById('amountError');
-    const value = Number(amount.value);
-
-    if (!value || value <= 0) {
-        error.classList.remove('hidden');
-        amount.classList.remove('border-gray-200', 'focus:border-green-500', 'focus:ring-green-100');
-        amount.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        return false;
-    }
-
-    // Check if amount exceeds remaining
-    const totalFees = currentAdmission?.totalFees || 0;
-    const paidAmount = currentAdmission?.paidAmount || 0;
-    const remaining = totalFees - paidAmount;
-
-    if (value > remaining) {
-        error.textContent = `Amount cannot exceed remaining ₹${remaining}`;
-        error.classList.remove('hidden');
-        amount.classList.remove('border-gray-200', 'focus:border-green-500', 'focus:ring-green-100');
-        amount.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        return false;
-    }
-
-    error.classList.add('hidden');
-    amount.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    amount.classList.add('border-gray-200', 'focus:border-green-500', 'focus:ring-green-100');
-    return true;
-}
-
-async function submitPayment() {
-    const amount = Number(document.getElementById('amount').value);
-    const paymentMode = document.getElementById('paymentMode').value;
-    const paymentDate = document.getElementById('paymentDate')?.value;
-    const nextInstallmentDate = document.getElementById('nextInstallmentDate')?.value;
-
-    if (!validateAmount()) {
-        showToast('error', 'Enter a valid amount');
-        return;
-    }
-
-    try {
-        const payload = {
-            admissionId: currentAdmissionId,
-            amount,
-            paymentMode: paymentMode.toUpperCase()
-        };
-
-        // Add optional payment date if provided
-        if (paymentDate) {
-            payload.paymentDate = paymentDate;
-        }
-
-        // Add installment index if paying specific installment
-        if (currentInstallmentIndex !== null && currentInstallmentIndex !== undefined) {
-            payload.installmentIndex = currentInstallmentIndex;
-        }
-
-        // Add optional next installment date
-        if (nextInstallmentDate) {
-            payload.nextInstallmentDate = nextInstallmentDate;
-        }
-
-        await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
-
-        showToast('success', 'Payment added successfully');
-        closePaymentModal();
-
-        // Reload data
-        await loadAdmissionDetails();
-    } catch (err) {
-        showToast('error', err?.message || 'Payment failed');
-    }
-}
-
-/* ======================
-EDIT MODAL (Admin Only)
-====================== */
-function openEditModal() {
-    if (!currentAdmission) return;
-
-    // Populate form
-    document.getElementById('editTotalFees').value = currentAdmission.totalFees || '';
-    document.getElementById('editPaymentType').value = currentAdmission.paymentType || 'ONE_TIME';
-
-    // Show modal with animation
-    const modal = document.getElementById('editModal');
-    const modalContent = document.getElementById('editModalContent');
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
-}
-
-function closeEditModal() {
-    const modal = document.getElementById('editModal');
-    const modalContent = document.getElementById('editModalContent');
-    modal.classList.add('opacity-0');
-    modalContent.classList.remove('scale-100');
-    modalContent.classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
-}
-
-async function submitEdit() {
-    const totalFees = Number(document.getElementById('editTotalFees').value);
-    const paymentType = document.getElementById('editPaymentType').value;
-
-    if (!totalFees || totalFees <= 0) {
-        showToast('error', 'Enter valid total fees');
-        return;
-    }
-
-    try {
-        await apiPut(API_ENDPOINTS.ADMISSIONS.UPDATE_FEES(currentAdmissionId), {
-            totalFees,
-            paymentType
-        });
-
-        showToast('success', 'Admission updated successfully');
-        closeEditModal();
-
-        // Reload data
-        await loadAdmissionDetails();
-    } catch (err) {
-        showToast('error', err?.message || 'Failed to update admission');
-    }
-}
-
-/* ======================
-WHATSAPP INTEGRATION
-====================== */
-const WHATSAPP_TEMPLATES = {
-    enquiry: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. You enquired about ${course}. Can I help?`,
-    confirm: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Your ${course} admission confirmed! 🎉`,
-    payment: (name, course, amount, date, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. ₹${amount} pending for ${course}. Please pay by ${date}.`,
-    installment: (name, amount, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Installment ₹${amount} due. Pay now?`,
-    followup: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Following up on ${course}. Any questions?`,
-    custom: (name, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. `
-};
-
-function setupWhatsAppIntegration() {
-    const mobileBtn = document.getElementById('studentMobileBtn');
-    const whatsappMenu = document.getElementById('whatsappMenu');
-    const templateSelect = document.getElementById('whatsappTemplate');
-    const messageTextarea = document.getElementById('whatsappMessage');
-    const sendBtn = document.getElementById('sendWhatsappBtn');
-
-    if (!mobileBtn || !whatsappMenu) {
-        console.warn('WhatsApp elements not found');
-        return;
-    }
-
-    console.log('WhatsApp integration setup complete');
-
-    // Toggle menu on button click
-    mobileBtn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        console.log('Mobile button clicked');
-
-        const isHidden = whatsappMenu.classList.contains('hidden');
-
-        // Hide all other menus first
-        document.querySelectorAll('.whatsapp-menu').forEach(m => m.classList.add('hidden'));
-
-        if (isHidden) {
-            whatsappMenu.classList.remove('hidden');
-            generateWhatsAppMessage();
-        } else {
-            whatsappMenu.classList.add('hidden');
-        }
-    });
-
-    // Prevent menu from closing when clicking inside it
-    whatsappMenu.addEventListener('click', (e) => {
-        e.stopPropagation();
-    });
-
-    // Close menu when clicking outside
-    document.addEventListener('click', (e) => {
-        if (!whatsappMenu.contains(e.target) && !mobileBtn.contains(e.target)) {
-            whatsappMenu.classList.add('hidden');
-        }
-    });
-
-    // Generate message when template changes
-    templateSelect?.addEventListener('change', generateWhatsAppMessage);
-
-    // Send WhatsApp
-    sendBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        openWhatsApp();
-    });
-}
-
-function generateWhatsAppMessage() {
-    const templateSelect = document.getElementById('whatsappTemplate');
-    const messageTextarea = document.getElementById('whatsappMessage');
-    const mobileDisplay = document.getElementById('whatsappMobileDisplay');
-
-    if (!currentAdmission || !templateSelect || !messageTextarea) return;
-
-    const enquiry = currentAdmission.enquiryId || {};
-    const counselor = getCurrentUser();
-    const counselorName = counselor.name?.split(' ')[0] || 'Counselor';
-
-    const name = enquiry.name || 'Student';
-    // Check multiple possible locations for mobile
-    const mobile = enquiry.mobile || currentAdmission.mobile || currentAdmission.studentMobile || enquiry.phone || '-';
-    const course = currentAdmission.course || enquiry.courseInterested || 'Course';
-    const remaining = currentAdmission.pendingAmount || 0;
-    const dueDate = currentAdmission.installments?.[0]?.dueDate || new Date();
-    const formattedDate = new Date(dueDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
-
-    // Show mobile number in menu header
-    if (mobileDisplay) {
-        mobileDisplay.textContent = mobile !== '-' ? `📞 ${mobile}` : '';
-    }
-
-    const template = templateSelect.value;
-    let message = '';
-
-    switch (template) {
-        case 'enquiry':
-            message = WHATSAPP_TEMPLATES.enquiry(name, course, counselorName);
-            break;
-        case 'confirm':
-            message = WHATSAPP_TEMPLATES.confirm(name, course, counselorName);
-            break;
-        case 'payment':
-            message = WHATSAPP_TEMPLATES.payment(name, course, remaining, formattedDate, counselorName);
-            break;
-        case 'installment':
-            message = WHATSAPP_TEMPLATES.installment(name, remaining, counselorName);
-            break;
-        case 'followup':
-            message = WHATSAPP_TEMPLATES.followup(name, course, counselorName);
-            break;
-        case 'custom':
-            message = WHATSAPP_TEMPLATES.custom(name, counselorName);
-            break;
-    }
-
-    messageTextarea.value = message;
-}
-
-function openWhatsApp() {
-    const messageTextarea = document.getElementById('whatsappMessage');
-    const mobileSpan = document.getElementById('studentMobile');
-
-    if (!messageTextarea || !mobileSpan) return;
-
-    const message = messageTextarea.value.trim();
-    // Get mobile from data attribute (clean number) or fall back to textContent
-    const mobile = mobileSpan.dataset.mobile || mobileSpan.textContent.trim().replace(/\D/g, '');
-
-    if (!mobile || mobile === '' || mobile === '-') {
-        showToast('error', 'No mobile number available');
-        return;
-    }
-
-    if (!message) {
-        showToast('error', 'Please enter a message');
-        return;
-    }
-
-    // Format mobile for WhatsApp (add country code if needed)
-    const formattedMobile = mobile.startsWith('91') ? mobile : '91' + mobile;
-
-    // Encode message for URL
-    const encodedMessage = encodeURIComponent(message);
-
-    // Open WhatsApp
-    const whatsappUrl = `https://wa.me/${formattedMobile}?text=${encodedMessage}`;
-    window.open(whatsappUrl, '_blank');
-
-    // Hide menu
-    document.getElementById('whatsappMenu')?.classList.add('hidden');
-    showToast('success', 'WhatsApp opened');
-}
-
-/* ======================
-CANCEL ADMISSION
-====================== */
-async function cancelAdmission() {
-    if (!currentAdmissionId) return;
-
-    // Confirm before cancelling
-    if (!confirm('Are you sure you want to cancel this admission?\n\nThis will stop all future payments and installments. Any paid amount will need to be refunded separately.')) {
-        return;
-    }
-
-    try {
-        await apiPatch(API_ENDPOINTS.ADMISSIONS.CANCEL(currentAdmissionId));
-
-        showToast('success', 'Admission cancelled successfully');
-
-        // Update current admission status
-        currentAdmission.status = 'cancelled';
-        currentAdmission.cancelledAt = new Date().toISOString();
-
-        // Update UI
-        updateActionButtons();
-
-        // Refresh data from server
-        loadAdmissionDetails();
-    } catch (err) {
-        showToast('error', err.response?.data?.message || 'Failed to cancel admission');
-        console.error(err);
-    }
-}
-
-/* ======================
-REFUND MODAL & FUNCTIONS
-====================== */
+// ==================== REFUND MODAL ====================
 function openRefundModal() {
-    if (!currentAdmission) return;
-
-    const modal = document.getElementById('refundModal');
-    const modalContent = document.getElementById('refundModalContent');
-    const maxRefundEl = document.getElementById('maxRefundAmount');
-    const refundAmountInput = document.getElementById('refundAmount');
-    const refundNoteInput = document.getElementById('refundNote');
-
-    // Calculate max refundable amount
-    const paidAmount = currentAdmission.paidAmount || 0;
-    const totalRefunded = calculateTotalRefunded();
-    const maxRefundable = Math.max(0, paidAmount - totalRefunded);
-
-    if (maxRefundEl) {
-        maxRefundEl.textContent = formatCurrency(maxRefundable);
-    }
-
-    // Reset form
-    if (refundAmountInput) {
-        refundAmountInput.value = '';
-        refundAmountInput.max = maxRefundable;
-        clearRefundAmountError();
-    }
-    if (refundNoteInput) refundNoteInput.value = '';
-
-    // Show modal with animation
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
+  if (!admissionData) return;
+  
+  const paidAmount = admissionData.paidAmount || 0;
+  const refundPayments = payments.filter(p => p.type === 'refund');
+  const totalRefunded = refundPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const maxRefundable = paidAmount - totalRefunded;
+  
+  if (maxRefundable <= 0) {
+    showToast('Info', 'No amount available for refund', 'info');
+    return;
+  }
+  
+  // Reset form
+  document.getElementById('refundAmount').value = '';
+  document.getElementById('refundMode').value = 'CASH';
+  document.getElementById('refundNote').value = '';
+  document.getElementById('refundAmountError').classList.add('hidden');
+  
+  // Set info
+  document.getElementById('refundTotalPaid').textContent = formatCurrency(paidAmount);
+  document.getElementById('refundMaxAmount').textContent = formatCurrency(maxRefundable);
+  
+  // Show modal
+  const modal = document.getElementById('refundModal');
+  const content = document.getElementById('refundModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
 }
 
 function closeRefundModal() {
-    const modal = document.getElementById('refundModal');
-    const modalContent = document.getElementById('refundModalContent');
-
-    modal.classList.add('opacity-0');
-    modalContent.classList.remove('scale-100');
-    modalContent.classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
-}
-
-function calculateTotalRefunded() {
-    if (!payments || payments.length === 0) return 0;
-
-    return payments
-        .filter(p => p.type === 'refund' || p.isRefund || p.amount < 0)
-        .reduce((total, p) => total + Math.abs(p.amount), 0);
-}
-
-function validateRefundAmount() {
-    const input = document.getElementById('refundAmount');
-    const error = document.getElementById('refundAmountError');
-    const value = parseFloat(input.value);
-
-    if (!currentAdmission) return false;
-
-    const paidAmount = currentAdmission.paidAmount || 0;
-    const totalRefunded = calculateTotalRefunded();
-    const maxRefundable = Math.max(0, paidAmount - totalRefunded);
-
-    if (!value || value <= 0) {
-        error.textContent = 'Refund amount must be greater than 0';
-        error.classList.remove('hidden');
-        input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        input.classList.remove('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
-        return false;
-    }
-
-    if (value > maxRefundable) {
-        error.textContent = `Cannot exceed refundable amount (₹${maxRefundable.toLocaleString('en-IN')})`;
-        error.classList.remove('hidden');
-        input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        input.classList.remove('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
-        return false;
-    }
-
-    error.classList.add('hidden');
-    input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    input.classList.add('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
-    return true;
-}
-
-function clearRefundAmountError() {
-    const input = document.getElementById('refundAmount');
-    const error = document.getElementById('refundAmountError');
-
-    if (error) error.classList.add('hidden');
-    if (input) {
-        input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-        input.classList.add('border-gray-200', 'focus:border-amber-500', 'focus:ring-amber-100');
-    }
+  const modal = document.getElementById('refundModal');
+  const content = document.getElementById('refundModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
 }
 
 async function submitRefund() {
-    if (!currentAdmissionId || !currentAdmission) return;
-
-    // Validate refund amount
-    if (!validateRefundAmount()) {
-        return;
-    }
-
-    const refundAmount = parseFloat(document.getElementById('refundAmount').value);
-    const refundNote = document.getElementById('refundNote').value.trim();
-
-    try {
-        // Build refund payload
-        const payload = {
-            admissionId: currentAdmissionId,
-            amount: -refundAmount, // Negative amount for refund
-            type: 'refund',
-            note: refundNote || 'Refund processed'
-        };
-
-        await apiPost(API_ENDPOINTS.PAYMENTS.REFUND, payload);
-
-        showToast('success', `Refund of ₹${refundAmount.toLocaleString('en-IN')} processed successfully`);
-
-        // Close modal
-        closeRefundModal();
-
-        // Refresh data from server
-        await loadAdmissionDetails();
-
-        // Refresh payment history
-        await loadAdmissionDetails();
-
-    } catch (err) {
-        showToast('error', err.response?.data?.message || 'Failed to process refund');
-        console.error(err);
-    }
+  const amount = parseFloat(document.getElementById('refundAmount').value) || 0;
+  const mode = document.getElementById('refundMode').value;
+  const note = document.getElementById('refundNote').value.trim();
+  
+  const paidAmount = admissionData?.paidAmount || 0;
+  const refundPayments = payments.filter(p => p.type === 'refund');
+  const totalRefunded = refundPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  const maxRefundable = paidAmount - totalRefunded;
+  
+  // Validation
+  const errorEl = document.getElementById('refundAmountError');
+  
+  if (amount <= 0) {
+    errorEl.textContent = 'Please enter a valid refund amount';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  if (amount > maxRefundable) {
+    errorEl.textContent = `Refund cannot exceed maximum refundable amount (${formatCurrency(maxRefundable)})`;
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  errorEl.classList.add('hidden');
+  
+  // Submit
+  const submitBtn = document.getElementById('refundSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
+  lucide.createIcons();
+  
+  try {
+    const payload = {
+      admissionId: admissionId,
+      amount: amount,
+      paymentMode: mode,
+      type: 'refund',
+      note: note || undefined
+    };
+    
+    await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
+    
+    closeRefundModal();
+    showToast('Success', 'Refund processed successfully', 'success');
+    
+    // Reload data
+    await loadAdmissionDetail();
+  } catch (err) {
+    console.error('Failed to process refund:', err);
+    const message = err.response?.data?.message || 'Failed to process refund';
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Process Refund';
+    lucide.createIcons();
+  }
 }
 
-/* ======================
-EXPORT
-====================== */
-window.openPaymentModal = openPaymentModal;
-window.openPaymentModalForInstallment = openPaymentModalForInstallment;
-window.openPayFullModal = openPayFullModal;
-window.closePaymentModal = closePaymentModal;
-window.submitPayment = submitPayment;
-window.openEditModal = openEditModal;
-window.closeEditModal = closeEditModal;
-window.submitEdit = submitEdit;
-window.cancelAdmission = cancelAdmission;
-window.openRefundModal = openRefundModal;
-window.closeRefundModal = closeRefundModal;
-window.submitRefund = submitRefund;
+// ==================== HELPER FUNCTIONS ====================
+function formatCurrency(amount) {
+  if (!amount || amount === 0) return '₹0';
+  return '₹' + amount.toLocaleString('en-IN');
+}
+
+function formatDate(dateString) {
+  if (!dateString) return '--';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric'
+  });
+}
+
+function formatDateTime(dateString) {
+  if (!dateString) return '--';
+  const date = new Date(dateString);
+  return date.toLocaleDateString('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function getPaymentIcon(type) {
+  const icons = {
+    'initial': 'wallet',
+    'installment': 'calendar',
+    'full': 'check-circle',
+    'refund': 'arrow-left'
+  };
+  return icons[type] || 'credit-card';
+}
+
+// ==================== UI STATE FUNCTIONS ====================
+function showLoadingState() {
+  document.getElementById('loadingState').classList.remove('hidden');
+  document.getElementById('errorState').classList.add('hidden');
+  document.getElementById('detailContent').classList.add('hidden');
+}
+
+function showErrorState(message) {
+  document.getElementById('loadingState').classList.add('hidden');
+  document.getElementById('errorState').classList.remove('hidden');
+  document.getElementById('detailContent').classList.add('hidden');
+  
+  if (message) {
+    document.querySelector('#errorState p').textContent = message;
+  }
+}
+
+function showContentState() {
+  document.getElementById('loadingState').classList.add('hidden');
+  document.getElementById('errorState').classList.add('hidden');
+  document.getElementById('detailContent').classList.remove('hidden');
+}
+
+// ==================== TOAST SYSTEM ====================
+function showToast(title, message, type = 'success') {
+  const container = document.getElementById('toastContainer');
+  
+  const colors = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-amber-500',
+    info: 'bg-blue-500'
+  };
+  
+  const icons = {
+    success: 'check-circle',
+    error: 'x-circle',
+    warning: 'alert-triangle',
+    info: 'info'
+  };
+  
+  const toast = document.createElement('div');
+  toast.className = `${colors[type]} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 min-w-[300px] max-w-[400px] toast-enter`;
+  toast.innerHTML = `
+    <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i>
+    <div class="flex-1">
+      <div class="font-medium text-sm">${title}</div>
+      <div class="text-xs opacity-90">${message}</div>
+    </div>
+    <button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+  `;
+  
+  container.appendChild(toast);
+  lucide.createIcons();
+  
+  // Auto remove
+  const duration = type === 'error' ? 5000 : 3000;
+  setTimeout(() => {
+    toast.classList.remove('toast-enter');
+    toast.classList.add('toast-exit');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}

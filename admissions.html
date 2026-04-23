@@ -1,371 +1,693 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Admissions • SSSAM</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admissions • SSSAM CRM</title>
 
-    <!-- Tailwind -->
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Axios -->
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-    <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    
+    /* Modal animations */
+    .modal-enter { opacity: 0; transform: scale(0.95); }
+    .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
+    .modal-exit { opacity: 1; transform: scale(1); }
+    .modal-exit-active { opacity: 0; transform: scale(0.95); transition: all 0.2s ease-in; }
+    
+    /* Amount formatting */
+    .amount-positive { color: #059669; }
+    .amount-negative { color: #dc2626; }
+    .amount-neutral { color: #6b7280; }
 
-    <!-- Axios -->
+    /* Payment type badge */
+    .badge-onetime { background: #dbeafe; color: #1e40af; }
+    .badge-installment { background: #fef3c7; color: #92400e; }
 
-    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    /* Toast animations */
+    @keyframes slideIn {
+      from { transform: translateX(100%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+      from { transform: translateX(0); opacity: 1; }
+      to { transform: translateX(100%); opacity: 0; }
+    }
+    .toast-enter { animation: slideIn 0.3s ease forwards; }
+    .toast-exit { animation: slideOut 0.3s ease forwards; }
 
-    <!-- Lucide -->
+    /* Finance card hover */
+    .finance-row { transition: all 0.15s ease; }
+    .finance-row:hover { background-color: #f8fafc; }
 
-    <script src="https://unpkg.com/lucide@latest"></script>
+    /* Payment card hover */
+    .payment-card { transition: all 0.2s ease; }
+    .payment-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
 
+    /* Installment row */
+    .installment-row:nth-child(even) { background: #f9fafb; }
+    .installment-row:hover { background: #f3f4f6; }
+
+    /* Enquiry dropdown */
+    .enquiry-option { transition: all 0.15s ease; }
+    .enquiry-option:hover { background: #eff6ff; }
+    .enquiry-option.selected { background: #dbeafe; border-left: 3px solid #3b82f6; }
+  </style>
 </head>
+<body class="bg-gray-50 text-gray-800 font-sans">
 
-<body class="bg-gray-100">
+  <div class="flex h-screen overflow-hidden">
+    
+    <!-- Mobile Menu Toggle -->
+    <button id="mobileMenuToggle" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center shadow-lg">
+      <i data-lucide="menu" class="w-5 h-5"></i>
+    </button>
 
-    <div class="flex h-screen">
+    <!-- Mobile Overlay -->
+    <div id="mobileOverlay" class="lg:hidden fixed inset-0 bg-black/50 z-40 hidden transition-opacity opacity-0"></div>
 
-        <!-- Mobile Menu Toggle Button (visible only on small screens) -->
-        <button id="mobileMenuToggle" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center shadow-lg">
-            <i data-lucide="menu" class="w-5 h-5"></i>
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-64 bg-gray-900 text-gray-300 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50">
+      <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="graduation-cap" class="text-white w-6 h-6"></i>
+        </div>
+        <div>
+          <span class="text-lg font-semibold text-white">SSSAM</span>
+          <p class="text-xs text-gray-500">CRM System</p>
+        </div>
+      </div>
+
+      <nav class="flex-1 py-4 space-y-1">
+        <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="phone-call" class="w-5 h-5"></i>
+          <span>Today Calls</span>
+        </a>
+        <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+          <span>Dashboard</span>
+        </a>
+        <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="message-square" class="w-5 h-5"></i>
+          <span>Enquiries</span>
+        </a>
+        <a href="admissions.html" class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
+          <i data-lucide="user-check" class="w-5 h-5"></i>
+          <span>Admissions</span>
+        </a>
+        <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+          <span>Payments</span>
+        </a>
+        <a href="reports.html" id="reportsMenu" class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          <span>Reports</span>
+        </a>
+      </nav>
+
+      <div class="p-4 border-t border-gray-800">
+        <p id="userName" class="text-sm text-white font-medium"></p>
+        <p id="userRole" class="text-xs text-gray-400"></p>
+      </div>
+
+      <button id="mobileCloseBtn" class="lg:hidden absolute top-4 right-4 w-8 h-8 bg-gray-800 text-gray-400 hover:text-white rounded-lg flex items-center justify-center">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col lg:ml-0 overflow-hidden">
+      
+      <!-- HEADER -->
+      <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
+        <h1 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+          <i data-lucide="user-check" class="w-6 h-6 text-blue-600"></i>
+          Admissions
+        </h1>
+        <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium text-sm">
+          <i data-lucide="log-out" class="w-5 h-5"></i>
+          <span>Logout</span>
+        </button>
+      </header>
+
+      <!-- CONTENT -->
+      <div class="flex-1 overflow-y-auto p-6 space-y-6">
+        
+        <!-- TOP BAR -->
+        <div class="flex flex-wrap items-center justify-between gap-4">
+          <div class="flex items-center gap-3 flex-1 max-w-md">
+            <div class="relative flex-1">
+              <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+              <input 
+                type="text" 
+                id="searchInput" 
+                placeholder="Search by name or mobile..."
+                class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+              >
+            </div>
+          </div>
+          <button onclick="openAddModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/25 transition-all font-medium text-sm flex items-center gap-2">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            Add Admission
+          </button>
+        </div>
+
+        <!-- TABLE (Desktop) -->
+        <div class="bg-white rounded-xl shadow overflow-hidden hidden lg:block">
+          <table class="w-full text-sm">
+            <thead class="bg-gray-50 text-gray-600 font-medium">
+              <tr>
+                <th class="px-6 py-3 text-left">Student</th>
+                <th class="px-6 py-3 text-left">Course</th>
+                <th class="px-6 py-3 text-right">Total Fees</th>
+                <th class="px-6 py-3 text-right">Paid</th>
+                <th class="px-6 py-3 text-right">Remaining</th>
+                <th class="px-6 py-3 text-center">Type</th>
+                <th class="px-6 py-3 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="admissionTable" class="divide-y divide-gray-100">
+              <!-- Loading state -->
+              <tr>
+                <td colspan="7" class="text-center py-12">
+                  <div class="flex flex-col items-center gap-3">
+                    <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                      <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
+                    </div>
+                    <p class="text-gray-500">Loading admissions...</p>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- PAGINATION -->
+          <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
+            <div class="text-sm text-gray-500">
+              Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button id="firstPage" onclick="goToPage(1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+                <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+              </button>
+              <button id="prevPage" onclick="changePage(-1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <div id="pageNumbers" class="flex items-center gap-1">
+                <span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
+              </div>
+              <button id="nextPage" onclick="changePage(1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+              <button id="lastPage" onclick="goToLastPage()" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+                <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- MOBILE CARDS -->
+        <div id="mobileCards" class="lg:hidden space-y-4">
+          <!-- Mobile cards rendered here -->
+        </div>
+
+        <!-- EMPTY STATE -->
+        <div id="emptyState" class="hidden">
+          <div class="bg-white rounded-xl shadow-sm p-12 text-center">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <i data-lucide="user-check" class="w-8 h-8 text-gray-400"></i>
+            </div>
+            <h3 class="text-lg font-medium text-gray-800 mb-1">No admissions found</h3>
+            <p class="text-gray-500 text-sm mb-4">Start by adding a new admission</p>
+            <button onclick="openAddModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm">
+              Add Admission
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ADD ADMISSION MODAL -->
+  <div id="addModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl transform scale-95 transition-transform duration-200" id="addModalContent">
+      
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="plus" class="text-white w-5 h-5"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Add Admission</h2>
+          <p class="text-xs text-gray-500">Convert enquiry to admission</p>
+        </div>
+        <button onclick="closeAddModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form -->
+      <div class="px-6 py-5 space-y-4 max-h-[70vh] overflow-y-auto">
+        
+        <!-- Enquiry Select -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Select Enquiry <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <button 
+              type="button"
+              id="enquirySelectBtn"
+              onclick="toggleEnquiryDropdown()"
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-left focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white flex items-center justify-between"
+            >
+              <span id="enquirySelectText" class="text-gray-500">Select an enquiry...</span>
+              <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400"></i>
+            </button>
+            
+            <!-- Dropdown -->
+            <div id="enquiryDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto z-50">
+              <div class="p-2 border-b border-gray-100 sticky top-0 bg-white">
+                <input 
+                  type="text" 
+                  id="enquirySearch" 
+                  placeholder="Search enquiries..."
+                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                  oninput="filterEnquiries(this.value)"
+                >
+              </div>
+              <div id="enquiryList" class="divide-y divide-gray-50">
+                <!-- Enquiries loaded here -->
+              </div>
+            </div>
+          </div>
+          <input type="hidden" id="selectedEnquiryId">
+          <p id="enquiryError" class="hidden text-red-500 text-xs mt-1">Please select an enquiry</p>
+        </div>
+
+        <!-- Course -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Course <span class="text-red-500">*</span>
+          </label>
+          <input 
+            type="text" 
+            id="courseInput"
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+            placeholder="Enter course name"
+          >
+          <p id="courseError" class="hidden text-red-500 text-xs mt-1">Course is required</p>
+        </div>
+
+        <!-- Total Fees -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Total Fees (₹) <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
+            <input 
+              type="number" 
+              id="totalFeesInput"
+              min="1"
+              step="1"
+              class="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+              placeholder="Enter total fees"
+            >
+          </div>
+          <p id="totalFeesError" class="hidden text-red-500 text-xs mt-1">Total fees must be greater than 0</p>
+        </div>
+
+        <!-- Registration Amount -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Registration Amount (₹) <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
+            <input 
+              type="number" 
+              id="registrationAmountInput"
+              min="0"
+              step="1"
+              class="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+              placeholder="First payment amount"
+            >
+          </div>
+          <p id="registrationAmountError" class="hidden text-red-500 text-xs mt-1">Registration amount must not exceed total fees</p>
+        </div>
+
+        <!-- Payment Type -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Payment Type <span class="text-red-500">*</span>
+          </label>
+          <div class="grid grid-cols-2 gap-3">
+            <label class="cursor-pointer">
+              <input type="radio" name="paymentType" value="ONE_TIME" class="peer hidden" checked onchange="handlePaymentTypeChange(this.value)">
+              <div class="px-4 py-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                <div class="font-medium text-sm">One Time</div>
+                <div class="text-xs text-gray-500">Full payment</div>
+              </div>
+            </label>
+            <label class="cursor-pointer">
+              <input type="radio" name="paymentType" value="INSTALLMENT" class="peer hidden" onchange="handlePaymentTypeChange(this.value)">
+              <div class="px-4 py-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
+                <div class="font-medium text-sm">Installment</div>
+                <div class="text-xs text-gray-500">Multiple payments</div>
+              </div>
+            </label>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closeAddModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
+          Cancel
+        </button>
+        <button onclick="submitAddAdmission()" id="addSubmitBtn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/25 transition-all font-medium text-sm flex items-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          Save Admission
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- PAYMENT PLAN MODAL (Installments) -->
+  <div id="paymentPlanModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl transform scale-95 transition-transform duration-200" id="paymentPlanModalContent">
+      
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+        <div class="w-10 h-10 bg-amber-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="calendar" class="text-white w-5 h-5"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Set Installment Plan</h2>
+          <p class="text-xs text-gray-500">Define payment schedule</p>
+        </div>
+        <button onclick="closePaymentPlanModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Content -->
+      <div class="px-6 py-5 max-h-[60vh] overflow-y-auto">
+        
+        <!-- Summary -->
+        <div class="bg-gray-50 rounded-xl p-4 mb-4">
+          <div class="flex justify-between text-sm mb-2">
+            <span class="text-gray-600">Total Fees:</span>
+            <span class="font-semibold" id="planTotalFees">₹0</span>
+          </div>
+          <div class="flex justify-between text-sm mb-2">
+            <span class="text-gray-600">Registration Paid:</span>
+            <span class="font-semibold text-green-600" id="planRegistration">₹0</span>
+          </div>
+          <div class="border-t border-gray-200 my-2"></div>
+          <div class="flex justify-between text-sm">
+            <span class="text-gray-600">Remaining:</span>
+            <span class="font-semibold text-blue-600" id="planRemaining">₹0</span>
+          </div>
+        </div>
+
+        <p id="planError" class="hidden text-red-500 text-sm mb-3 text-center"></p>
+
+        <!-- Installment Rows -->
+        <div id="installmentRows" class="space-y-3">
+          <!-- Rows added dynamically -->
+        </div>
+
+        <!-- Add Row Button -->
+        <button onclick="addInstallmentRow()" class="mt-4 w-full py-2.5 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600 rounded-xl transition-all font-medium text-sm flex items-center justify-center gap-2">
+          <i data-lucide="plus" class="w-4 h-4"></i>
+          Add Installment
         </button>
 
-        <!-- Mobile Overlay Backdrop -->
-        <div id="mobileOverlay" class="lg:hidden fixed inset-0 bg-black/50 z-40 hidden transition-opacity opacity-0"></div>
+      </div>
 
-        <!-- SIDEBAR -->
-
-        <aside id="sidebar" class="w-64 bg-gray-900 text-gray-300 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50">
-
-
-            <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-                    <i data-lucide="building-2" class="text-white"></i>
-                </div>
-                <div class="flex flex-col">
-                    <span id="headerUserName" class="text-lg font-semibold text-white">SSSAM</span>
-                    <span id="headerUserRole" class="text-xs text-gray-400"></span>
-                </div>
-            </div>
-
-            <nav class="flex-1 py-4 space-y-1">
-                <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-                    <i data-lucide="phone"></i> Today Calls
-                </a>
-                <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-                    <i data-lucide="layout-dashboard"></i> Dashboard
-                </a>
-                <a href="enquiries.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-                    <i data-lucide="message-square"></i> Enquiries
-                </a>
-                <a href="admissions.html"
-                    class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
-                    <i data-lucide="graduation-cap"></i> Admissions
-                </a>
-                <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-                    <i data-lucide="wallet"></i> Payments
-                </a>
-                <a href="reports.html" id="reportsMenu"
-                    class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-                    <i data-lucide="bar-chart-3"></i> Reports
-                </a>
-            </nav>
-
-            <div class="p-4 border-t border-gray-800">
-                <p id="userName" class="text-sm text-white"></p>
-                <p id="userRole" class="text-xs text-gray-400"></p>
-            </div>
-
-            <!-- Mobile Close Button (visible only on small screens) -->
-            <button id="mobileCloseBtn" class="lg:hidden absolute top-4 right-4 w-8 h-8 bg-gray-800 text-gray-400 hover:text-white rounded-lg flex items-center justify-center">
-                <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-        </aside>
-
-        <!-- MAIN -->
-
-        <div class="flex-1 flex flex-col lg:ml-0">
-
-
-            <!-- NAVBAR -->
-            <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
-                <h1 class="text-lg font-semibold text-gray-800">Admissions</h1>
-                <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium">
-                    <i data-lucide="log-out" class="w-5 h-5"></i>
-                    <span>Logout</span>
-                </button>
-            </header>
-
-            <!-- CONTENT -->
-            <main class="p-6 space-y-6 overflow-y-auto">
-
-                <!-- STATS -->
-                <div class="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-6">
-
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Total Admissions</p>
-                                <p id="totalAdmissions" class="text-2xl font-bold text-gray-800">0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-emerald-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="wallet" class="w-6 h-6 text-emerald-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Total Received</p>
-                                <p id="totalReceived" class="text-2xl font-bold text-emerald-600">₹0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="clock" class="w-6 h-6 text-red-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Total Remaining</p>
-                                <p id="totalRemaining" class="text-2xl font-bold text-red-600">₹0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="credit-card" class="w-6 h-6 text-amber-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Pending Payment</p>
-                                <p id="pendingCount" class="text-2xl font-bold text-amber-600">0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="bg-white p-5 rounded-xl shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                                <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
-                            </div>
-                            <div>
-                                <p class="text-sm text-gray-500">Completed</p>
-                                <p id="completedCount" class="text-2xl font-bold text-green-600">0</p>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-
-                <!-- FILTERS -->
-                <div class="bg-white p-4 rounded-xl shadow flex flex-wrap gap-4 items-center justify-between">
-                    <div class="flex items-center gap-4">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="showCompletedWithRemaining" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500">
-                            <span class="text-sm text-gray-700">Show Completed with Remaining Payment</span>
-                        </label>
-                    </div>
-                    <div class="text-sm text-gray-500">
-                        <span id="completedWithRemainingCount" class="font-medium text-amber-600 hidden">0 completed with remaining</span>
-                    </div>
-                </div>
-
-                <!-- TABLE -->
-                <div class="bg-white rounded-xl shadow overflow-hidden">
-
-                    <table class="w-full text-sm">
-
-                        <thead class="bg-gray-50 text-gray-600 font-medium">
-                            <tr>
-                                <th class="px-6 py-3 text-left">Name</th>
-                                <th class="px-6 py-3">Course</th>
-                                <th class="px-6 py-3">Total Fees</th>
-                                <th class="px-6 py-3">Paid</th>
-                                <th class="px-6 py-3">Pending</th>
-                                <th class="px-6 py-3">Due Date</th>
-                                <th class="px-6 py-3 text-center">Status</th>
-                            </tr>
-                        </thead>
-
-                        <tbody id="admissionTable">
-                            <tr>
-                                <td colspan="7" class="text-center py-12">
-                                    <div class="flex flex-col items-center gap-3">
-                                        <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                                            <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
-                                        </div>
-                                        <p class="text-gray-500">Loading admissions...</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-
-                    </table>
-
-                    <!-- PAGINATION -->
-                    <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
-
-                        <div class="text-sm text-gray-500">
-                            Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span> admissions
-                        </div>
-
-                        <div class="flex items-center gap-2">
-                            <button id="firstPage" onclick="goToPage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                <i data-lucide="chevrons-left" class="w-4 h-4"></i>
-                            </button>
-                            <button id="prevPage" onclick="changePage(-1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
-                            </button>
-
-                            <div id="pageNumbers" class="flex items-center gap-1">
-                                <span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
-                            </div>
-
-                            <button id="nextPage" onclick="changePage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
-                            </button>
-                            <button id="lastPage" onclick="goToLastPage()" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
-                                <i data-lucide="chevrons-right" class="w-4 h-4"></i>
-                            </button>
-                        </div>
-
-                    </div>
-
-                </div>
-
-            </main>
-
-
-        </div>
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closePaymentPlanModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
+          Cancel
+        </button>
+        <button onclick="submitPaymentPlan()" id="planSubmitBtn" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-lg shadow-amber-600/25 transition-all font-medium text-sm flex items-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          Save Plan
+        </button>
+      </div>
 
     </div>
+  </div>
 
-    <!-- PAYMENT MODAL -->
-    <div id="paymentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="paymentModalContent">
-
-            <!-- Header -->
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center">
-                    <i data-lucide="credit-card" class="text-white w-5 h-5"></i>
-                </div>
-                <h2 class="text-xl font-semibold text-gray-800">Add Payment</h2>
-            </div>
-
-            <input type="hidden" id="paymentAdmissionId">
-
-            <!-- Form -->
-            <div class="space-y-5">
-
-                <!-- Amount -->
-                <div class="relative">
-                    <input type="number" id="amount" required min="1" step="0.01"
-                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all"
-                        placeholder="Amount">
-                    <label for="amount"
-                        class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-green-600">
-                        Amount (₹) <span class="text-red-500">*</span>
-                    </label>
-                    <p id="amountError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter a valid amount</p>
-                </div>
-
-                <!-- Payment Mode -->
-                <div class="relative">
-                    <select id="paymentMode" required
-                        class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all appearance-none bg-white">
-                        <option value="CASH">💵 CASH</option>
-                        <option value="UPI">📱 UPI</option>
-                        <option value="CARD">💳 CARD</option>
-                        <option value="ONLINE">🏦 ONLINE</option>
-                        <option value="CHEQUE">📋 CHEQUE</option>
-                    </select>
-                    <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
-                    <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-                        Payment Mode <span class="text-red-500">*</span>
-                    </label>
-                </div>
-
-            </div>
-
-            <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-                <button onclick="closePaymentModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
-                    Cancel
-                </button>
-                <button onclick="submitPayment()" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-lg shadow-green-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
-                    <i data-lucide="check" class="w-4 h-4"></i>
-                    Save Payment
-                </button>
-            </div>
-
+  <!-- ADD PAYMENT MODAL -->
+  <div id="paymentModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl transform scale-95 transition-transform duration-200" id="paymentModalContent">
+      
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+        <div class="w-10 h-10 bg-green-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="credit-card" class="text-white w-5 h-5"></i>
         </div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Add Payment</h2>
+          <p class="text-xs text-gray-500">Record new payment</p>
+        </div>
+        <button onclick="closePaymentModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Form -->
+      <div class="px-6 py-5 space-y-4">
+        <input type="hidden" id="paymentAdmissionId">
+
+        <!-- Amount -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Amount (₹) <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
+            <input 
+              type="number" 
+              id="paymentAmount"
+              min="1"
+              step="1"
+              class="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm"
+              placeholder="Enter amount"
+            >
+          </div>
+          <p id="paymentAmountError" class="hidden text-red-500 text-xs mt-1">Enter a valid amount</p>
+        </div>
+
+        <!-- Payment Mode -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Payment Mode <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <select 
+              id="paymentMode" 
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm bg-white appearance-none cursor-pointer"
+            >
+              <option value="CASH">💵 Cash</option>
+              <option value="UPI">📱 UPI</option>
+              <option value="CARD">💳 Card</option>
+              <option value="ONLINE">🏦 Online Transfer</option>
+              <option value="CHEQUE">📋 Cheque</option>
+              <option value="BANK_TRANSFER">🏛️ Bank Transfer</option>
+            </select>
+            <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
+          </div>
+        </div>
+
+        <!-- Payment Type -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Payment Type <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <select 
+              id="paymentType" 
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm bg-white appearance-none cursor-pointer"
+            >
+              <option value="installment">Installment</option>
+              <option value="full">Full Payment</option>
+              <option value="refund">Refund</option>
+            </select>
+            <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Note (Optional)</label>
+          <textarea 
+            id="paymentNote"
+            rows="2"
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-sm resize-none"
+            placeholder="Add any notes..."
+          ></textarea>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closePaymentModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
+          Cancel
+        </button>
+        <button onclick="submitPayment()" id="paymentSubmitBtn" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-lg shadow-green-600/25 transition-all font-medium text-sm flex items-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          Save Payment
+        </button>
+      </div>
+
     </div>
+  </div>
 
-    <!-- TOAST -->
+  <!-- VIEW PAYMENTS MODAL -->
+  <div id="viewPaymentsModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl transform scale-95 transition-transform duration-200" id="viewPaymentsModalContent">
+      
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+        <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="receipt" class="text-white w-5 h-5"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Payment History</h2>
+          <p class="text-xs text-gray-500" id="viewPaymentsStudent">Student Name</p>
+        </div>
+        <button onclick="closeViewPaymentsModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
 
-    <div id="toast" class="fixed top-4 right-4 hidden"></div>
+      <!-- Content -->
+      <div class="px-6 py-5 max-h-[60vh] overflow-y-auto">
+        
+        <!-- Summary -->
+        <div class="grid grid-cols-3 gap-3 mb-4">
+          <div class="bg-gray-50 rounded-xl p-3 text-center">
+            <div class="text-xs text-gray-500 mb-1">Total</div>
+            <div class="font-semibold text-gray-800" id="viewTotal">₹0</div>
+          </div>
+          <div class="bg-green-50 rounded-xl p-3 text-center">
+            <div class="text-xs text-green-600 mb-1">Paid</div>
+            <div class="font-semibold text-green-700" id="viewPaid">₹0</div>
+          </div>
+          <div class="bg-blue-50 rounded-xl p-3 text-center">
+            <div class="text-xs text-blue-600 mb-1">Remaining</div>
+            <div class="font-semibold text-blue-700" id="viewRemaining">₹0</div>
+          </div>
+        </div>
 
-    <!-- JS -->
+        <!-- Payments List -->
+        <div id="paymentsList" class="space-y-3">
+          <!-- Payments loaded here -->
+        </div>
 
-    <script src="js/api.js"></script>
+        <!-- Empty State -->
+        <div id="noPaymentsState" class="hidden text-center py-8">
+          <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="receipt" class="w-6 h-6 text-gray-400"></i>
+          </div>
+          <p class="text-gray-500 text-sm">No payments recorded yet</p>
+        </div>
 
-    <script src="js/ui.js"></script>
+      </div>
 
-    <script src="js/auth.js"></script>
+      <!-- Footer -->
+      <div class="flex justify-end px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closeViewPaymentsModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
+          Close
+        </button>
+      </div>
 
-    <script src="js/admission.js"></script>
+    </div>
+  </div>
 
-    <script>
-        lucide.createIcons();
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3"></div>
 
-        // Mobile Menu Toggle
-        const mobileMenuToggle = document.getElementById('mobileMenuToggle');
-        const mobileCloseBtn = document.getElementById('mobileCloseBtn');
-        const sidebar = document.getElementById('sidebar');
-        const mobileOverlay = document.getElementById('mobileOverlay');
+  <!-- SCRIPTS -->
+  <script src="js/api.js"></script>
+  <script src="js/admission.js"></script>
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
 
-        function openMobileMenu() {
-            sidebar.classList.remove('-translate-x-full');
-            mobileOverlay.classList.remove('hidden');
-            setTimeout(() => mobileOverlay.classList.remove('opacity-0'), 10);
-            document.body.style.overflow = 'hidden';
-        }
+    // Mobile Menu
+    const mobileMenuToggle = document.getElementById('mobileMenuToggle');
+    const mobileCloseBtn = document.getElementById('mobileCloseBtn');
+    const sidebar = document.getElementById('sidebar');
+    const mobileOverlay = document.getElementById('mobileOverlay');
 
-        function closeMobileMenu() {
-            sidebar.classList.add('-translate-x-full');
-            mobileOverlay.classList.add('opacity-0');
-            setTimeout(() => mobileOverlay.classList.add('hidden'), 300);
-            document.body.style.overflow = '';
-        }
+    function openMobileMenu() {
+      sidebar.classList.remove('-translate-x-full');
+      mobileOverlay.classList.remove('hidden');
+      setTimeout(() => mobileOverlay.classList.remove('opacity-0'), 10);
+      document.body.style.overflow = 'hidden';
+    }
 
-        mobileMenuToggle?.addEventListener('click', openMobileMenu);
-        mobileCloseBtn?.addEventListener('click', closeMobileMenu);
-        mobileOverlay?.addEventListener('click', closeMobileMenu);
+    function closeMobileMenu() {
+      sidebar.classList.add('-translate-x-full');
+      mobileOverlay.classList.add('opacity-0');
+      setTimeout(() => mobileOverlay.classList.add('hidden'), 300);
+      document.body.style.overflow = '';
+    }
 
-        // Close on escape key
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') closeMobileMenu();
-        });
+    mobileMenuToggle?.addEventListener('click', openMobileMenu);
+    mobileCloseBtn?.addEventListener('click', closeMobileMenu);
+    mobileOverlay?.addEventListener('click', closeMobileMenu);
 
-        // Update Header with logged-in user info
-        const headerUserName = document.getElementById('headerUserName');
-        const headerUserRole = document.getElementById('headerUserRole');
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        if (headerUserName && user.name) {
-            headerUserName.textContent = user.name;
-        }
-        if (headerUserRole && user.role) {
-            headerUserRole.textContent = user.role === 'admin' ? 'Administrator' : 'Counselor';
-        }
-    </script>
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeMobileMenu();
+    });
+
+    // Update user info
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const userNameEl = document.getElementById('userName');
+    const userRoleEl = document.getElementById('userRole');
+    if (userNameEl && user.name) userNameEl.textContent = user.name;
+    if (userRoleEl && user.role) userRoleEl.textContent = user.role === 'admin' ? 'Administrator' : 'Counselor';
+
+    // Show reports menu for admin
+    if (user.role === 'admin') {
+      document.getElementById('reportsMenu')?.classList.remove('hidden');
+    }
+
+    // Logout
+    document.getElementById('logoutBtn')?.addEventListener('click', () => {
+      localStorage.clear();
+      window.location.href = 'index.html';
+    });
+
+    // Close enquiry dropdown when clicking outside
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('enquiryDropdown');
+      const selectBtn = document.getElementById('enquirySelectBtn');
+      if (!selectBtn?.contains(e.target) && !dropdown?.contains(e.target)) {
+        dropdown?.classList.add('hidden');
+      }
+    });
+  </script>
 
 </body>
-
 </html>
