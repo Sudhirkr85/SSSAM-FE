@@ -188,7 +188,7 @@ function renderTable() {
     const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
     
     return `
-      <tr class="enquiry-row border-b border-gray-100 last:border-0 cursor-pointer" onclick="viewEnquiryDetail('${enquiry._id}')">
+      <tr class="enquiry-row border-b border-gray-100 last:border-0 cursor-pointer hover:bg-blue-50/50 transition-colors" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'">
         <td class="px-4 py-3">
           <div class="font-medium text-gray-900">${enquiry.name || '-'}</div>
           <div class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
@@ -238,48 +238,33 @@ function renderMobileCards() {
 
   container.innerHTML = enquiries.map(enquiry => {
     const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
-    const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
     
     return `
-      <div class="enquiry-card bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+      <div class="enquiry-card bg-white rounded-xl shadow-sm p-4 border border-gray-100 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'">
         <div class="flex items-start justify-between mb-3">
           <div>
-            <h3 class="font-medium text-gray-900">${enquiry.name || '-'}</h3>
-            <p class="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
-              <i data-lucide="phone" class="w-3.5 h-3.5"></i>
-              ${enquiry.mobile || '-'}
-            </p>
+            <div class="font-semibold text-gray-800">${enquiry.name || '-'}</div>
+            <div class="text-sm text-gray-500">${enquiry.mobile || '-'}</div>
           </div>
-          <span class="status-badge inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
+          <span class="status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
             ${statusInfo.label}
           </span>
         </div>
         
-        <div class="space-y-2 text-sm mb-4">
-          <div class="flex items-center gap-2 text-gray-600">
-            <i data-lucide="book-open" class="w-4 h-4 text-gray-400"></i>
-            <span>${enquiry.courseInterested || '-'}</span>
-          </div>
-          <div class="flex items-center gap-2 text-gray-600">
-            <i data-lucide="user" class="w-4 h-4 text-gray-400"></i>
-            <span>${counselor}</span>
-          </div>
+        <div class="text-sm text-gray-600 mb-3">
+          <span class="text-gray-400">Course:</span> ${enquiry.courseInterested || '-'}
         </div>
-
-        <div class="flex gap-2">
-          <button 
-            onclick="openUpdateModal('${enquiry._id}', '${enquiry.status}')"
-            class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
-            Update Status
-          </button>
-          <button 
-            onclick="viewEnquiryDetail('${enquiry._id}')"
-            class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition-colors"
-          >
-            <i data-lucide="eye" class="w-4 h-4"></i>
-          </button>
+        
+        <div class="flex items-center justify-between pt-3 border-t border-gray-100" onclick="event.stopPropagation();">
+          <span class="text-xs text-gray-400">${enquiry.assignedTo?.name || 'Unassigned'}</span>
+          <div class="flex items-center gap-2">
+            <button onclick="event.stopPropagation(); openUpdateModal('${enquiry._id}', '${enquiry.status}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+            <a href="enquiry-detail.html?id=${enquiry._id}" onclick="event.stopPropagation();" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+              <i data-lucide="eye" class="w-4 h-4"></i>
+            </a>
+          </div>
         </div>
       </div>
     `;

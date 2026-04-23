@@ -29,12 +29,6 @@ const statusLabels = {
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
-    // Check role and hide timeline for non-admin users
-    const timelineSection = document.getElementById('timelineSection');
-    if (timelineSection && !isAdmin()) {
-        timelineSection.classList.add('hidden');
-    }
-
     // Get enquiry ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     currentId = urlParams.get('id');
@@ -918,12 +912,70 @@ function executeConfirmAction() {
 /* ======================
 WHATSAPP INTEGRATION
 ====================== */
+// Get logged-in user name from localStorage
+function getLoggedInUserName() {
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    return user.name || user.fullName || user.userName || 'Counselor';
+}
+
 const ENQUIRY_WHATSAPP_TEMPLATES = {
-    enquiry: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. You enquired about ${course}. Can I help?`,
-    followup: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Following up on ${course}. Any questions?`,
-    interested: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Glad you're interested in ${course}! Next steps?`,
-    notinterested: (name, course, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. Thanks for considering ${course}. Let us know if things change!`,
-    custom: (name, counselorName) => `Hi ${name}, ${counselorName} from SSSAM Academy. `
+    enquiry: (name, course, counselorName) => `Hi ${name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+We noticed your enquiry about ${course}. I'd be happy to answer any questions you may have.
+
+Please let me know a convenient time to connect.
+
+Best regards,
+${counselorName}
+SSSAM Academy`,
+
+    followup: (name, course, counselorName) => `Hi ${name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+I'm following up on your enquiry for ${course}. Have you had a chance to think about it?
+
+Please let me know if you have any questions or if you'd like to visit our center.
+
+Best regards,
+${counselorName}
+SSSAM Academy`,
+
+    interested: (name, course, counselorName) => `Hi ${name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+I'm glad you're interested in ${course}! I can help you with the admission process.
+
+Would you like to schedule a visit to our center or discuss the course details?
+
+Best regards,
+${counselorName}
+SSSAM Academy`,
+
+    notinterested: (name, course, counselorName) => `Hi ${name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+Thank you for your interest in ${course}. If your plans change in the future, please don't hesitate to reach out.
+
+Wishing you all the best!
+
+Best regards,
+${counselorName}
+SSSAM Academy`,
+
+    custom: (name, counselorName) => `Hi ${name},
+
+This is ${counselorName} from SSSAM Academy Gurgaon.
+
+[Your message here]
+
+Best regards,
+${counselorName}
+SSSAM Academy`
 };
 
 function setupWhatsAppForEnquiry() {
@@ -966,8 +1018,7 @@ function generateEnquiryWhatsAppMessage() {
 
     if (!enquiry || !templateSelect || !textarea) return;
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
-    const counselorName = user.name?.split(' ')[0] || 'Counselor';
+    const counselorName = getLoggedInUserName();
     const name = enquiry.name || 'Student';
     const mobile = enquiry.mobile || '-';
     const course = enquiry.courseInterested || 'Course';

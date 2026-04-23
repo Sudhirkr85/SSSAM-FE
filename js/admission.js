@@ -132,7 +132,7 @@ function renderTable() {
     const paymentType = admission.paymentType || 'ONE_TIME';
     
     return `
-      <tr class="finance-row border-b border-gray-50 last:border-0">
+      <tr class="finance-row border-b border-gray-50 last:border-0 cursor-pointer hover:bg-indigo-50/50 transition-colors" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
         <td class="px-6 py-4">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
@@ -154,15 +154,15 @@ function renderTable() {
             ${paymentType === 'ONE_TIME' ? 'One Time' : 'Installment'}
           </span>
         </td>
-        <td class="px-6 py-4">
+        <td class="px-6 py-4" onclick="event.stopPropagation();">
           <div class="flex items-center justify-center gap-2">
-            <a href="admission-detail.html?id=${admission._id}" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Detail">
+            <a href="admission-detail.html?id=${admission._id}" onclick="event.stopPropagation();" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Detail">
               <i data-lucide="eye" class="w-4 h-4"></i>
             </a>
-            <button onclick="openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Add Payment">
+            <button onclick="event.stopPropagation(); openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Add Payment">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
             </button>
-            <button onclick="openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payments">
+            <button onclick="event.stopPropagation(); openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payments">
               <i data-lucide="receipt" class="w-4 h-4"></i>
             </button>
           </div>
@@ -193,7 +193,7 @@ function renderMobileCards() {
     const paymentType = admission.paymentType || 'ONE_TIME';
     
     return `
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
@@ -224,16 +224,16 @@ function renderMobileCards() {
           </div>
         </div>
         
-        <div class="flex items-center justify-between pt-2 border-t border-gray-100">
+        <div class="flex items-center justify-between pt-2 border-t border-gray-100" onclick="event.stopPropagation();">
           <div class="text-sm text-gray-600">${escapeHtml(course)}</div>
           <div class="flex items-center gap-1">
-            <a href="admission-detail.html?id=${admission._id}" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+            <a href="admission-detail.html?id=${admission._id}" onclick="event.stopPropagation();" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
               <i data-lucide="eye" class="w-4 h-4"></i>
             </a>
-            <button onclick="openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+            <button onclick="event.stopPropagation(); openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
             </button>
-            <button onclick="openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+            <button onclick="event.stopPropagation(); openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
               <i data-lucide="receipt" class="w-4 h-4"></i>
             </button>
           </div>

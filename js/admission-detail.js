@@ -44,6 +44,15 @@ async function loadAdmissionDetail() {
   }
 }
 
+// Activity configuration for timeline
+const activityConfig = {
+  'created': { icon: 'file-plus', color: 'text-blue-600', bg: 'bg-blue-100' },
+  'payment': { icon: 'credit-card', color: 'text-green-600', bg: 'bg-green-100' },
+  'installment_set': { icon: 'calendar', color: 'text-amber-600', bg: 'bg-amber-100' },
+  'refund': { icon: 'arrow-left', color: 'text-red-600', bg: 'bg-red-100' },
+  'note': { icon: 'message-square', color: 'text-gray-600', bg: 'bg-gray-100' }
+};
+
 // ==================== RENDER FUNCTIONS ====================
 function renderAdmissionDetail() {
   if (!admissionData) return;
@@ -107,6 +116,9 @@ function renderAdmissionDetail() {
   
   // Payment history
   renderPaymentHistory();
+  
+  // Timeline
+  renderTimeline();
 }
 
 function calculateNextDue(admission, paymentsList) {
@@ -278,6 +290,89 @@ function renderPaymentHistory() {
         <div class="flex items-center justify-between text-sm">
           <span class="text-gray-500">${p.paymentMode}</span>
           ${p.note ? `<span class="text-gray-400 italic">${escapeHtml(p.note)}</span>` : ''}
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  lucide.createIcons();
+}
+
+function renderTimeline() {
+  const container = document.getElementById('timelineList');
+  
+  // Build timeline from payments and admission data
+  const timeline = [];
+  
+  // Add admission creation
+  timeline.push({
+    type: 'created',
+    title: 'Admission Created',
+    description: `Course: ${admissionData?.course || '-'}`,
+    date: admissionData?.createdAt,
+    user: 'System'
+  });
+  
+  // Add installments setup if exists
+  if (admissionData?.installments?.length > 0) {
+    timeline.push({
+      type: 'installment_set',
+      title: 'Installment Plan Set',
+      description: `${admissionData.installments.length} installments configured`,
+      date: admissionData.updatedAt || admissionData.createdAt,
+      user: 'System'
+    });
+  }
+  
+  // Add payments
+  payments.forEach(p => {
+    const typeLabels = {
+      'initial': 'Registration Payment',
+      'installment': 'Installment Payment',
+      'full': 'Full Payment',
+      'refund': 'Refund Processed'
+    };
+    
+    timeline.push({
+      type: p.type === 'refund' ? 'refund' : 'payment',
+      title: typeLabels[p.type] || 'Payment',
+      description: `${formatCurrency(p.amount)} via ${p.paymentMode}`,
+      date: p.createdAt,
+      user: 'System'
+    });
+  });
+  
+  // Sort by date (newest first)
+  timeline.sort((a, b) => new Date(b.date) - new Date(a.date));
+  
+  if (timeline.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-8 text-gray-500">
+        No activity recorded
+      </div>
+    `;
+    return;
+  }
+  
+  container.innerHTML = timeline.map((item, index) => {
+    const config = activityConfig[item.type] || activityConfig['note'];
+    const date = formatDateTime(item.date);
+    
+    return `
+      <div class="flex gap-4">
+        <div class="flex flex-col items-center">
+          <div class="w-10 h-10 ${config.bg} rounded-xl flex items-center justify-center flex-shrink-0">
+            <i data-lucide="${config.icon}" class="w-5 h-5 ${config.color}"></i>
+          </div>
+          ${index < timeline.length - 1 ? '<div class="w-0.5 flex-1 bg-gray-200 my-2"></div>' : ''}
+        </div>
+        <div class="flex-1 pb-6">
+          <div class="flex items-center justify-between mb-1">
+            <h4 class="font-medium text-gray-800">${item.title}</h4>
+            <span class="text-xs text-gray-400">${date}</span>
+          </div>
+          <p class="text-sm text-gray-600 mb-1">${item.description}</p>
+          <span class="text-xs text-gray-400">by ${item.user}</span>
         </div>
       </div>
     `;
@@ -764,6 +859,159 @@ function showContentState() {
   document.getElementById('loadingState').classList.add('hidden');
   document.getElementById('errorState').classList.add('hidden');
   document.getElementById('detailContent').classList.remove('hidden');
+}
+
+// ==================== WHATSAPP MESSAGING ====================
+// Get logged-in user name from localStorage
+function getLoggedInUserName() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  return user.name || user.fullName || user.userName || 'Counselor';
+}
+
+const WHATSAPP_TEMPLATES = {
+  followup: (data) => `Hi ${data.name},
+
+This is ${data.counselorName} from SSSAM Academy Gurgaon.
+
+We hope your classes for ${data.course} are going well. Just checking in to see if you need any assistance.
+
+For any queries, feel free to reach out.
+
+Best regards,
+SSSAM Academy`,
+
+  fee_reminder: (data) => `Hi ${data.name},
+
+This is ${data.counselorName} from SSSAM Academy Gurgaon.
+
+This is a friendly reminder that your next installment of ${data.amount} for ${data.course} is due on ${data.dueDate}.
+
+Please make the payment to continue your classes without interruption.
+
+Payment can be made via Cash, UPI, or Card at our center.
+
+Best regards,
+SSSAM Academy`,
+
+  admission_confirm: (data) => `Hi ${data.name},
+
+Welcome to SSSAM Academy Gurgaon! 🎉
+
+Your admission for ${data.course} has been confirmed.
+
+Total Fees: ${data.totalFees}
+Paid Amount: ${data.paidAmount}
+Remaining: ${data.remaining}
+
+We wish you the best for your learning journey!
+
+Best regards,
+${data.counselorName}
+SSSAM Academy`,
+
+  custom: (data) => `Hi ${data.name},
+
+This is ${data.counselorName} from SSSAM Academy Gurgaon.
+
+[Your message here]
+
+Best regards,
+SSSAM Academy`
+};
+
+function openWhatsAppModal() {
+  if (!admissionData) return;
+  
+  const enquiry = admissionData.enquiryId || {};
+  const mobile = enquiry.mobile;
+  
+  if (!mobile) {
+    showToast('Error', 'No mobile number available for this student', 'error');
+    return;
+  }
+  
+  // Set recipient info
+  document.getElementById('whatsappRecipient').textContent = `${enquiry.name || 'Student'} (${mobile})`;
+  
+  // Reset template and update message
+  document.getElementById('whatsappTemplate').value = 'followup';
+  updateWhatsAppMessage();
+  
+  // Show modal
+  const modal = document.getElementById('whatsappModal');
+  const content = document.getElementById('whatsappModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
+}
+
+function closeWhatsAppModal() {
+  const modal = document.getElementById('whatsappModal');
+  const content = document.getElementById('whatsappModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+function updateWhatsAppMessage() {
+  const template = document.getElementById('whatsappTemplate').value;
+  const enquiry = admissionData?.enquiryId || {};
+  
+  // Get next due info
+  const nextDue = calculateNextDue(admissionData, payments);
+  
+  const data = {
+    name: enquiry.name || 'Student',
+    course: admissionData?.course || 'Course',
+    amount: nextDue.amount > 0 ? formatCurrency(nextDue.amount) : formatCurrency(admissionData?.totalFees || 0),
+    dueDate: nextDue.date !== '--' ? nextDue.date : 'As discussed',
+    totalFees: formatCurrency(admissionData?.totalFees || 0),
+    paidAmount: formatCurrency(admissionData?.paidAmount || 0),
+    remaining: formatCurrency(Math.max(0, (admissionData?.totalFees || 0) - (admissionData?.paidAmount || 0))),
+    counselorName: getLoggedInUserName()
+  };
+  
+  const message = WHATSAPP_TEMPLATES[template](data);
+  document.getElementById('whatsappMessage').value = message;
+}
+
+function sendWhatsAppMessage() {
+  const enquiry = admissionData?.enquiryId || {};
+  const mobile = enquiry.mobile;
+  
+  if (!mobile) {
+    showToast('Error', 'No mobile number available', 'error');
+    return;
+  }
+  
+  // Get message from textarea (user may have edited it)
+  const message = document.getElementById('whatsappMessage').value;
+  
+  // Clean mobile number (remove spaces, +91 prefix if present)
+  const cleanMobile = mobile.replace(/\s/g, '').replace(/^\+91/, '').replace(/^0/, '');
+  
+  // Encode message for URL
+  const encodedMessage = encodeURIComponent(message);
+  
+  // Open WhatsApp
+  const whatsappUrl = `https://wa.me/91${cleanMobile}?text=${encodedMessage}`;
+  window.open(whatsappUrl, '_blank');
+  
+  closeWhatsAppModal();
+  showToast('Success', 'WhatsApp opened with message', 'success');
 }
 
 // ==================== TOAST SYSTEM ====================
