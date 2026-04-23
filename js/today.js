@@ -19,20 +19,73 @@ LOAD DATA
 ====================== */
 async function loadTodayCalls() {
     try {
-        // Per API contract: GET /api/enquiries?followUpToday=true&followUpOverdue=true
-        const params = {
-            page: currentPage,
-            limit: ITEMS_PER_PAGE,
-            followUpToday: true,
-            followUpOverdue: true
+        // Load both NEW enquiries and FOLLOW_UP enquiries
+        const [newRes, followUpRes] = await Promise.all([
+            // NEW enquiries - fresh leads to call
+            apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+                page: 1,
+                limit: 100,
+                status: 'NEW'
+            }),
+            // FOLLOW_UP enquiries - all of them (we'll filter client-side)
+            apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+                page: 1,
+                limit: 100,
+                status: 'FOLLOW_UP'
+            })
+        ]);
+
+        // Get all NEW enquiries
+        const newEnquiries = newRes.enquiries || [];
+        
+        // Filter FOLLOW_UP enquiries for today or overdue (client-side filtering)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const followUpEnquiries = (followUpRes.enquiries || []).filter(e => {
+            if (!e.followUpDate) return false;
+            const followUpDate = new Date(e.followUpDate);
+            followUpDate.setHours(0, 0, 0, 0);
+            // Show if follow-up date is today or in the past (overdue)
+            return followUpDate <= today;
+        });
+        
+        console.log('NEW enquiries:', newEnquiries.length);
+        console.log('FOLLOW_UP enquiries (today/overdue):', followUpEnquiries.length);
+        
+        // Merge and remove duplicates (by _id)
+        const combined = [...newEnquiries, ...followUpEnquiries];
+        const unique = combined.filter((item, index, self) => 
+            index === self.findIndex((t) => t._id === item._id)
+        );
+        
+        // Sort: NEW first, then by follow-up date (overdue first, then today)
+        enquiries = unique.sort((a, b) => {
+            // NEW status comes first
+            if (a.status === 'NEW' && b.status !== 'NEW') return -1;
+            if (a.status !== 'NEW' && b.status === 'NEW') return 1;
+            
+            // Then sort by follow-up date (overdue first, then today)
+            const dateA = a.followUpDate ? new Date(a.followUpDate) : new Date(8640000000000000);
+            const dateB = b.followUpDate ? new Date(b.followUpDate) : new Date(8640000000000000);
+            return dateA - dateB;
+        });
+
+        // Simple pagination (client-side since we have all data)
+        const totalCount = enquiries.length;
+        const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+        const endIndex = startIndex + ITEMS_PER_PAGE;
+        const paginatedEnquiries = enquiries.slice(startIndex, endIndex);
+        
+        totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+        paginationData = { 
+            page: currentPage, 
+            totalPages: totalPages, 
+            totalCount: totalCount 
         };
 
-        const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
-
-        // API returns { enquiries: [...], pagination: {...} }
-        enquiries = res.enquiries || [];
-        paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
-        totalPages = paginationData.totalPages || 1;
+        // Use paginated data for display
+        enquiries = paginatedEnquiries;
 
         renderTable();
         renderStats();
@@ -55,7 +108,13 @@ function renderTable() {
         return;
     }
 
-    table.innerHTML = enquiries.map(e => `
+    table.innerHTML = enquiries.map(e => {
+        const isNew = e.status === 'NEW';
+        const followUpDisplay = isNew 
+            ? '<span class="text-blue-600 font-medium">New Lead</span>' 
+            : `${formatDate(e.followUpDate)}${isOverdue(e.followUpDate) ? '<span class="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Overdue</span>' : ''}`;
+        
+        return `
         <tr onclick="window.location.href='enquiry-detail.html?id=${e._id}'" class="cursor-pointer hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
             <td class="px-6 py-4">
                 <div class="font-medium text-gray-900">${e.name || '-'}</div>
@@ -63,15 +122,14 @@ function renderTable() {
             </td>
             <td class="px-6 py-4 text-gray-700">${e.courseInterested || '-'}</td>
             <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
-            <td class="px-6 py-4 ${isOverdue(e.followUpDate) ? 'text-red-600 font-semibold' : 'text-gray-600'}">
-                ${formatDate(e.followUpDate)}
-                ${isOverdue(e.followUpDate) ? '<span class="ml-1 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded">Overdue</span>' : ''}
+            <td class="px-6 py-4 ${!isNew && isOverdue(e.followUpDate) ? 'text-red-600 font-semibold' : 'text-gray-600'}">
+                ${followUpDisplay}
             </td>
             <td class="px-6 py-4 text-center" onclick="event.stopPropagation();">
                 ${getActionButtons(e._id, e.status)}
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 function renderEmptyState() {
@@ -160,16 +218,22 @@ STATS
 ====================== */
 function renderStats() {
     const total = paginationData.totalCount || 0;
-
-    const pending = enquiries.filter(e =>
-        e.status !== 'CONVERTED' && e.status !== 'NOT_INTERESTED'
-    ).length;
-
-    const done = enquiries.length - pending;
+    
+    // Count NEW enquiries (fresh leads)
+    const newCount = enquiries.filter(e => e.status === 'NEW').length;
+    
+    // Count FOLLOW_UP enquiries (today + overdue)
+    const followUpCount = enquiries.filter(e => e.status === 'FOLLOW_UP').length;
 
     document.getElementById('totalCalls').textContent = total;
-    document.getElementById('pendingCalls').textContent = pending;
-    document.getElementById('doneCalls').textContent = done;
+    document.getElementById('pendingCalls').textContent = newCount;
+    document.getElementById('doneCalls').textContent = followUpCount;
+    
+    // Update labels
+    const pendingLabel = document.getElementById('pendingLabel');
+    const doneLabel = document.getElementById('doneLabel');
+    if (pendingLabel) pendingLabel.textContent = 'New Leads';
+    if (doneLabel) doneLabel.textContent = 'Follow-ups';
 }
 
 /* ======================

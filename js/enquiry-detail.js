@@ -782,49 +782,38 @@ async function submitSetupFees() {
         return;
     }
 
+    // Get submit button and show loading state
+    const submitBtn = document.getElementById('setupFeesSubmitBtn');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Creating...';
+        lucide.createIcons();
+    }
+
     const id = document.getElementById('setupFeesEnquiryId').value;
     const totalFees = parseFloat(document.getElementById('totalFees').value);
     const paymentType = document.getElementById('paymentType').value;
 
     // Get initial payment details (always required now)
     const initialPaymentField = document.getElementById('initialPayment');
-    const initialPaymentDateField = document.getElementById('initialPaymentDate');
     const initialPaymentModeField = document.getElementById('initialPaymentMode');
     const initialPayment = initialPaymentField ? parseFloat(initialPaymentField.value) || 0 : 0;
-    const initialPaymentDate = initialPaymentDateField?.value;
     const initialPaymentMode = initialPaymentModeField?.value || 'CASH';
 
     try {
-        // Build request payload
+        // Build request payload - match API contract
         const payload = {
             totalFees: totalFees,
             paymentType: paymentType,
-            paymentMethod: initialPaymentMode,  // Use initial payment mode as main payment method
-            initialPayment: initialPayment,
-            initialPaymentMode: initialPaymentMode,
-            paymentDate: initialPaymentDate
+            registrationAmount: initialPayment,
+            paymentMethod: initialPaymentMode
         };
 
         // For INSTALLMENT, add installments array
         if (paymentType === 'INSTALLMENT') {
             payload.installments = getInstallmentsData();
         }
-
-        // For ONE_TIME with remaining amount, add pending installment
-        if (paymentType === 'ONE_TIME') {
-            const pendingAmountField = document.getElementById('pendingAmount');
-            const pendingDueDateField = document.getElementById('pendingDueDate');
-            const pendingAmount = pendingAmountField?.value ? parseFloat(pendingAmountField.value) : 0;
-            const pendingDueDate = pendingDueDateField?.value;
-
-            if (pendingAmount > 0 && pendingDueDate) {
-                // Create a pending installment for remaining amount
-                payload.pendingInstallment = {
-                    amount: pendingAmount,
-                    dueDate: pendingDueDate
-                };
-            }
-        }
+        // Note: ONE_TIME payments don't send remaining amount - backend handles this
 
         // DEBUG: Log exact payload being sent
         console.log('Sending payload:', JSON.stringify(payload, null, 2));
@@ -858,6 +847,13 @@ async function submitSetupFees() {
         setTimeout(() => {
             showErrorModal(errorMsg);
         }, 300);
+    } finally {
+        // Reset button state
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Create Admission';
+            lucide.createIcons();
+        }
     }
 }
 

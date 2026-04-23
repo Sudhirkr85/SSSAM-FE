@@ -149,17 +149,40 @@ async function loadEnquiries() {
     };
 
     if (search) params.search = search;
-    if (status) params.status = status;
-
-    // For Today Calls tab
+    
+    // For Today Calls tab - fetch both NEW and FOLLOW_UP, then filter client-side
     if (currentTab === 'today') {
-      params.followUpToday = true;
-      params.followUpOverdue = true;
+      // Don't send status filter - we'll fetch multiple statuses and combine
+      delete params.status;
+    } else if (status) {
+      params.status = status;
     }
 
     const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
     
-    enquiries = res.enquiries || [];
+    let allEnquiries = res.enquiries || [];
+    
+    // For Today tab, filter to show only NEW and FOLLOW_UP (today/overdue)
+    if (currentTab === 'today') {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      allEnquiries = allEnquiries.filter(e => {
+        // Include NEW enquiries
+        if (e.status === 'NEW') return true;
+        
+        // Include FOLLOW_UP if due today or overdue
+        if (e.status === 'FOLLOW_UP' && e.followUpDate) {
+          const followUpDate = new Date(e.followUpDate);
+          followUpDate.setHours(0, 0, 0, 0);
+          return followUpDate <= today;
+        }
+        
+        return false;
+      });
+    }
+    
+    enquiries = allEnquiries;
     const pagination = res.pagination || {};
     totalPages = pagination.totalPages || 1;
     totalCount = pagination.totalCount || 0;

@@ -502,9 +502,8 @@ async function submitAddAdmission() {
   lucide.createIcons();
   
   try {
+    // Build payload per API contract - only required fields
     const payload = {
-      enquiryId,
-      course,
       totalFees,
       registrationAmount,
       paymentType
@@ -671,13 +670,14 @@ async function submitPaymentPlan() {
   
   try {
     const payload = {
+      paymentType: 'INSTALLMENT',
       installments: installmentRows.map(row => ({
         amount: parseFloat(row.amount),
         dueDate: row.dueDate
       }))
     };
     
-    await apiPost(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(currentAdmissionId), payload);
+    await apiPut(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(currentAdmissionId), payload);
     
     closePaymentPlanModal();
     showToast('Success', 'Payment plan saved successfully', 'success');
@@ -741,12 +741,31 @@ async function submitPayment() {
   const type = document.getElementById('paymentType').value;
   const note = document.getElementById('paymentNote').value.trim();
   
+  // Get current admission data for validation
+  const admission = admissions.find(a => a._id === currentAdmissionId);
+  const totalFees = admission?.totalFees || 0;
+  const paidAmount = admission?.paidAmount || 0;
+  const remaining = totalFees - paidAmount;
+  
   // Validate
   if (amount <= 0) {
+    document.getElementById('paymentAmountError').textContent = 'Please enter a valid amount';
     document.getElementById('paymentAmountError').classList.remove('hidden');
     document.getElementById('paymentAmount').classList.add('border-red-500');
     return;
   }
+  
+  // Overpayment validation
+  if (amount > remaining) {
+    document.getElementById('paymentAmountError').textContent = `Amount cannot exceed remaining balance (${formatCurrency(remaining)})`;
+    document.getElementById('paymentAmountError').classList.remove('hidden');
+    document.getElementById('paymentAmount').classList.add('border-red-500');
+    return;
+  }
+  
+  // Clear error
+  document.getElementById('paymentAmountError').classList.add('hidden');
+  document.getElementById('paymentAmount').classList.remove('border-red-500');
   
   // Submit
   const submitBtn = document.getElementById('paymentSubmitBtn');
@@ -757,11 +776,14 @@ async function submitPayment() {
   try {
     const payload = {
       admissionId: currentAdmissionId,
-      amount,
+      amount: amount,
       paymentMode: mode,
-      type,
-      note: note || undefined
+      type: type
     };
+    
+    if (note) {
+      payload.note = note;
+    }
     
     await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
     

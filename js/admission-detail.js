@@ -472,9 +472,13 @@ async function submitAddPayment() {
       admissionId: admissionId,
       amount: amount,
       paymentMode: mode,
-      type: type,
-      note: note || undefined
+      type: type
     };
+    
+    // Only add note if it has a value
+    if (note) {
+      payload.note = note;
+    }
     
     await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
     
@@ -654,13 +658,14 @@ async function submitInstallmentPlan() {
   
   try {
     const payload = {
+      paymentType: 'INSTALLMENT',
       installments: installmentRows.map(row => ({
         amount: parseFloat(row.amount),
         dueDate: row.dueDate
       }))
     };
     
-    await apiPost(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(admissionId), payload);
+    await apiPut(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(admissionId), payload);
     
     closeSetInstallmentsModal();
     showToast('Success', 'Installment plan saved successfully', 'success');
@@ -770,9 +775,13 @@ async function submitRefund() {
       admissionId: admissionId,
       amount: amount,
       paymentMode: mode,
-      type: 'refund',
-      note: note || undefined
+      type: 'refund'
     };
+    
+    // Only add note if it has a value
+    if (note) {
+      payload.note = note;
+    }
     
     await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
     
