@@ -1,371 +1,363 @@
-let enquiries = [];
-let selectedId = null;
-let selectedCurrentStatus = ''; // Track current status for quick update modal
-let allEnquiries = []; // Store all for client-side filtering
-let filteredEnquiries = []; // After filters applied
+/**
+ * SSSAM CRM - Enquiry Page JavaScript
+ * Indian CRM Style - Production Ready
+ */
 
-// Pagination state
+// ==================== STATE ====================
 let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
+let totalCount = 0;
+let currentTab = 'all'; // 'all' or 'today'
+let enquiries = [];
+let selectedFile = null;
 
-// Sorting state
-let sortColumn = 'createdAt';
-let sortDirection = 'desc';
+// ==================== STATUS MAPPING (Indian CRM Style) ====================
+const STATUS_MAP = {
+  'NEW': { label: 'New Lead', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  'CONTACTED': { label: 'Contacted', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+  'NO_RESPONSE': { label: 'Call Not Picked', color: 'bg-gray-100 text-gray-700 border-gray-200' },
+  'FOLLOW_UP': { label: 'Call Back', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+  'INTERESTED': { label: 'Interested', color: 'bg-green-100 text-green-700 border-green-200' },
+  'NOT_INTERESTED': { label: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200' },
+  'ADMISSION_PROCESS': { label: 'Admission In Progress', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  'CONVERTED': { label: 'Admission Done', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
+};
 
-/* ======================
-USER PROFILE DISPLAY
-====================== */
-function updateUserProfileDisplay() {
+// ==================== SOURCE MAPPING ====================
+const SOURCE_MAP = {
+  'website': 'Website',
+  'walk_in': 'Walk In',
+  'referral': 'Referral',
+  'phone_call': 'Phone Call',
+  'social_media': 'Social Media',
+  'advertisement': 'Advertisement',
+  'other': 'Other'
+};
+
+// ==================== INITIALIZATION ====================
+document.addEventListener('DOMContentLoaded', () => {
+  initUserProfile();
+  initEventListeners();
+  checkAdminFeatures();
+  loadEnquiries();
+});
+
+function initUserProfile() {
   const user = JSON.parse(localStorage.getItem('user') || '{}');
   const name = user.name || user.fullName || 'User';
   const role = user.role || 'counselor';
-
-  // Get initials from name
+  
   const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-
-  // Update navbar display elements
-  const initialsEl = document.getElementById('userInitials');
-  const nameEl = document.getElementById('userNameDisplay');
-  const roleEl = document.getElementById('userRoleDisplay');
-
-  if (initialsEl) initialsEl.textContent = initials;
-  if (nameEl) nameEl.textContent = name;
-  if (roleEl) roleEl.textContent = role.charAt(0).toUpperCase() + role.slice(1);
+  
+  document.getElementById('userName').textContent = name;
+  document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
+  document.getElementById('userInitials').textContent = initials;
 }
 
-/* ======================
-INIT
-====================== */
-document.addEventListener('DOMContentLoaded', () => {
-  // Set initial view based on role
-  if (isCounselor()) {
-    currentView = 'all'; // Counselors now see all enquiries by default
-    // Show view tabs for counselors
-    const viewTabs = document.getElementById('viewTabs');
-    if (viewTabs) {
-      viewTabs.classList.remove('hidden');
-    }
-    // Show "My Leads" tab for counselors to filter to their own
-    const myLeadsTab = document.querySelector('[data-view-tab="my-leads"]');
-    if (myLeadsTab) {
-      myLeadsTab.classList.remove('hidden');
-    }
-  } else {
-    // Admin sees all enquiries by default
-    currentView = 'all';
-  }
-
-  // Set default status filter to NEW
-  const statusFilter = document.getElementById('statusFilter');
-  if (statusFilter) {
-    statusFilter.value = 'NEW';
-  }
-
-  // Update user profile display in navbar
-  updateUserProfileDisplay();
-
-  // Always load enquiries with default filter
-  loadEnquiries();
-
-  document.getElementById('searchInput').addEventListener('input', () => {
+function initEventListeners() {
+  // Search input
+  document.getElementById('searchInput')?.addEventListener('input', debounce(() => {
     currentPage = 1;
-    filterData();
-  });
-  document.getElementById('statusFilter').addEventListener('change', () => {
+    loadEnquiries();
+  }, 300));
+
+  // Status filter
+  document.getElementById('statusFilter')?.addEventListener('change', () => {
     currentPage = 1;
-    filterData();
-  });
-  document.getElementById('resetFilters').addEventListener('click', () => {
-    // Reset to default view - both admin and counselor default to 'all'
-    currentView = 'all';
-    updateViewTabs();
-    resetFilters();
+    loadEnquiries();
   });
 
-  // Close action dropdowns when clicking outside
-  document.addEventListener('click', (e) => {
-    if (!e.target.closest('.action-dropdown-container')) {
-      closeAllActionDropdowns();
-    }
+  // Course dropdown - show custom input for "Other"
+  document.getElementById('addCourse')?.addEventListener('change', handleCourseChange);
+
+  // Source dropdown - show referral fields for "referral"
+  document.getElementById('addSource')?.addEventListener('change', handleSourceChange);
+
+  // Mobile input - format with space after 5 digits
+  document.getElementById('addMobile')?.addEventListener('input', handleMobileInput);
+  document.getElementById('addMobile')?.addEventListener('paste', handleMobilePaste);
+
+  // Reference contact - numbers only
+  document.getElementById('addRefContact')?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
   });
 
-  // Course dropdown change handler (create modal)
-  const courseSelect = document.getElementById('course');
-  if (courseSelect) {
-    courseSelect.addEventListener('change', handleCourseChange);
-  }
+  // Status change in update modal - handle follow-up date requirement
+  document.getElementById('updateStatus')?.addEventListener('change', handleUpdateStatusChange);
 
-  // Mobile input - numbers only
-  const mobileInput = document.getElementById('mobile');
-  if (mobileInput) {
-    mobileInput.addEventListener('input', (e) => {
-      e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
-      validateMobile();
+  // Bulk upload file selection
+  document.getElementById('uploadArea')?.addEventListener('click', () => {
+    document.getElementById('bulkFileInput').click();
+  });
+
+  document.getElementById('bulkFileInput')?.addEventListener('change', handleFileSelect);
+
+  // Drag and drop for bulk upload
+  const uploadArea = document.getElementById('uploadArea');
+  if (uploadArea) {
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('border-emerald-500', 'bg-emerald-50');
+    });
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('border-emerald-500', 'bg-emerald-50');
+    });
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('border-emerald-500', 'bg-emerald-50');
+      const files = e.dataTransfer.files;
+      if (files.length > 0) {
+        handleFile(files[0]);
+      }
     });
   }
+}
 
-  // Email validation on blur
-  const emailInput = document.getElementById('email');
-  if (emailInput) {
-    emailInput.addEventListener('blur', validateEmail);
+function checkAdminFeatures() {
+  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  if (user.role === 'admin') {
+    document.getElementById('bulkUploadBtn')?.classList.remove('hidden');
+    document.getElementById('reportsMenu')?.classList.remove('hidden');
   }
+}
 
-  // Name validation on blur
-  const nameInput = document.getElementById('name');
-  if (nameInput) {
-    nameInput.addEventListener('blur', validateName);
-  }
-});
+// ==================== DEBOUNCE UTILITY ====================
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
 
-/* ======================
-LOAD DATA - ROLE BASED
-====================== */
-let paginationData = { page: 1, totalPages: 1, totalCount: 0 };
-let currentView = 'all'; // 'all', 'my-leads', 'unassigned'
-
+// ==================== API FUNCTIONS ====================
 async function loadEnquiries() {
   try {
-    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    showLoadingState();
+
+    const search = document.getElementById('searchInput').value.trim();
     const status = document.getElementById('statusFilter').value;
 
     const params = {
       page: currentPage,
-      limit: ITEMS_PER_PAGE,
-      sortBy: sortColumn,
-      sortOrder: sortDirection
+      limit: ITEMS_PER_PAGE
     };
 
     if (search) params.search = search;
     if (status) params.status = status;
 
-    // Role-based endpoint selection
-    let endpoint;
-    if (isCounselor()) {
-      // Counselor: use assignedTo filter based on current view
-      if (currentView === 'unassigned') {
-        params.assignedTo = 'null';
-      } else if (currentView === 'my-leads') {
-        params.assignedTo = 'me';
-      }
-      // For 'all' or 'all-readonly' view, don't set assignedTo filter - show all enquiries
-      endpoint = API_ENDPOINTS.ENQUIRIES.GET_ALL;
-    } else {
-      // Admin: can view all or use GET_ALL_ADMIN for read-only view
-      endpoint = currentView === 'all-readonly'
-        ? API_ENDPOINTS.ENQUIRIES.GET_ALL_ADMIN
-        : API_ENDPOINTS.ENQUIRIES.GET_ALL;
+    // For Today Calls tab
+    if (currentTab === 'today') {
+      params.followUpToday = true;
+      params.followUpOverdue = true;
     }
 
-    const res = await apiGet(endpoint, params);
+    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
+    
+    enquiries = res.enquiries || [];
+    const pagination = res.pagination || {};
+    totalPages = pagination.totalPages || 1;
+    totalCount = pagination.totalCount || 0;
 
-    // API returns { enquiries: [...], pagination: {...} }
-    allEnquiries = res.enquiries || [];
-    paginationData = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
-    totalPages = paginationData.totalPages || 1;
-
-    renderTable(allEnquiries);
-    updatePaginationInfoFromServer(paginationData);
-    updateSortIcons();
+    renderTable();
+    renderMobileCards();
+    updatePagination();
   } catch (err) {
-    handleEnquiryError(err, 'Failed to load enquiries');
+    console.error('Failed to load enquiries:', err);
+    showError('Failed to load enquiries. Please try again.');
     renderEmptyState();
   }
 }
 
-/* ======================
-SORTING
-====================== */
-function sortBy(column) {
-  if (sortColumn === column) {
-    // Toggle direction if same column
-    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-  } else {
-    // New column, default to ascending
-    sortColumn = column;
-    sortDirection = 'asc';
+// ==================== RENDER FUNCTIONS ====================
+function renderTable() {
+  const tbody = document.getElementById('enquiriesTableBody');
+  
+  if (!enquiries.length) {
+    renderEmptyState();
+    return;
   }
-  currentPage = 1;
-  loadEnquiries();
-}
 
-function updateSortIcons() {
-  // Reset all sort icons
-  document.querySelectorAll('.sort-icon').forEach(icon => {
-    icon.className = 'sort-icon inline-block w-3 h-3 ml-1 text-gray-400 transition-transform';
-    icon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>';
-  });
+  tbody.innerHTML = enquiries.map(enquiry => {
+    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
+    const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
+    
+    return `
+      <tr class="enquiry-row border-b border-gray-100 last:border-0 cursor-pointer" onclick="viewEnquiryDetail('${enquiry._id}')">
+        <td class="px-4 py-3">
+          <div class="font-medium text-gray-900">${enquiry.name || '-'}</div>
+          <div class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+            <i data-lucide="phone" class="w-3 h-3"></i>
+            ${enquiry.mobile || '-'}
+          </div>
+        </td>
+        <td class="px-4 py-3 text-gray-700 text-sm">${enquiry.courseInterested || '-'}</td>
+        <td class="px-4 py-3 text-center">
+          <span class="status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
+            ${statusInfo.label}
+          </span>
+        </td>
+        <td class="px-4 py-3 text-center text-sm text-gray-600">${counselor}</td>
+        <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
+          <button 
+            onclick="openUpdateModal('${enquiry._id}', '${enquiry.status}')"
+            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            Action
+          </button>
+        </td>
+      </tr>
+    `;
+  }).join('');
 
-  // Update active sort icon
-  const activeIcon = document.getElementById(`sort-${sortColumn}`);
-  if (activeIcon) {
-    activeIcon.className = `sort-icon inline-block w-3 h-3 ml-1 text-blue-600 transition-transform ${sortDirection === 'asc' ? 'rotate-180' : ''}`;
-    activeIcon.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>';
-  }
-}
-
-/* ======================
-ERROR HANDLING - PRODUCTION READY
-====================== */
-function handleEnquiryError(error, defaultMessage = 'An error occurred') {
-  const status = error.response?.status;
-  const message = error.response?.data?.message || defaultMessage;
-
-  switch (status) {
-    case 403:
-      // Access denied - show proper popup
-      showErrorPopup(
-        'Access Denied',
-        message,
-        'You do not have permission to perform this action. Only admins or assigned counselors can modify enquiries.'
-      );
-      break;
-
-    case 400:
-      // Validation error
-      showErrorPopup(
-        'Validation Error',
-        message,
-        'Please check your input and try again. Ensure all required fields are filled correctly.'
-      );
-      break;
-
-    case 404:
-      showErrorPopup(
-        'Not Found',
-        'Enquiry not found',
-        'The enquiry you are looking for may have been deleted or does not exist.'
-      );
-      break;
-
-    case 409:
-      // Conflict - already converted or invalid status transition
-      showErrorPopup(
-        'Action Not Allowed',
-        message,
-        'This enquiry may already be converted or in a terminal state that cannot be modified.'
-      );
-      break;
-
-    default:
-      // Network or server error
-      showErrorPopup(
-        'Error',
-        message,
-        'Please check your internet connection and try again. If the problem persists, contact support.'
-      );
-  }
-}
-
-function showErrorPopup(title, message, description = '') {
-  // Create and show a proper error modal for production
-  const modal = document.createElement('div');
-  modal.id = 'errorPopup';
-  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
-  modal.innerHTML = `
-    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-100 animate-in fade-in zoom-in duration-200">
-      <div class="flex items-center gap-4 mb-4">
-        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <i data-lucide="alert-circle" class="text-red-600 w-6 h-6"></i>
-        </div>
-        <div>
-          <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
-          <p class="text-sm text-red-600 font-medium">${message}</p>
-        </div>
-      </div>
-      ${description ? `<p class="text-sm text-gray-500 mb-5 bg-gray-50 p-3 rounded-lg">${description}</p>` : ''}
-      <div class="flex gap-3">
-        <button onclick="closeErrorPopup()" class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium">
-          Dismiss
-        </button>
-        ${status === 403 && isCounselor() ? `
-        <button onclick="closeErrorPopup(); window.location.href='dashboard.html'" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium">
-          Go to Dashboard
-        </button>
-        ` : ''}
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
   lucide.createIcons();
 }
 
-function closeErrorPopup() {
-  const modal = document.getElementById('errorPopup');
-  if (modal) {
-    modal.remove();
-  }
-}
-
-/* ======================
-VIEW SWITCHERS (Role Based)
-====================== */
-function switchToMyLeads() {
-  currentView = 'my-leads';
-  currentPage = 1;
-  // Keep status filter as is (NEW by default)
-  loadEnquiries();
-  updateViewTabs();
-}
-
-function switchToUnassigned() {
-  if (!isCounselor() && !isAdmin()) {
-    showErrorPopup('Access Denied', 'You do not have permission to view unassigned leads');
+function renderMobileCards() {
+  const container = document.getElementById('mobileCards');
+  
+  if (!enquiries.length) {
+    container.innerHTML = `
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
+        </div>
+        <p class="text-gray-800 font-medium">No enquiries found</p>
+        <p class="text-gray-500 text-sm mt-1">Try adjusting your filters</p>
+      </div>
+    `;
+    lucide.createIcons();
     return;
   }
-  currentView = 'unassigned';
-  currentPage = 1;
-  // Keep status filter as is (NEW by default)
-  loadEnquiries();
-  updateViewTabs();
+
+  container.innerHTML = enquiries.map(enquiry => {
+    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
+    const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
+    
+    return `
+      <div class="enquiry-card bg-white rounded-xl shadow-sm border border-gray-200 p-4">
+        <div class="flex items-start justify-between mb-3">
+          <div>
+            <h3 class="font-medium text-gray-900">${enquiry.name || '-'}</h3>
+            <p class="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+              <i data-lucide="phone" class="w-3.5 h-3.5"></i>
+              ${enquiry.mobile || '-'}
+            </p>
+          </div>
+          <span class="status-badge inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
+            ${statusInfo.label}
+          </span>
+        </div>
+        
+        <div class="space-y-2 text-sm mb-4">
+          <div class="flex items-center gap-2 text-gray-600">
+            <i data-lucide="book-open" class="w-4 h-4 text-gray-400"></i>
+            <span>${enquiry.courseInterested || '-'}</span>
+          </div>
+          <div class="flex items-center gap-2 text-gray-600">
+            <i data-lucide="user" class="w-4 h-4 text-gray-400"></i>
+            <span>${counselor}</span>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button 
+            onclick="openUpdateModal('${enquiry._id}', '${enquiry.status}')"
+            class="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+          >
+            <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            Update Status
+          </button>
+          <button 
+            onclick="viewEnquiryDetail('${enquiry._id}')"
+            class="px-3 py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg transition-colors"
+          >
+            <i data-lucide="eye" class="w-4 h-4"></i>
+          </button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  lucide.createIcons();
 }
 
-function switchToAll() {
-  // Both admin and counselor can view all enquiries
-  currentView = 'all';
-  currentPage = 1;
-  loadEnquiries();
-  updateViewTabs();
+function renderEmptyState() {
+  const tbody = document.getElementById('enquiriesTableBody');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="5" class="text-center py-12">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+            <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
+          </div>
+          <div>
+            <p class="text-gray-800 font-medium">No enquiries found</p>
+            <p class="text-gray-500 text-sm">Try adjusting your filters or search</p>
+          </div>
+        </div>
+      </td>
+    </tr>
+  `;
+  lucide.createIcons();
 }
 
-function switchToAllReadonly() {
-  // Redirect to regular all view - deprecated, use switchToAll
-  switchToAll();
+function showLoadingState() {
+  const tbody = document.getElementById('enquiriesTableBody');
+  tbody.innerHTML = `
+    <tr>
+      <td colspan="5" class="text-center py-12">
+        <div class="flex flex-col items-center gap-3">
+          <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+          <p class="text-gray-500 text-sm">Loading enquiries...</p>
+        </div>
+      </td>
+    </tr>
+  `;
 }
 
-function updateViewTabs() {
-  // Update tab styling based on current view
-  document.querySelectorAll('[data-view-tab]').forEach(tab => {
-    const view = tab.dataset.viewTab;
-    if (view === currentView) {
-      tab.classList.add('bg-blue-600', 'text-white');
-      tab.classList.remove('bg-gray-100', 'text-gray-600');
+// ==================== PAGINATION ====================
+function updatePagination() {
+  const start = totalCount > 0 ? ((currentPage - 1) * ITEMS_PER_PAGE) + 1 : 0;
+  const end = Math.min(start + ITEMS_PER_PAGE - 1, totalCount);
+
+  document.getElementById('showingFrom').textContent = start;
+  document.getElementById('showingTo').textContent = end;
+  document.getElementById('totalItems').textContent = totalCount;
+
+  document.getElementById('firstPage').disabled = currentPage === 1;
+  document.getElementById('prevPage').disabled = currentPage === 1;
+  document.getElementById('nextPage').disabled = currentPage >= totalPages;
+  document.getElementById('lastPage').disabled = currentPage >= totalPages;
+
+  // Page numbers
+  const pageNumbers = document.getElementById('pageNumbers');
+  let html = '';
+  
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, startPage + 4);
+  
+  if (endPage - startPage < 4) {
+    startPage = Math.max(1, endPage - 4);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    if (i === currentPage) {
+      html += `<span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">${i}</span>`;
     } else {
-      tab.classList.remove('bg-blue-600', 'text-white');
-      tab.classList.add('bg-gray-100', 'text-gray-600');
+      html += `<button onclick="goToPage(${i})" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">${i}</button>`;
     }
-  });
+  }
+
+  pageNumbers.innerHTML = html;
 }
 
-/* ======================
-FILTER
-====================== */
-function filterData() {
-  // Server-side filtering - just reset to page 1 and reload
-  currentPage = 1;
-  loadEnquiries();
-}
-
-function resetFilters() {
-  document.getElementById('searchInput').value = '';
-  document.getElementById('statusFilter').value = 'NEW';
-  currentPage = 1;
-  filterData();
-}
-
-/* ======================
-PAGINATION
-====================== */
 function changePage(direction) {
   const newPage = currentPage + direction;
   if (newPage >= 1 && newPage <= totalPages) {
@@ -386,822 +378,543 @@ function goToLastPage() {
   loadEnquiries();
 }
 
-function updatePaginationInfoFromServer(pagination) {
-  const total = pagination.totalCount || 0;
-  const start = total > 0 ? ((pagination.page - 1) * ITEMS_PER_PAGE) + 1 : 0;
-  const end = Math.min(start + ITEMS_PER_PAGE - 1, total);
+// ==================== TAB SWITCHING ====================
+function switchTab(tab) {
+  currentTab = tab;
+  currentPage = 1;
 
-  // Update showing text
-  document.getElementById('showingFrom').textContent = start;
-  document.getElementById('showingTo').textContent = end;
-  document.getElementById('totalItems').textContent = total;
+  // Update tab styles
+  const tabAll = document.getElementById('tabAll');
+  const tabToday = document.getElementById('tabToday');
 
-  // Update button states
-  document.getElementById('firstPage').disabled = currentPage === 1;
-  document.getElementById('prevPage').disabled = currentPage === 1;
-  document.getElementById('nextPage').disabled = currentPage >= totalPages;
-  document.getElementById('lastPage').disabled = currentPage >= totalPages;
-
-  // Update page numbers display
-  const pageNumbers = document.getElementById('pageNumbers');
-  let html = '';
-
-  // Show max 5 page numbers centered around current page
-  let startPage = Math.max(1, currentPage - 2);
-  let endPage = Math.min(totalPages, startPage + 4);
-
-  if (endPage - startPage < 4) {
-    startPage = Math.max(1, endPage - 4);
+  if (tab === 'all') {
+    tabAll.classList.add('bg-blue-600', 'text-white');
+    tabAll.classList.remove('text-gray-600', 'hover:bg-gray-100');
+    tabToday.classList.remove('bg-blue-600', 'text-white');
+    tabToday.classList.add('text-gray-600', 'hover:bg-gray-100');
+    
+    // Reset status filter to NEW for All Enquiries
+    document.getElementById('statusFilter').value = 'NEW';
+  } else {
+    tabToday.classList.add('bg-blue-600', 'text-white');
+    tabToday.classList.remove('text-gray-600', 'hover:bg-gray-100');
+    tabAll.classList.remove('bg-blue-600', 'text-white');
+    tabAll.classList.add('text-gray-600', 'hover:bg-gray-100');
+    
+    // Clear status filter for Today Calls
+    document.getElementById('statusFilter').value = '';
   }
 
-  for (let i = startPage; i <= endPage; i++) {
-    if (i === currentPage) {
-      html += `<span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">${i}</span>`;
-    } else {
-      html += `<button onclick="goToPage(${i})" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">${i}</button>`;
-    }
-  }
-
-  pageNumbers.innerHTML = html;
+  loadEnquiries();
 }
 
-/* ======================
-RENDER
-====================== */
-function renderTable(data) {
-  const table = document.getElementById('enquiryTable');
-
-  if (!data.length) {
-    renderEmptyState();
-    return;
-  }
-
-  table.innerHTML = data.map(e => {
-    const isConverted = e.status === 'CONVERTED';
-    const counselor = e.assignedTo || e.counselorId || e.counselor;
-    const counselorName = counselor?.name || counselor?.fullName || 'Unassigned';
-
-    return `
-    <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0 cursor-pointer" onclick="window.location.href='enquiry-detail.html?id=${e._id}'">
-      <td class="px-6 py-4">
-        <div class="font-medium text-gray-900">${e.name || '-'}</div>
-        <div class="text-xs text-gray-500">${e.mobile || ''}</div>
-      </td>
-      <td class="px-6 py-4 text-gray-700">${e.courseInterested || '-'}</td>
-      <td class="px-6 py-4 text-gray-600">${counselorName}</td>
-      <td class="px-6 py-4">${getStatusBadge(e.status)}</td>
-      <td class="px-6 py-4 text-center" onclick="event.stopPropagation()">
-        ${getActionButtons(e._id, e.status, e.assignedTo?._id || e.assignedTo || e.counselorId?._id || e.counselorId)}
-      </td>
-    </tr>
-  `}).join('');
+// ==================== FILTER FUNCTIONS ====================
+function resetFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('statusFilter').value = currentTab === 'all' ? 'NEW' : '';
+  currentPage = 1;
+  loadEnquiries();
 }
 
-function renderEmptyState() {
-  const table = document.getElementById('enquiryTable');
-  table.innerHTML = `
-    <tr>
-      <td colspan="5" class="text-center py-12">
-        <div class="flex flex-col items-center gap-3">
-          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-            <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
-          </div>
-          <div>
-            <p class="text-gray-800 font-medium">No enquiries found</p>
-            <p class="text-gray-500 text-sm">Try adjusting your filters or search</p>
-          </div>
-        </div>
-      </td>
-    </tr>
-  `;
-}
-
-/* ======================
-CREATE
-====================== */
-function openCreateModal() {
-  const modal = document.getElementById('createModal');
-  const modalContent = document.getElementById('createModalContent');
+// ==================== ADD ENQUIRY MODAL ====================
+function openAddModal() {
+  const modal = document.getElementById('addModal');
+  const content = document.getElementById('addModalContent');
+  
+  // Reset form
+  document.getElementById('addName').value = '';
+  document.getElementById('addMobile').value = '';
+  document.getElementById('addEmail').value = '';
+  document.getElementById('addCourse').value = '';
+  document.getElementById('addSource').value = '';  // NO default - user must select
+  document.getElementById('addCustomCourse').value = '';
+  document.getElementById('addRefName').value = '';
+  document.getElementById('addRefContact').value = '';
+  
+  // Hide custom fields
+  document.getElementById('customCourseContainer').classList.add('hidden');
+  document.getElementById('referralContainer').classList.add('hidden');
+  
+  // Reset field styling
+  clearFieldErrors();
+  
+  // Hide errors
+  hideAddErrors();
+  
+  // Show modal
   modal.classList.remove('hidden');
-  // Trigger animation
+  modal.classList.add('flex');
   setTimeout(() => {
     modal.classList.remove('opacity-0');
-    modalContent.classList.remove('scale-95');
-    modalContent.classList.add('scale-100');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
   }, 10);
+  
   lucide.createIcons();
 }
 
-function closeCreateModal() {
-  const modal = document.getElementById('createModal');
-  const modalContent = document.getElementById('createModalContent');
+function closeAddModal() {
+  const modal = document.getElementById('addModal');
+  const content = document.getElementById('addModalContent');
+  
   modal.classList.add('opacity-0');
-  modalContent.classList.remove('scale-100');
-  modalContent.classList.add('scale-95');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
   setTimeout(() => {
     modal.classList.add('hidden');
-    resetCreateForm();
-  }, 300);
-}
-
-function resetCreateForm() {
-  document.getElementById('createEnquiryForm').reset();
-  document.getElementById('customCourseContainer').classList.add('hidden');
-  // Clear all errors
-  document.querySelectorAll('[id$="Error"]').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('input, select').forEach(el => {
-    el.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    el.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-  });
+    modal.classList.remove('flex');
+  }, 200);
 }
 
 function handleCourseChange(e) {
-  const customContainer = document.getElementById('customCourseContainer');
+  const container = document.getElementById('customCourseContainer');
   if (e.target.value === 'Other') {
-    customContainer.classList.remove('hidden');
+    container.classList.remove('hidden');
   } else {
-    customContainer.classList.add('hidden');
-    document.getElementById('customCourse').value = '';
+    container.classList.add('hidden');
   }
 }
 
-/* ======================
-VALIDATION
-====================== */
-function validateName() {
-  const name = document.getElementById('name');
-  const error = document.getElementById('nameError');
-  if (!name.value.trim()) {
-    showFieldError(name, error, 'Name is required');
-    return false;
+function handleSourceChange(e) {
+  const container = document.getElementById('referralContainer');
+  if (e.target.value === 'referral') {
+    container.classList.remove('hidden');
+  } else {
+    container.classList.add('hidden');
   }
-  clearFieldError(name, error);
-  return true;
 }
 
-function validateMobile() {
-  const mobile = document.getElementById('mobile');
-  const error = document.getElementById('mobileError');
-  const mobileRegex = /^\d{10}$/;
-  if (!mobileRegex.test(mobile.value)) {
-    showFieldError(mobile, error, 'Enter valid 10-digit number');
-    return false;
-  }
-  clearFieldError(mobile, error);
-  return true;
-}
-
-function validateEmail() {
-  const email = document.getElementById('email');
-  const error = document.getElementById('emailError');
-  if (!email.value.trim()) {
-    clearFieldError(email, error);
-    return true;
-  }
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email.value)) {
-    showFieldError(email, error, 'Enter valid email');
-    return false;
-  }
-  clearFieldError(email, error);
-  return true;
-}
-
-function validateCourse() {
-  const course = document.getElementById('course');
-  const error = document.getElementById('courseError');
-  if (!course.value) {
-    showFieldError(course, error, 'Select a course');
-    return false;
-  }
-  clearFieldError(course, error);
-
-  // If Other, validate custom course
-  if (course.value === 'Other') {
-    const customCourse = document.getElementById('customCourse');
-    const customError = document.getElementById('customCourseError');
-    if (!customCourse.value.trim()) {
-      showFieldError(customCourse, customError, 'Enter course name');
-      return false;
+function clearFieldErrors() {
+  const fields = ['addName', 'addMobile', 'addEmail', 'addCourse', 'addSource', 'addCustomCourse', 'addRefName', 'addRefContact'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+      el.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
     }
-    clearFieldError(customCourse, customError);
+  });
+}
+
+function showFieldError(fieldId, errorId) {
+  const field = document.getElementById(fieldId);
+  const error = document.getElementById(errorId);
+  
+  if (field) {
+    field.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+    field.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
   }
-  return true;
+  if (error) {
+    error.classList.remove('hidden');
+  }
 }
 
-function showFieldError(input, errorEl, message) {
-  errorEl.textContent = message;
-  errorEl.classList.remove('hidden');
-  input.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-  input.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
+function hideAddErrors() {
+  document.getElementById('addNameError')?.classList.add('hidden');
+  document.getElementById('addMobileError')?.classList.add('hidden');
+  document.getElementById('addEmailError')?.classList.add('hidden');
+  document.getElementById('addCourseError')?.classList.add('hidden');
+  document.getElementById('addSourceError')?.classList.add('hidden');
+  document.getElementById('addRefNameError')?.classList.add('hidden');
+  document.getElementById('addRefContactError')?.classList.add('hidden');
 }
 
-function clearFieldError(input, errorEl) {
-  errorEl.classList.add('hidden');
-  input.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-  input.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
+/**
+ * Format mobile number with space after 5 digits
+ * Input: 9876543210 → Output: 98765 43210
+ */
+function formatMobileDisplay(value) {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, '');
+  // Limit to 10 digits
+  const limited = digits.slice(0, 10);
+  // Add space after 5 digits
+  if (limited.length > 5) {
+    return limited.slice(0, 5) + ' ' + limited.slice(5);
+  }
+  return limited;
 }
 
-async function createEnquiry() {
-  // Run all validations
-  const isNameValid = validateName();
-  const isMobileValid = validateMobile();
-  const isEmailValid = validateEmail();
-  const isCourseValid = validateCourse();
+/**
+ * Get clean mobile number (10 digits only)
+ * Input: +91 98765 43210 → Output: 9876543210
+ */
+function getCleanMobile(inputValue) {
+  if (!inputValue) return '';
+  // Remove everything except digits
+  return inputValue.replace(/\D/g, '').slice(0, 10);
+}
 
-  if (!isNameValid || !isMobileValid || !isEmailValid || !isCourseValid) {
-    showErrorPopup(
-      'Validation Required',
-      'Please fill in all required fields correctly',
-      'Name, mobile number (10 digits), email, and course selection are required.'
-    );
-    return;
+/**
+ * Handle mobile input - format as user types
+ */
+function handleMobileInput(e) {
+  const input = e.target;
+  const rawValue = input.value;
+  
+  // Get current cursor position
+  const cursorPos = input.selectionStart;
+  const wasAddingSpace = rawValue.length === 6 && cursorPos === 6;
+  
+  // Clean and format
+  const cleanDigits = rawValue.replace(/\D/g, '').slice(0, 10);
+  const formatted = formatMobileDisplay(cleanDigits);
+  
+  // Update value
+  input.value = formatted;
+  
+  // Adjust cursor position
+  if (wasAddingSpace && cursorPos === 6) {
+    input.setSelectionRange(7, 7);
+  }
+}
+
+/**
+ * Handle paste - clean any pasted format
+ */
+function handleMobilePaste(e) {
+  e.preventDefault();
+  const pastedText = (e.clipboardData || window.clipboardData).getData('text');
+  const cleanNumber = getCleanMobile(pastedText);
+  
+  const input = e.target;
+  const formatted = formatMobileDisplay(cleanNumber);
+  input.value = formatted;
+}
+
+/**
+ * Validate mobile number
+ */
+function validateMobile(inputValue) {
+  const clean = getCleanMobile(inputValue);
+  return clean.length === 10;
+}
+
+function validateAddForm() {
+  clearFieldErrors();
+  hideAddErrors();
+  let isValid = true;
+
+  const name = document.getElementById('addName').value.trim();
+  const mobileRaw = document.getElementById('addMobile').value;
+  const mobile = getCleanMobile(mobileRaw);
+  const email = document.getElementById('addEmail').value.trim();
+  const course = document.getElementById('addCourse').value;
+  const source = document.getElementById('addSource').value;
+
+  // Name validation
+  if (!name) {
+    showFieldError('addName', 'addNameError');
+    isValid = false;
   }
 
-  const name = document.getElementById('name').value.trim();
-  const mobile = document.getElementById('mobile').value;
-  const email = document.getElementById('email').value.trim();
-  let course = document.getElementById('course').value;
-  const source = document.getElementById('source').value;
+  // Mobile validation - exactly 10 digits
+  if (!mobile) {
+    document.getElementById('addMobileError').textContent = 'Mobile number is required';
+    showFieldError('addMobile', 'addMobileError');
+    isValid = false;
+  } else if (mobile.length !== 10) {
+    document.getElementById('addMobileError').textContent = `Enter exactly 10 digits (current: ${mobile.length})`;
+    showFieldError('addMobile', 'addMobileError');
+    isValid = false;
+  }
 
-  // If Other, use custom course
+  // Email validation - optional but must be valid if entered
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showFieldError('addEmail', 'addEmailError');
+    isValid = false;
+  }
+
+  // Course validation
+  if (!course) {
+    showFieldError('addCourse', 'addCourseError');
+    isValid = false;
+  }
+
+  // Custom course validation if "Other" selected
   if (course === 'Other') {
-    course = document.getElementById('customCourse').value.trim();
+    const customCourse = document.getElementById('addCustomCourse').value.trim();
+    if (!customCourse) {
+      document.getElementById('addCourseError').textContent = 'Please enter custom course name';
+      showFieldError('addCustomCourse', 'addCourseError');
+      isValid = false;
+    }
   }
+
+  // Source validation - REQUIRED, no default
+  if (!source) {
+    showFieldError('addSource', 'addSourceError');
+    isValid = false;
+  }
+
+  // Referral fields validation
+  if (source === 'referral') {
+    const refName = document.getElementById('addRefName').value.trim();
+    const refContact = document.getElementById('addRefContact').value.trim();
+    
+    if (!refName) {
+      document.getElementById('addRefNameError').textContent = 'Reference name is required';
+      showFieldError('addRefName', 'addRefNameError');
+      isValid = false;
+    }
+    
+    if (!refContact) {
+      document.getElementById('addRefContactError').textContent = 'Reference contact is required';
+      showFieldError('addRefContact', 'addRefContactError');
+      isValid = false;
+    } else if (!/^\d{10}$/.test(refContact)) {
+      document.getElementById('addRefContactError').textContent = 'Enter exactly 10 digits';
+      showFieldError('addRefContact', 'addRefContactError');
+      isValid = false;
+    }
+  }
+
+  return isValid;
+}
+
+async function submitAddEnquiry() {
+  if (!validateAddForm()) return;
+
+  // Get submit button and show loading state
+  const submitBtn = document.querySelector('#addModal button[onclick="submitAddEnquiry()"]');
+  const originalBtnContent = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
 
   try {
-    const response = await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, {
-      name,
-      mobile,
-      email: email || undefined,
-      courseInterested: course,
-      source
-    });
+    const course = document.getElementById('addCourse').value;
+    const finalCourse = course === 'Other' ? document.getElementById('addCustomCourse').value.trim() : course;
+    const source = document.getElementById('addSource').value;
+    const email = document.getElementById('addEmail').value.trim();
+    
+    // Get clean mobile number (10 digits only, no +91, no spaces)
+    const mobileRaw = document.getElementById('addMobile').value;
+    const cleanMobile = getCleanMobile(mobileRaw);
+    
+    // Build clean payload - only include fields with values
+    const payload = {
+      name: document.getElementById('addName').value.trim(),
+      mobile: cleanMobile,  // Only 10 digits
+      courseInterested: finalCourse,
+      source: source
+    };
 
-    showToast('success', 'Enquiry created successfully');
-    closeCreateModal();
-    loadEnquiries();
-  } catch (err) {
-    handleEnquiryError(err, 'Failed to create enquiry');
-  }
-}
-
-/* ======================
-UPDATE STATUS
-====================== */
-function openModal(id) {
-  selectedId = id;
-  const modal = document.getElementById('statusModal');
-  const modalContent = document.getElementById('statusModalContent');
-
-  // Reset form
-  document.getElementById('statusSelect').value = 'CONTACTED';
-  document.getElementById('statusNote').value = '';
-  document.getElementById('followUpDate').value = '';
-  clearStatusErrors();
-
-  modal.classList.remove('hidden');
-  setTimeout(() => {
-    modal.classList.remove('opacity-0');
-    modalContent.classList.remove('scale-95');
-    modalContent.classList.add('scale-100');
-  }, 10);
-  lucide.createIcons();
-}
-
-function closeModal() {
-  const modal = document.getElementById('statusModal');
-  const modalContent = document.getElementById('statusModalContent');
-  modal.classList.add('opacity-0');
-  modalContent.classList.remove('scale-100');
-  modalContent.classList.add('scale-95');
-  setTimeout(() => {
-    modal.classList.add('hidden');
-  }, 300);
-}
-
-function clearStatusErrors() {
-  const noteError = document.getElementById('statusNoteError');
-  const noteInput = document.getElementById('statusNote');
-  noteError.classList.add('hidden');
-  noteInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-  noteInput.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-}
-
-function validateStatusNote() {
-  const note = document.getElementById('statusNote');
-  const error = document.getElementById('statusNoteError');
-  if (!note.value.trim()) {
-    error.classList.remove('hidden');
-    note.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-    note.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    return false;
-  }
-  error.classList.add('hidden');
-  note.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-  note.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-  return true;
-}
-
-function openConfirmModal() {
-  // First validate
-  if (!validateStatusNote()) {
-    showToast('error', 'Please add a note');
-    return;
-  }
-
-  // Get values
-  const status = document.getElementById('statusSelect');
-  const note = document.getElementById('statusNote').value;
-  const statusText = status.options[status.selectedIndex].text;
-
-  // Populate confirm modal
-  document.getElementById('confirmStatusText').textContent = statusText;
-  document.getElementById('confirmNoteText').textContent = note;
-
-  // Show confirm modal
-  const modal = document.getElementById('confirmModal');
-  const modalContent = document.getElementById('confirmModalContent');
-  modal.classList.remove('hidden');
-  setTimeout(() => {
-    modal.classList.remove('opacity-0');
-    modalContent.classList.remove('scale-95');
-    modalContent.classList.add('scale-100');
-  }, 10);
-}
-
-function closeConfirmModal() {
-  const modal = document.getElementById('confirmModal');
-  const modalContent = document.getElementById('confirmModalContent');
-  modal.classList.add('opacity-0');
-  modalContent.classList.remove('scale-100');
-  modalContent.classList.add('scale-95');
-  setTimeout(() => {
-    modal.classList.add('hidden');
-  }, 300);
-}
-
-async function executeUpdate() {
-  const status = document.getElementById('statusSelect').value;
-  const note = document.getElementById('statusNote').value;
-  const followUpDate = document.getElementById('followUpDate').value;
-
-  // Validate follow-up date if status is FOLLOW_UP
-  if (status === 'FOLLOW_UP' && !followUpDate) {
-    showErrorPopup(
-      'Follow-up Date Required',
-      'Please select a follow-up date',
-      'When setting status to "Follow Up", a follow-up date is mandatory.'
-    );
-    return;
-  }
-
-  try {
-    const response = await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), {
-      status,
-      note,
-      followUpDate
-    });
-
-    // Handle auto-assignment response
-    const responseData = response.data || response;
-    if (responseData?.autoAssigned) {
-      showSuccessPopup(
-        'Lead Assigned!',
-        'This lead has been auto-assigned to you',
-        'You are now the assigned counselor for this enquiry. You can track it in your "My Leads" section.'
-      );
+    // Only add email if it has a value
+    if (email) {
+      payload.email = email;
     }
 
-    // Handle conversion requiring payment setup
-    if (responseData?.requiresPaymentSetup) {
-      showConfirmPopup(
-        'Student Converted!',
-        'The student has been marked as converted. Set up payment details now?',
-        'This will create an admission record and allow you to collect fees.',
-        () => {
-          // Navigate to admission creation
-          window.location.href = `admission-detail.html?enquiryId=${selectedId}`;
-        },
-        () => {
-          // User declined, just close and refresh
-          closeConfirmModal();
-          closeModal();
-          loadEnquiries();
-        }
-      );
-      return;
+    // Only add referral info if source is referral
+    if (source === 'referral') {
+      payload.referenceName = document.getElementById('addRefName').value.trim();
+      payload.referenceContact = document.getElementById('addRefContact').value.trim();
     }
 
-    showToast('success', 'Status updated successfully');
-    closeConfirmModal();
-    closeModal();
+    await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
+    
+    // Reset form
+    document.getElementById('addName').value = '';
+    document.getElementById('addMobile').value = '';
+    document.getElementById('addEmail').value = '';
+    document.getElementById('addCourse').value = '';
+    document.getElementById('addSource').value = '';
+    document.getElementById('addCustomCourse').value = '';
+    document.getElementById('addRefName').value = '';
+    document.getElementById('addRefContact').value = '';
+    document.getElementById('customCourseContainer').classList.add('hidden');
+    document.getElementById('referralContainer').classList.add('hidden');
+    clearFieldErrors();
+    
+    closeAddModal();
+    showToast('Success', 'Enquiry added successfully', 'success');
     loadEnquiries();
   } catch (err) {
-    handleEnquiryError(err, 'Failed to update status');
+    console.error('Failed to create enquiry:', err);
+    const message = err.response?.data?.message || 'Failed to add enquiry';
+    showError(message);
+  } finally {
+    // Restore button state
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnContent;
+    lucide.createIcons();
   }
 }
 
-/* ======================
-SUCCESS & CONFIRM POPUPS
-====================== */
-function showSuccessPopup(title, message, description = '') {
-  const modal = document.createElement('div');
-  modal.id = 'successPopup';
-  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
-  modal.innerHTML = `
-    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-100 animate-in fade-in zoom-in duration-200">
-      <div class="flex items-center gap-4 mb-4">
-        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <i data-lucide="check-circle" class="text-green-600 w-6 h-6"></i>
-        </div>
-        <div>
-          <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
-          <p class="text-sm text-green-600 font-medium">${message}</p>
-        </div>
-      </div>
-      ${description ? `<p class="text-sm text-gray-500 mb-5 bg-gray-50 p-3 rounded-lg">${description}</p>` : ''}
-      <button onclick="closeSuccessPopup()" class="w-full px-4 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl transition-colors font-medium">
-        Great!
-      </button>
-    </div>
-  `;
-  document.body.appendChild(modal);
+// ==================== UPDATE MODAL ====================
+function openUpdateModal(enquiryId, currentStatus) {
+  const modal = document.getElementById('updateModal');
+  const content = document.getElementById('updateModalContent');
+  
+  // Set values
+  document.getElementById('updateEnquiryId').value = enquiryId;
+  document.getElementById('updateStatus').value = currentStatus;
+  document.getElementById('updateNote').value = '';
+  document.getElementById('updateFollowUpDate').value = '';
+  
+  // Hide errors
+  document.getElementById('updateNoteError').classList.add('hidden');
+  document.getElementById('followUpError').classList.add('hidden');
+  
+  // Handle follow-up date visibility
+  handleUpdateStatusChange();
+  
+  // Show modal
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
   lucide.createIcons();
 }
 
-function closeSuccessPopup() {
-  const modal = document.getElementById('successPopup');
-  if (modal) {
-    modal.remove();
-  }
+function closeUpdateModal() {
+  const modal = document.getElementById('updateModal');
+  const content = document.getElementById('updateModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
 }
 
-function showConfirmPopup(title, message, description, onConfirm, onCancel) {
-  const modal = document.createElement('div');
-  modal.id = 'confirmActionPopup';
-  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
-  modal.innerHTML = `
-    <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-100 animate-in fade-in zoom-in duration-200">
-      <div class="flex items-center gap-4 mb-4">
-        <div class="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <i data-lucide="help-circle" class="text-blue-600 w-6 h-6"></i>
-        </div>
-        <div>
-          <h3 class="text-lg font-semibold text-gray-800">${title}</h3>
-          <p class="text-sm text-blue-600 font-medium">${message}</p>
-        </div>
-      </div>
-      ${description ? `<p class="text-sm text-gray-500 mb-5 bg-gray-50 p-3 rounded-lg">${description}</p>` : ''}
-      <div class="flex gap-3">
-        <button id="confirmActionBtn" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors font-medium">
-          Yes, Proceed
-        </button>
-        <button id="cancelActionBtn" class="flex-1 px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium">
-          Not Now
-        </button>
-      </div>
-    </div>
-  `;
-  document.body.appendChild(modal);
-
-  // Attach event listeners
-  document.getElementById('confirmActionBtn').addEventListener('click', () => {
-    closeConfirmActionPopup();
-    if (onConfirm) onConfirm();
-  });
-  document.getElementById('cancelActionBtn').addEventListener('click', () => {
-    closeConfirmActionPopup();
-    if (onCancel) onCancel();
-  });
-
-  lucide.createIcons();
-}
-
-function closeConfirmActionPopup() {
-  const modal = document.getElementById('confirmActionPopup');
-  if (modal) {
-    modal.remove();
-  }
-}
-
-/* ======================
-QUICK UPDATE MODAL (Direct Notes)
-====================== */
-function openQuickUpdateModal(id, targetStatus, currentStatus = '') {
-  selectedId = id;
-  const modal = document.getElementById('quickUpdateModal');
-  const modalContent = document.getElementById('quickUpdateModalContent');
-
-  // Store current status for reference
-  selectedCurrentStatus = currentStatus;
-
-  // Update header to show target status
-  const statusLabels = {
-    'NEW': 'New',
-    'CONTACTED': 'Contacted',
-    'NO_RESPONSE': 'No Response',
-    'FOLLOW_UP': 'Follow Up',
-    'INTERESTED': 'Interested',
-    'NOT_INTERESTED': 'Not Interested',
-    'ADMISSION_PROCESS': 'Admission Process',
-    'CONVERTED': 'Converted'
-  };
-  const targetLabel = statusLabels[targetStatus] || targetStatus;
-  document.getElementById('quickCurrentStatus').textContent = `Update to: ${targetLabel}`;
-
-  // Set target status in hidden field
-  document.getElementById('quickTargetStatus').value = targetStatus;
-
-  // Show/hide date field based on target status
-  const dateContainer = document.getElementById('quickFollowUpDateContainer');
-  if (targetStatus === 'FOLLOW_UP') {
-    dateContainer.classList.remove('hidden');
-    document.getElementById('quickFollowUpDate').required = true;
+function handleUpdateStatusChange() {
+  const status = document.getElementById('updateStatus').value;
+  const followUpRequired = document.getElementById('followUpRequired');
+  const followUpDate = document.getElementById('updateFollowUpDate');
+  
+  if (status === 'FOLLOW_UP') {
+    followUpRequired.classList.remove('hidden');
+    followUpDate.required = true;
   } else {
-    dateContainer.classList.add('hidden');
-    document.getElementById('quickFollowUpDate').required = false;
-    document.getElementById('quickFollowUpDate').value = '';
-  }
-
-  // Reset form
-  document.getElementById('quickNote').value = '';
-  clearQuickStatusErrors();
-
-  modal.classList.remove('hidden');
-  setTimeout(() => {
-    modal.classList.remove('opacity-0');
-    modalContent.classList.remove('scale-95');
-    modalContent.classList.add('scale-100');
-  }, 10);
-  lucide.createIcons();
-}
-
-function closeQuickUpdateModal() {
-  const modal = document.getElementById('quickUpdateModal');
-  const modalContent = document.getElementById('quickUpdateModalContent');
-  modal.classList.add('opacity-0');
-  modalContent.classList.remove('scale-100');
-  modalContent.classList.add('scale-95');
-  setTimeout(() => {
-    modal.classList.add('hidden');
-  }, 300);
-}
-
-function clearQuickStatusErrors() {
-  const noteError = document.getElementById('quickNoteError');
-  const noteInput = document.getElementById('quickNote');
-  const apiError = document.getElementById('quickErrorMessage');
-
-  noteError.classList.add('hidden');
-  noteInput.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-  noteInput.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-
-  // Hide API error message
-  if (apiError) {
-    apiError.classList.add('hidden');
+    followUpRequired.classList.add('hidden');
+    followUpDate.required = false;
+    document.getElementById('followUpError').classList.add('hidden');
   }
 }
 
-function validateQuickNote() {
-  const note = document.getElementById('quickNote');
-  const error = document.getElementById('quickNoteError');
-  if (!note.value.trim()) {
-    error.classList.remove('hidden');
-    note.classList.remove('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-    note.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-    return false;
-  }
-  error.classList.add('hidden');
-  note.classList.remove('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
-  note.classList.add('border-gray-200', 'focus:border-blue-500', 'focus:ring-blue-100');
-  return true;
-}
+async function submitUpdate() {
+  const enquiryId = document.getElementById('updateEnquiryId').value;
+  const status = document.getElementById('updateStatus').value;
+  const note = document.getElementById('updateNote').value.trim();
+  const followUpDate = document.getElementById('updateFollowUpDate').value;
 
-async function submitQuickUpdate() {
-  // Validate note
-  if (!validateQuickNote()) {
-    showErrorPopup(
-      'Note Required',
-      'Please add a note before updating',
-      'A note is mandatory when updating enquiry status for tracking purposes.'
-    );
+  // Validation
+  document.getElementById('updateNoteError').classList.add('hidden');
+  document.getElementById('followUpError').classList.add('hidden');
+
+  if (!note) {
+    document.getElementById('updateNoteError').classList.remove('hidden');
     return;
   }
 
-  // Read status from hidden field
-  const status = document.getElementById('quickTargetStatus').value;
-  const note = document.getElementById('quickNote').value;
-  const followUpDate = document.getElementById('quickFollowUpDate').value;
-
-  // Validate follow-up date if required
   if (status === 'FOLLOW_UP' && !followUpDate) {
-    showErrorPopup(
-      'Follow-up Date Required',
-      'Please select a follow-up date',
-      'When setting status to "Follow Up", a follow-up date is mandatory.'
-    );
+    document.getElementById('followUpError').classList.remove('hidden');
     return;
   }
 
-  // Build payload
-  const payload = { status, note };
-  if (status === 'FOLLOW_UP' && followUpDate) {
+  const payload = {
+    status: status,
+    note: note
+  };
+
+  if (followUpDate) {
     payload.followUpDate = followUpDate;
   }
 
   try {
-    const response = await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(selectedId), payload);
-    const responseData = response.data || response;
-
-    // Handle auto-assignment response
-    if (responseData?.autoAssigned) {
-      showSuccessPopup(
-        'Lead Assigned!',
-        'This lead has been auto-assigned to you',
-        'You are now the assigned counselor for this enquiry. Track it in your "My Leads" section.'
-      );
-    }
-
-    // Handle conversion requiring payment setup
-    if (responseData?.requiresPaymentSetup) {
-      closeQuickUpdateModal();
-      showConfirmPopup(
-        'Student Converted!',
-        'The student has been marked as converted. Set up payment details now?',
-        'This will create an admission record and allow you to collect fees.',
-        () => {
-          window.location.href = `admission-detail.html?enquiryId=${selectedId}`;
-        },
-        () => {
-          loadEnquiries();
-        }
-      );
-      return;
-    }
-
-    showToast('success', 'Status updated successfully');
-    closeQuickUpdateModal();
+    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), payload);
+    closeUpdateModal();
+    showToast('Success', 'Status updated successfully', 'success');
     loadEnquiries();
   } catch (err) {
-    // Show specific error in modal
-    const errorDiv = document.getElementById('quickErrorMessage');
-    const errorText = document.getElementById('quickErrorText');
-
-    if (errorDiv && errorText) {
-      let message = 'Failed to update status';
-      let description = '';
-
-      if (err.response?.status === 403) {
-        message = 'Access Denied';
-        description = 'You can only modify enquiries assigned to you. Unassigned enquiries will be auto-assigned on your first action.';
-      } else if (err.response?.status === 400) {
-        message = 'Invalid Action';
-        description = err.response?.data?.message || 'Please check your input and try again.';
-      } else if (err.response?.status === 409) {
-        message = 'Action Not Allowed';
-        description = err.response?.data?.message || 'This enquiry may already be converted.';
-      } else if (err.response?.data?.message) {
-        message = err.response.data.message;
-      }
-
-      errorText.textContent = message;
-      errorDiv.classList.remove('hidden');
-
-      // Also show popup for critical errors
-      if (err.response?.status === 403 || err.response?.status === 409) {
-        showErrorPopup(message, description);
-      }
-    } else {
-      handleEnquiryError(err, 'Failed to update status');
-    }
+    console.error('Failed to update status:', err);
+    const message = err.response?.data?.message || 'Failed to update status';
+    showError(message);
   }
 }
 
-/* ======================
-BULK UPLOAD
-====================== */
-let selectedBulkFile = null;
-
+// ==================== BULK UPLOAD MODAL ====================
 function openBulkUploadModal() {
   const modal = document.getElementById('bulkUploadModal');
-  const modalContent = document.getElementById('bulkUploadModalContent');
-
+  const content = document.getElementById('bulkUploadModalContent');
+  
   // Reset state
-  selectedBulkFile = null;
-  resetBulkUploadUI();
-
+  selectedFile = null;
+  document.getElementById('bulkFileInput').value = '';
+  document.getElementById('selectedFileArea').classList.add('hidden');
+  document.getElementById('uploadProgressArea').classList.add('hidden');
+  document.getElementById('uploadResultsArea').classList.add('hidden');
+  document.getElementById('uploadButton').disabled = true;
+  
+  // Show modal
   modal.classList.remove('hidden');
+  modal.classList.add('flex');
   setTimeout(() => {
     modal.classList.remove('opacity-0');
-    modalContent.classList.remove('scale-95');
-    modalContent.classList.add('scale-100');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
   }, 10);
+  
+  lucide.createIcons();
 }
 
 function closeBulkUploadModal() {
   const modal = document.getElementById('bulkUploadModal');
-  const modalContent = document.getElementById('bulkUploadModalContent');
+  const content = document.getElementById('bulkUploadModalContent');
+  
   modal.classList.add('opacity-0');
-  modalContent.classList.remove('scale-100');
-  modalContent.classList.add('scale-95');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
   setTimeout(() => {
     modal.classList.add('hidden');
-  }, 300);
+    modal.classList.remove('flex');
+  }, 200);
 }
 
-function resetBulkUploadUI() {
-  // Hide areas
-  document.getElementById('selectedFileArea').classList.add('hidden');
-  document.getElementById('uploadProgressArea').classList.add('hidden');
-  document.getElementById('uploadResultsArea').classList.add('hidden');
-  document.getElementById('uploadArea').classList.remove('hidden');
-
-  // Clear error details
-  document.getElementById('errorDetails').classList.add('hidden');
-  document.getElementById('errorList').innerHTML = '';
-
-  // Reset file input
-  document.getElementById('bulkFileInput').value = '';
-
-  // Reset button
-  const uploadButton = document.getElementById('uploadButton');
-  uploadButton.disabled = true;
-  uploadButton.innerHTML = '<i data-lucide="upload" class="w-4 h-4"></i> Upload File';
-  lucide.createIcons();
-}
-
-// File input handlers
-document.addEventListener('DOMContentLoaded', () => {
-  const uploadArea = document.getElementById('uploadArea');
-  const fileInput = document.getElementById('bulkFileInput');
-
-  if (uploadArea && fileInput) {
-    // Click to browse
-    uploadArea.addEventListener('click', () => fileInput.click());
-
-    // File selected
-    fileInput.addEventListener('change', (e) => {
-      if (e.target.files.length > 0) {
-        handleFileSelect(e.target.files[0]);
-      }
-    });
-
-    // Drag and drop
-    uploadArea.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      uploadArea.classList.add('border-indigo-500', 'bg-indigo-50');
-    });
-
-    uploadArea.addEventListener('dragleave', () => {
-      uploadArea.classList.remove('border-indigo-500', 'bg-indigo-50');
-    });
-
-    uploadArea.addEventListener('drop', (e) => {
-      e.preventDefault();
-      uploadArea.classList.remove('border-indigo-500', 'bg-indigo-50');
-      if (e.dataTransfer.files.length > 0) {
-        handleFileSelect(e.dataTransfer.files[0]);
-      }
-    });
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if (file) {
+    handleFile(file);
   }
-});
+}
 
-function handleFileSelect(file) {
+function handleFile(file) {
   // Validate file type
   const validTypes = ['.csv', '.xlsx', '.xls'];
-  const fileExt = '.' + file.name.split('.').pop().toLowerCase();
-
-  if (!validTypes.includes(fileExt)) {
-    showToast('error', 'Please select a CSV or Excel file');
+  const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
+  
+  if (!validTypes.includes(fileExtension)) {
+    showError('Please upload a CSV or Excel file');
     return;
   }
 
   // Validate file size (5MB)
   if (file.size > 5 * 1024 * 1024) {
-    showToast('error', 'File size must be less than 5MB');
+    showError('File size should be less than 5MB');
     return;
   }
 
-  selectedBulkFile = file;
+  selectedFile = file;
 
-  // Show file info
+  // Show selected file
   document.getElementById('selectedFileName').textContent = file.name;
   document.getElementById('selectedFileSize').textContent = formatFileSize(file.size);
-
-  document.getElementById('uploadArea').classList.add('hidden');
   document.getElementById('selectedFileArea').classList.remove('hidden');
-
+  
   // Enable upload button
   document.getElementById('uploadButton').disabled = false;
-}
-
-function clearSelectedFile() {
-  selectedBulkFile = null;
-  document.getElementById('bulkFileInput').value = '';
-  document.getElementById('selectedFileArea').classList.add('hidden');
-  document.getElementById('uploadArea').classList.remove('hidden');
-  document.getElementById('uploadButton').disabled = true;
+  
+  // Hide results area
+  document.getElementById('uploadResultsArea').classList.add('hidden');
 }
 
 function formatFileSize(bytes) {
@@ -1212,523 +925,169 @@ function formatFileSize(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+function clearSelectedFile() {
+  selectedFile = null;
+  document.getElementById('bulkFileInput').value = '';
+  document.getElementById('selectedFileArea').classList.add('hidden');
+  document.getElementById('uploadButton').disabled = true;
+}
+
 async function submitBulkUpload() {
-  // Check admin access first
-  if (!isAdmin()) {
-    showErrorPopup(
-      'Access Denied',
-      'Bulk upload is restricted to administrators only',
-      'Counselors can create individual enquiries using the "Add Enquiry" button.'
-    );
-    closeBulkUploadModal();
+  if (!selectedFile) {
+    showError('Please select a file first');
     return;
   }
 
-  if (!selectedBulkFile) {
-    showErrorPopup(
-      'File Required',
-      'Please select a file to upload',
-      'Choose an Excel (.xlsx) or CSV (.csv) file containing enquiry data.'
-    );
-    return;
-  }
+  const formData = new FormData();
+  formData.append('file', selectedFile);
 
-  const uploadButton = document.getElementById('uploadButton');
-  const progressArea = document.getElementById('uploadProgressArea');
-  const progressBar = document.getElementById('uploadProgressBar');
-  const progressPercent = document.getElementById('uploadProgressPercent');
+  // Show progress
+  document.getElementById('uploadProgressArea').classList.remove('hidden');
+  document.getElementById('uploadButton').disabled = true;
 
-  // Disable button and show progress
-  uploadButton.disabled = true;
-  uploadButton.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Uploading...';
-  lucide.createIcons();
-
-  progressArea.classList.remove('hidden');
-
-  // Simulate progress (since we can't track actual progress easily with fetch)
+  // Simulate progress
   let progress = 0;
   const progressInterval = setInterval(() => {
-    progress += Math.random() * 15;
-    if (progress > 90) progress = 90;
-    progressBar.style.width = progress + '%';
-    progressPercent.textContent = Math.round(progress) + '%';
+    progress += 10;
+    if (progress <= 90) {
+      document.getElementById('uploadProgressPercent').textContent = progress + '%';
+      document.getElementById('uploadProgressBar').style.width = progress + '%';
+    }
   }, 200);
 
   try {
-    const formData = new FormData();
-    formData.append('file', selectedBulkFile);
-
     const res = await apiPost(API_ENDPOINTS.ENQUIRIES.BULK_UPLOAD, formData);
-
+    
     clearInterval(progressInterval);
-    progressBar.style.width = '100%';
-    progressPercent.textContent = '100%';
+    document.getElementById('uploadProgressPercent').textContent = '100%';
+    document.getElementById('uploadProgressBar').style.width = '100%';
 
-    // Show results - extract data from API response
-    // Handle nested structure: res.data.data or res.data
-    const resultData = res.data?.data || res.data || res;
-    showUploadResults(resultData);
-
-    // Refresh enquiries list
+    // Show results
+    showUploadResults(res);
     loadEnquiries();
-
   } catch (err) {
     clearInterval(progressInterval);
-
-    // Handle specific error cases
-    let errorTitle = 'Upload Failed';
-    let errorMessage = err?.message || 'Failed to upload enquiries';
-    let errorDescription = '';
-
-    if (err.response?.status === 403) {
-      errorTitle = 'Access Denied';
-      errorMessage = err.response?.data?.message || 'You do not have permission to perform bulk uploads';
-      errorDescription = 'Only administrators can perform bulk uploads. Please contact your admin if you need to add multiple enquiries.';
-    } else if (err.response?.status === 400) {
-      errorTitle = 'Invalid File';
-      errorMessage = err.response?.data?.message || 'The file format is invalid';
-      errorDescription = 'Please ensure your file is a valid Excel (.xlsx) or CSV (.csv) file with the correct column headers.';
-    }
-
-    // Show error popup for critical errors
-    if (err.response?.status === 403) {
-      showErrorPopup(errorTitle, errorMessage, errorDescription);
-      closeBulkUploadModal();
-    } else {
-      // Show error in results area for file-related errors
-      showUploadResults({
-        success: 0,
-        failed: 1,
-        total: 1,
-        errors: [errorMessage]
-      });
-    }
+    console.error('Bulk upload failed:', err);
+    const message = err.response?.data?.message || 'Bulk upload failed';
+    showError(message);
+    document.getElementById('uploadButton').disabled = false;
   }
 }
 
 function showUploadResults(results) {
-  const resultsArea = document.getElementById('uploadResultsArea');
+  const success = results.success || 0;
+  const failed = results.failed || 0;
+  const total = results.total || 0;
+  const errors = results.errors || [];
+
+  document.getElementById('successCount').textContent = success;
+  document.getElementById('errorCount').textContent = failed;
+  document.getElementById('totalCount').textContent = total;
+
   const resultIcon = document.getElementById('resultIcon');
   const resultTitle = document.getElementById('resultTitle');
   const resultSubtitle = document.getElementById('resultSubtitle');
-  const errorDetails = document.getElementById('errorDetails');
-  const errorList = document.getElementById('errorList');
 
-  document.getElementById('uploadProgressArea').classList.add('hidden');
-  resultsArea.classList.remove('hidden');
-
-  // Update counts - backend uses successCount/failedCount/totalRows
-  const successCount = results.successCount ?? results.success ?? 0;
-  const failedCount = results.failedCount ?? results.failed ?? 0;
-  const totalCount = results.totalRows ?? results.totalCount ?? results.total ?? (successCount + failedCount);
-
-  document.getElementById('successCount').textContent = successCount;
-  document.getElementById('errorCount').textContent = failedCount;
-  document.getElementById('totalCount').textContent = totalCount;
-
-  // Set icon and title based on results
-  const hasErrors = (failedCount || 0) > 0;
-  const allSuccess = (successCount || 0) === (totalCount || 0) && (failedCount || 0) === 0;
-
-  if (allSuccess) {
-    resultIcon.className = 'w-10 h-10 bg-green-100 rounded-full flex items-center justify-center';
-    resultIcon.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>';
-    resultTitle.textContent = 'Upload Complete!';
-    resultSubtitle.textContent = 'All enquiries uploaded successfully';
-    showToast('success', `Uploaded ${successCount} enquiries successfully`);
-  } else if (hasErrors) {
-    resultIcon.className = 'w-10 h-10 bg-amber-100 rounded-full flex items-center justify-center';
-    resultIcon.innerHTML = '<i data-lucide="alert-circle" class="w-5 h-5 text-amber-600"></i>';
-    resultTitle.textContent = 'Partial Upload';
-    resultSubtitle.textContent = `${successCount} succeeded, ${failedCount} failed`;
-
-    // Show error details
-    const errors = results.errors || [];
-    if (errors.length > 0) {
-      errorDetails.classList.remove('hidden');
-      errorList.innerHTML = errors.map(e => {
-        // Handle both string errors and object errors with row numbers
-        if (typeof e === 'string') {
-          return `<li>${e}</li>`;
-        } else if (e.row && e.error) {
-          return `<li class="flex gap-2"><span class="text-gray-400 font-mono">Row ${e.row}:</span><span>${e.error}</span></li>`;
-        } else if (e.error) {
-          return `<li>${e.error}</li>`;
-        } else {
-          return `<li>${JSON.stringify(e)}</li>`;
-        }
-      }).join('');
-    } else {
-      errorDetails.classList.add('hidden');
-      errorList.innerHTML = '';
-    }
-  } else {
-    resultIcon.className = 'w-10 h-10 bg-red-100 rounded-full flex items-center justify-center';
-    resultIcon.innerHTML = '<i data-lucide="x-circle" class="w-5 h-5 text-red-600"></i>';
+  if (failed === 0) {
+    resultIcon.className = 'w-9 h-9 bg-green-100 rounded-full flex items-center justify-center';
+    resultIcon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>';
+    resultTitle.textContent = 'Upload Successful';
+    resultSubtitle.textContent = `All ${total} enquiries uploaded successfully`;
+  } else if (success === 0) {
+    resultIcon.className = 'w-9 h-9 bg-red-100 rounded-full flex items-center justify-center';
+    resultIcon.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-red-600"></i>';
     resultTitle.textContent = 'Upload Failed';
-    resultSubtitle.textContent = 'Something went wrong';
+    resultSubtitle.textContent = 'All uploads failed. Check errors below.';
+  } else {
+    resultIcon.className = 'w-9 h-9 bg-yellow-100 rounded-full flex items-center justify-center';
+    resultIcon.innerHTML = '<i data-lucide="alert-circle" class="w-4 h-4 text-yellow-600"></i>';
+    resultTitle.textContent = 'Partially Successful';
+    resultSubtitle.textContent = `${success} uploaded, ${failed} failed`;
   }
 
-  lucide.createIcons();
+  // Show error details
+  if (errors.length > 0) {
+    const errorList = document.getElementById('errorList');
+    errorList.innerHTML = errors.map(err => `<li>${err}</li>`).join('');
+    document.getElementById('errorDetails').classList.remove('hidden');
+  } else {
+    document.getElementById('errorDetails').classList.add('hidden');
+  }
 
-  // Update button
-  const uploadButton = document.getElementById('uploadButton');
-  uploadButton.innerHTML = '<i data-lucide="refresh-cw" class="w-4 h-4"></i> Upload Another';
-  uploadButton.disabled = false;
-  uploadButton.onclick = () => {
-    resetBulkUploadUI();
-    uploadButton.onclick = submitBulkUpload; // Reset handler
-  };
+  document.getElementById('uploadResultsArea').classList.remove('hidden');
   lucide.createIcons();
 }
 
 function downloadTemplate() {
-  const headers = ['name', 'mobile', 'email', 'course', 'followUpDate'];
-  const sample = ['John Doe', '9876543210', 'john@example.com', 'Python Programming', '2024-01-15'];
-
-  let csv = headers.join(',') + '\n';
-  csv += sample.join(',') + '\n';
-
-  // Add more sample rows
-  csv += 'Jane Smith,9876543211,jane@example.com,Data Science,2024-01-20\n';
-  csv += 'Bob Wilson,9876543212,bob@example.com,Web Designing,2024-01-18\n';
-
-  const blob = new Blob([csv], { type: 'text/csv' });
+  const csvContent = 'Name,Mobile,Email,Course Interested,Source,Reference Name,Reference Contact\nJohn Doe,9876543210,john@example.com,Python Programming,walk_in,,\nJane Smith,9876543211,jane@example.com,Data Science,referral,Friend Name,9876543212';
+  
+  const blob = new Blob([csvContent], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'enquiry_upload_template.csv';
+  a.download = 'enquiry_template.csv';
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   window.URL.revokeObjectURL(url);
-
-  showToast('success', 'Template downloaded');
 }
 
-function showFormatGuide() {
-  const guide = `
-Format Guide:
-
-Required Columns:
-• name - Full name of the enquiry (required)
-• mobile - 10-digit mobile number (required)
-• email - Email address (optional)
-• course - Course interested in (required)
-• followUpDate - Follow-up date in YYYY-MM-DD format (optional)
-
-Notes:
-• Mobile numbers should be 10 digits without country code
-• Dates should be in YYYY-MM-DD format
-• Course names should match the available courses
-• Email is optional but recommended
-• Maximum file size: 5MB
-• Supported formats: CSV, Excel (.xlsx, .xls)
-  `;
-
-  alert(guide);
+// ==================== UTILITY FUNCTIONS ====================
+function viewEnquiryDetail(enquiryId) {
+  window.location.href = `enquiry-detail.html?id=${enquiryId}`;
 }
 
-/* ======================
-ACTION BUTTONS HELPER
-====================== */
-// Button configuration with primary, secondary and more options
-const actionConfig = {
-  'NEW': {
-    primary: { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
-    more: [
-      { status: 'INTERESTED', label: 'Interested' },
-      { status: 'NOT_INTERESTED', label: 'Not Interested' }
-    ]
-  },
-  'CONTACTED': {
-    primary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
-    secondary: { status: 'INTERESTED', label: 'Interested', color: 'green' },
-    more: [
-      { status: 'CONTACTED', label: 'Contacted (Again)' },
-      { status: 'NOT_INTERESTED', label: 'Not Interested' }
-    ]
-  },
-  'FOLLOW_UP': {
-    primary: { status: 'INTERESTED', label: 'Interested', color: 'green' },
-    secondary: { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
-    more: [
-      { status: 'CONTACTED', label: 'Contacted' },
-      { status: 'NOT_INTERESTED', label: 'Not Interested' }
-    ]
-  },
-  'INTERESTED': {
-    primary: { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
-    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
-    more: [
-      { status: 'INTERESTED', label: 'Interested (Reconfirm)' },
-      { status: 'NOT_INTERESTED', label: 'Not Interested' }
-    ]
-  },
-  'ADMISSION_PROCESS': {
-    primary: { status: 'CONVERTED', label: 'Convert', color: 'emerald', isConvert: true },
-    secondary: null,
-    more: [
-      { status: 'FOLLOW_UP', label: 'Follow Up' },
-      { status: 'NOT_INTERESTED', label: 'Not Interested' }
-    ]
-  },
-  'NO_RESPONSE': {
-    primary: { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
-    more: [
-      { status: 'NOT_INTERESTED', label: 'Not Interested' }
-    ]
-  },
-  'NOT_INTERESTED': {
-    primary: { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-    secondary: { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
-    more: [
-      { status: 'INTERESTED', label: 'Interested' }
-    ]
-  },
-  'CONVERTED': {
-    primary: null,
-    secondary: null,
-    more: []
-  }
-};
+function showToast(title, message, type = 'success') {
+  const toast = document.getElementById('toast');
+  const icon = document.getElementById('toastIcon');
+  const titleEl = document.getElementById('toastTitle');
+  const messageEl = document.getElementById('toastMessage');
 
-function getActionButtons(id, status, assignedToId) {
-  const config = actionConfig[status];
-  if (!config) return '';
-
-  // Get current user info
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
-  const isAdminUser = user.role === 'admin';
-  const currentUserId = user._id || user.id;
-
-  // Check if counselor can take action on this enquiry
-  const isUnassigned = !assignedToId;
-  const isOwnEnquiry = assignedToId === currentUserId;
-  const canTakeAction = isAdminUser || isUnassigned || isOwnEnquiry;
-
-  // Admin-only delete - only for enquiries NOT in admission process or converted
-  const isInAdmissionProcess = status === 'ADMISSION_PROCESS' || status === 'CONVERTED';
-  const canDelete = isAdminUser && !isInAdmissionProcess;
-
-  // For CONVERTED status, show no action buttons
-  if (status === 'CONVERTED') {
-    return '';
+  // Set icon based on type
+  if (type === 'success') {
+    icon.className = 'w-8 h-8 bg-green-100 rounded-full flex items-center justify-center';
+    icon.innerHTML = '<i data-lucide="check-circle" class="w-4 h-4 text-green-600"></i>';
+  } else if (type === 'error') {
+    icon.className = 'w-8 h-8 bg-red-100 rounded-full flex items-center justify-center';
+    icon.innerHTML = '<i data-lucide="x-circle" class="w-4 h-4 text-red-600"></i>';
   }
 
-  // If counselor cannot take action, show no buttons
-  if (!canTakeAction) {
-    return '';
-  }
+  titleEl.textContent = title;
+  messageEl.textContent = message;
 
-  // Build buttons
-  let buttonsHtml = '';
-  const dropdownId = `dropdown-${id}`;
+  toast.classList.remove('hidden');
+  lucide.createIcons();
 
-  // Primary button (colored, filled)
-  if (config.primary) {
-    const primary = config.primary;
-    if (primary.isConvert) {
-      buttonsHtml += `
-        <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
-          class="px-2 py-1 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-md text-[11px] font-medium transition-all">
-          ${primary.label}
-        </button>
-      `;
-    } else {
-      buttonsHtml += `
-        <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${primary.status}', '${status}')"
-          class="px-2 py-1 bg-${primary.color}-600 hover:bg-${primary.color}-700 text-white rounded-md text-[11px] font-medium transition-all">
-          ${primary.label}
-        </button>
-      `;
-    }
-  }
+  // Auto hide after 3 seconds
+  setTimeout(() => {
+    hideToast();
+  }, 3000);
+}
 
-  // Secondary button (outline style)
-  if (config.secondary) {
-    const secondary = config.secondary;
-    buttonsHtml += `
-      <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${secondary.status}', '${status}')"
-        class="px-2 py-1 border border-${secondary.color}-400 text-${secondary.color}-700 hover:bg-${secondary.color}-50 rounded-md text-[11px] font-medium transition-all">
-        ${secondary.label}
-      </button>
-    `;
-  }
+function hideToast() {
+  document.getElementById('toast').classList.add('hidden');
+}
 
-  // More dropdown button (if there are more options or delete is available)
-  const hasMoreOptions = config.more && config.more.length > 0;
-  if (hasMoreOptions || canDelete) {
-    let dropdownItems = '';
-    
-    if (hasMoreOptions) {
-      config.more.forEach(item => {
-        dropdownItems += `
-          <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${item.status}', '${status}'); closeActionDropdown('${dropdownId}')"
-            class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-100 rounded-md transition-colors">
-            ${item.label}
-          </button>
-        `;
-      });
-    }
-
-    // Add divider if both more options and delete exist
-    if (hasMoreOptions && canDelete) {
-      dropdownItems += `<div class="h-px bg-gray-200 my-1"></div>`;
-    }
-
-    // Delete option (admin only)
-    if (canDelete) {
-      dropdownItems += `
-        <button onclick="event.stopPropagation(); closeActionDropdown('${dropdownId}'); confirmDeleteEnquiry('${id}')"
-          class="w-full text-left px-3 py-2 text-xs text-red-600 hover:bg-red-50 rounded-md transition-colors flex items-center gap-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
-          Delete
-        </button>
-      `;
-    }
-
-    buttonsHtml += `
-      <div class="relative action-dropdown-container" id="container-${dropdownId}">
-        <button onclick="event.stopPropagation(); toggleActionDropdown('${dropdownId}')"
-          class="px-2 py-1 border border-gray-300 text-gray-600 hover:bg-gray-50 hover:text-gray-800 rounded-md text-[11px] font-medium transition-all flex items-center gap-1">
-          More
-          <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="dropdown-arrow"><path d="m6 9 6 6 6-6"/></svg>
-        </button>
-        <div id="${dropdownId}" class="hidden absolute right-0 mt-1 w-40 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-          ${dropdownItems}
+function showError(message) {
+  // Create error modal
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl mx-4">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <i data-lucide="alert-circle" class="text-red-600 w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800">Error</h3>
+          <p class="text-sm text-red-600 font-medium">${message}</p>
         </div>
       </div>
-    `;
-  }
-
-  return `<div class="flex items-center gap-1 justify-center whitespace-nowrap">${buttonsHtml}</div>`;
+      <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium">
+        Dismiss
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  lucide.createIcons();
 }
-
-// Toggle dropdown visibility
-function toggleActionDropdown(dropdownId) {
-  // Close all other dropdowns first
-  document.querySelectorAll('[id^="dropdown-"]').forEach(el => {
-    if (el.id !== dropdownId) {
-      el.classList.add('hidden');
-    }
-  });
-  document.querySelectorAll('.dropdown-arrow').forEach(arrow => {
-    arrow.style.transform = '';
-  });
-
-  const dropdown = document.getElementById(dropdownId);
-  const arrow = dropdown.previousElementSibling.querySelector('.dropdown-arrow');
-  
-  if (dropdown.classList.contains('hidden')) {
-    dropdown.classList.remove('hidden');
-    if (arrow) arrow.style.transform = 'rotate(180deg)';
-  } else {
-    dropdown.classList.add('hidden');
-    if (arrow) arrow.style.transform = '';
-  }
-}
-
-// Close specific dropdown
-function closeActionDropdown(dropdownId) {
-  const dropdown = document.getElementById(dropdownId);
-  const arrow = dropdown?.previousElementSibling?.querySelector('.dropdown-arrow');
-  if (dropdown) dropdown.classList.add('hidden');
-  if (arrow) arrow.style.transform = '';
-}
-
-// Close all dropdowns when clicking outside
-function closeAllActionDropdowns() {
-  document.querySelectorAll('[id^="dropdown-"]').forEach(el => {
-    el.classList.add('hidden');
-  });
-  document.querySelectorAll('.dropdown-arrow').forEach(arrow => {
-    arrow.style.transform = '';
-  });
-}
-
-/* ======================
-DELETE ENQUIRY
-====================== */
-function confirmDeleteEnquiry(id) {
-  const enquiry = allEnquiries.find(e => e._id === id);
-  const name = enquiry?.name || 'this enquiry';
-
-  showConfirmPopup(
-    'Delete Enquiry?',
-    `Are you sure you want to delete "${name}"?`,
-    'This action cannot be undone. The enquiry will be permanently removed from the system.',
-    () => {
-      executeDeleteEnquiry(id);
-    },
-    () => {
-      // User cancelled, do nothing
-      closeConfirmActionPopup();
-    }
-  );
-}
-
-async function executeDeleteEnquiry(id) {
-  try {
-    await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(id));
-
-    showToast('success', 'Enquiry deleted successfully');
-    closeConfirmActionPopup();
-    loadEnquiries();
-  } catch (err) {
-    handleEnquiryError(err, 'Failed to delete enquiry');
-  }
-}
-
-/* ======================
-EXPORT
-====================== */
-window.openModal = openModal;
-window.closeModal = closeModal;
-window.openConfirmModal = openConfirmModal;
-window.closeConfirmModal = closeConfirmModal;
-window.executeUpdate = executeUpdate;
-window.openCreateModal = openCreateModal;
-window.closeCreateModal = closeCreateModal;
-window.createEnquiry = createEnquiry;
-window.handleCourseChange = handleCourseChange;
-window.changePage = changePage;
-window.goToPage = goToPage;
-window.goToLastPage = goToLastPage;
-window.renderEmptyState = renderEmptyState;
-window.openBulkUploadModal = openBulkUploadModal;
-window.closeBulkUploadModal = closeBulkUploadModal;
-window.submitBulkUpload = submitBulkUpload;
-window.clearSelectedFile = clearSelectedFile;
-window.downloadTemplate = downloadTemplate;
-window.showFormatGuide = showFormatGuide;
-window.openQuickUpdateModal = openQuickUpdateModal;
-window.closeQuickUpdateModal = closeQuickUpdateModal;
-window.submitQuickUpdate = submitQuickUpdate;
-window.getActionButtons = getActionButtons;
-window.confirmDeleteEnquiry = confirmDeleteEnquiry;
-window.executeDeleteEnquiry = executeDeleteEnquiry;
-window.toggleActionDropdown = toggleActionDropdown;
-window.closeActionDropdown = closeActionDropdown;
-window.closeAllActionDropdowns = closeAllActionDropdowns;
-window.sortBy = sortBy;
-
-// Error handling exports
-window.closeErrorPopup = closeErrorPopup;
-window.closeSuccessPopup = closeSuccessPopup;
-window.closeConfirmActionPopup = closeConfirmActionPopup;
-
-// View switcher exports
-window.switchToAll = switchToAll;
-window.switchToMyLeads = switchToMyLeads;
-window.switchToUnassigned = switchToUnassigned;
-window.switchToAllReadonly = switchToAllReadonly;
-
-// User profile exports
-window.updateUserProfileDisplay = updateUserProfileDisplay;
-
-// Logout function
-window.logout = function() {
-  localStorage.clear();
-  window.location.href = 'index.html';
-};

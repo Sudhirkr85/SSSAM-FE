@@ -1,555 +1,435 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enquiries • SSSAM</title>
+  <title>Enquiries • SSSAM CRM</title>
 
-  <!-- Tailwind -->
-
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
-
   <!-- Axios -->
-
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
-
-  <!-- Lucide -->
-
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <style>
+    /* Custom scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f1f1; }
+    ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+    
+    /* Modal animations */
+    .modal-enter { opacity: 0; transform: scale(0.95); }
+    .modal-enter-active { opacity: 1; transform: scale(1); transition: all 0.2s ease-out; }
+    .modal-exit { opacity: 1; transform: scale(1); }
+    .modal-exit-active { opacity: 0; transform: scale(0.95); transition: all 0.2s ease-in; }
+    
+    /* Status badge animations */
+    .status-badge { transition: all 0.2s ease; }
+    .status-badge:hover { transform: scale(1.05); }
+    
+    /* Row hover effect */
+    .enquiry-row { transition: all 0.15s ease; }
+    .enquiry-row:hover { background-color: #f8fafc; }
+    
+    /* Card hover for mobile */
+    .enquiry-card { transition: all 0.2s ease; }
+    .enquiry-card:hover { box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1); }
+  </style>
 </head>
+<body class="bg-gray-50 text-gray-800 font-sans">
 
-<body class="bg-gray-100">
-
-  <div class="flex h-screen">
-
-    <!-- Mobile Menu Toggle Button (visible only on small screens) -->
+  <div class="flex h-screen overflow-hidden">
+    
+    <!-- Mobile Menu Toggle -->
     <button id="mobileMenuToggle" class="lg:hidden fixed top-4 left-4 z-50 w-10 h-10 bg-gray-900 text-white rounded-xl flex items-center justify-center shadow-lg">
       <i data-lucide="menu" class="w-5 h-5"></i>
     </button>
 
-    <!-- Mobile Overlay Backdrop -->
+    <!-- Mobile Overlay -->
     <div id="mobileOverlay" class="lg:hidden fixed inset-0 bg-black/50 z-40 hidden transition-opacity opacity-0"></div>
 
     <!-- SIDEBAR -->
-
     <aside id="sidebar" class="w-64 bg-gray-900 text-gray-300 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50">
-
-
       <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
         <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-          <i data-lucide="building-2" class="text-white"></i>
+          <i data-lucide="graduation-cap" class="text-white w-6 h-6"></i>
         </div>
-        <span class="text-lg font-semibold text-white">SSSAM</span>
+        <div>
+          <span class="text-lg font-semibold text-white">SSSAM</span>
+          <p class="text-xs text-gray-500">CRM System</p>
+        </div>
       </div>
 
       <nav class="flex-1 py-4 space-y-1">
-        <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-          <i data-lucide="phone"></i> Today Calls
+        <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="phone-call" class="w-5 h-5"></i>
+          <span>Today Calls</span>
         </a>
-        <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-          <i data-lucide="layout-dashboard"></i> Dashboard
+        <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+          <span>Dashboard</span>
         </a>
         <a href="enquiries.html" class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
-          <i data-lucide="message-square"></i> Enquiries
+          <i data-lucide="message-square" class="w-5 h-5"></i>
+          <span>Enquiries</span>
         </a>
-        <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-          <i data-lucide="graduation-cap"></i> Admissions
+        <a href="admissions.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="user-check" class="w-5 h-5"></i>
+          <span>Admissions</span>
         </a>
-        <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-          <i data-lucide="wallet"></i> Payments
+        <a href="payments.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="wallet" class="w-5 h-5"></i>
+          <span>Payments</span>
         </a>
-        <a href="reports.html" id="reportsMenu"
-          class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-          <i data-lucide="bar-chart-3"></i> Reports
+        <a href="reports.html" id="reportsMenu" class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
+          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+          <span>Reports</span>
         </a>
       </nav>
 
       <div class="p-4 border-t border-gray-800">
-        <p id="userName" class="text-sm text-white"></p>
+        <p id="userName" class="text-sm text-white font-medium"></p>
         <p id="userRole" class="text-xs text-gray-400"></p>
       </div>
 
-      <!-- Mobile Close Button (visible only on small screens) -->
       <button id="mobileCloseBtn" class="lg:hidden absolute top-4 right-4 w-8 h-8 bg-gray-800 text-gray-400 hover:text-white rounded-lg flex items-center justify-center">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
-
     </aside>
 
-    <!-- MAIN -->
-
-    <div class="flex-1 flex flex-col">
-
-
-      <!-- NAVBAR -->
-      <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
-        <h1 class="text-lg font-semibold">Enquiries</h1>
+    <!-- MAIN CONTENT -->
+    <div class="flex-1 flex flex-col min-w-0">
+      
+      <!-- Header -->
+      <header class="bg-white px-4 lg:px-6 py-4 border-b border-gray-200 flex justify-between items-center lg:pl-6 pl-16">
+        <h1 class="text-xl font-semibold text-gray-800">Enquiries</h1>
 
         <div class="flex items-center gap-3">
-          <button id="bulkUploadBtn" onclick="openBulkUploadModal()" class="hidden bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium">
-            <i data-lucide="upload" class="w-4 h-4"></i> Bulk Upload
+          <button id="bulkUploadBtn" onclick="openBulkUploadModal()" class="hidden bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium text-sm">
+            <i data-lucide="upload" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Bulk Upload</span>
           </button>
-          <button onclick="openCreateModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium shadow-sm">
-            <i data-lucide="plus" class="w-4 h-4"></i> Add Enquiry
+          <button onclick="openAddModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl flex items-center gap-2 transition-colors font-medium text-sm shadow-sm">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Add Enquiry</span>
           </button>
+          
           <!-- User Profile -->
-          <div class="flex items-center gap-2 ml-4 pl-4 border-l border-gray-200">
+          <div class="flex items-center gap-2 ml-2 pl-4 border-l border-gray-200">
             <div class="w-9 h-9 bg-gradient-to-br from-blue-500 to-blue-600 rounded-full flex items-center justify-center text-white font-semibold text-sm">
               <span id="userInitials">-</span>
             </div>
-            <div class="hidden md:block">
-              <p id="userNameDisplay" class="text-sm font-medium text-gray-800">-</p>
-              <p id="userRoleDisplay" class="text-xs text-gray-500">-</p>
-            </div>
-            <button id="logoutBtn" onclick="logout()" class="ml-2 p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
+            <button onclick="logout()" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Logout">
               <i data-lucide="log-out" class="w-5 h-5"></i>
             </button>
           </div>
         </div>
       </header>
 
-      <!-- CONTENT -->
-      <main class="p-6 space-y-6 overflow-y-auto">
-
-        <!-- VIEW TABS (Role Based) -->
-        <div id="viewTabs" class="hidden bg-white p-2 rounded-xl shadow flex gap-2">
-          <button data-view-tab="my-leads" onclick="switchToMyLeads()"
-            class="px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-blue-600 text-white">
-            <i data-lucide="user-check" class="w-4 h-4 inline mr-1"></i> My Leads
+      <!-- Content Area -->
+      <main class="flex-1 overflow-y-auto p-4 lg:p-6">
+        
+        <!-- Tabs -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-1 mb-4 inline-flex">
+          <button id="tabAll" onclick="switchTab('all')" class="px-4 py-2 rounded-lg font-medium text-sm transition-all bg-blue-600 text-white">
+            All Enquiries
           </button>
-          <button data-view-tab="unassigned" onclick="switchToUnassigned()"
-            class="px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
-            <i data-lucide="users" class="w-4 h-4 inline mr-1"></i> Unassigned
-          </button>
-          <button data-view-tab="all-readonly" onclick="switchToAllReadonly()"
-            class="hidden px-4 py-2 rounded-lg font-medium text-sm transition-colors bg-gray-100 text-gray-600 hover:bg-gray-200">
-            <i data-lucide="eye" class="w-4 h-4 inline mr-1"></i> All (Read-Only)
+          <button id="tabToday" onclick="switchTab('today')" class="px-4 py-2 rounded-lg font-medium text-sm transition-all text-gray-600 hover:bg-gray-100">
+            <span class="flex items-center gap-2">
+              <i data-lucide="phone-call" class="w-4 h-4"></i>
+              Today Calls
+            </span>
           </button>
         </div>
 
-        <!-- FILTERS -->
-        <div class="bg-white p-4 rounded-xl shadow flex flex-wrap gap-4 items-center">
+        <!-- Filters Bar -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-4">
+          <div class="flex flex-wrap gap-3 items-center">
+            <!-- Search -->
+            <div class="relative flex-1 min-w-[200px] max-w-md">
+              <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"></i>
+              <input 
+                id="searchInput" 
+                type="text" 
+                placeholder="Search name, mobile or email..."
+                class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+              >
+            </div>
 
-          <div class="relative">
-            <i data-lucide="search" class="absolute left-3 top-2.5 text-gray-400 w-5 h-5"></i>
-            <input id="searchInput" placeholder="Search name, mobile or email..."
-              class="pl-10 pr-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all w-72">
+            <!-- Status Filter -->
+            <div class="relative">
+              <select 
+                id="statusFilter"
+                class="pl-4 pr-10 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer"
+              >
+                <option value="NEW">New Lead</option>
+                <option value="">All Status</option>
+                <option value="CONTACTED">Contacted</option>
+                <option value="NO_RESPONSE">Call Not Picked</option>
+                <option value="FOLLOW_UP">Call Back</option>
+                <option value="INTERESTED">Interested</option>
+                <option value="NOT_INTERESTED">Not Interested</option>
+                <option value="ADMISSION_PROCESS">Admission In Progress</option>
+                <option value="CONVERTED">Admission Done</option>
+              </select>
+              <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
+            </div>
+
+            <!-- Reset Button -->
+            <button onclick="resetFilters()" class="px-3 py-2.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-xl transition-colors text-sm flex items-center gap-1.5">
+              <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+              Reset
+            </button>
           </div>
-
-          <select id="statusFilter" class="px-4 py-2 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all bg-white">
-            <option value="NEW">New</option>
-            <option value="">All Status</option>
-            <option value="CONTACTED">Contacted</option>
-            <option value="NO_RESPONSE">No Response</option>
-            <option value="FOLLOW_UP">Follow Up</option>
-            <option value="INTERESTED">Interested</option>
-            <option value="NOT_INTERESTED">Not Interested</option>
-            <option value="ADMISSION_PROCESS">Admission Process</option>
-            <option value="CONVERTED">Converted</option>
-          </select>
-
-          <button id="resetFilters" class="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium flex items-center gap-2">
-            <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
-            Reset
-          </button>
-
         </div>
 
-        <!-- TABLE -->
-        <div class="bg-white rounded-xl shadow overflow-hidden">
-
+        <!-- Desktop Table -->
+        <div class="hidden lg:block bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
           <table class="w-full text-sm">
-
-            <thead class="bg-gray-50 text-gray-600 font-medium">
+            <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th class="px-6 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors select-none" onclick="sortBy('name')">
-                  <div class="flex items-center gap-1">
-                    Name
-                    <span id="sort-name" class="sort-icon inline-block w-3 h-3 ml-1 text-gray-400 transition-transform">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
-                    </span>
-                  </div>
-                </th>
-                <th class="px-6 py-3 cursor-pointer hover:bg-gray-100 transition-colors select-none" onclick="sortBy('courseInterested')">
-                  <div class="flex items-center justify-center gap-1">
-                    Course
-                    <span id="sort-courseInterested" class="sort-icon inline-block w-3 h-3 ml-1 text-gray-400 transition-transform">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
-                    </span>
-                  </div>
-                </th>
-                <th class="px-6 py-3 cursor-pointer hover:bg-gray-100 transition-colors select-none" onclick="sortBy('assignedTo')">
-                  <div class="flex items-center justify-center gap-1">
-                    Counselor
-                    <span id="sort-assignedTo" class="sort-icon inline-block w-3 h-3 ml-1 text-gray-400 transition-transform">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
-                    </span>
-                  </div>
-                </th>
-                <th class="px-6 py-3 cursor-pointer hover:bg-gray-100 transition-colors select-none" onclick="sortBy('status')">
-                  <div class="flex items-center justify-center gap-1">
-                    Status
-                    <span id="sort-status" class="sort-icon inline-block w-3 h-3 ml-1 text-gray-400 transition-transform">
-                      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 15 5 5 5-5"/><path d="m7 9 5-5 5 5"/></svg>
-                    </span>
-                  </div>
-                </th>
-                <th class="px-6 py-3 text-center">Actions</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Student Details</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600">Course</th>
+                <th class="px-4 py-3 text-center font-medium text-gray-600">Status</th>
+                <th class="px-4 py-3 text-center font-medium text-gray-600">Counselor</th>
+                <th class="px-4 py-3 text-center font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
-
-            <tbody id="enquiryTable">
+            <tbody id="enquiriesTableBody">
+              <!-- Loading State -->
               <tr>
                 <td colspan="5" class="text-center py-12">
                   <div class="flex flex-col items-center gap-3">
-                    <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
-                      <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>
-                    </div>
-                    <p class="text-gray-500">Loading enquiries...</p>
+                    <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+                    <p class="text-gray-500 text-sm">Loading enquiries...</p>
                   </div>
                 </td>
               </tr>
             </tbody>
-
           </table>
 
-          <!-- PAGINATION -->
-          <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
-
+          <!-- Pagination -->
+          <div class="border-t border-gray-200 px-4 py-3 flex items-center justify-between">
             <div class="text-sm text-gray-500">
-              Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span> entries
+              Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span>
             </div>
-
-            <div class="flex items-center gap-2">
-              <button id="firstPage" onclick="goToPage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+            <div class="flex items-center gap-1">
+              <button id="firstPage" onclick="goToPage(1)" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled>
                 <i data-lucide="chevrons-left" class="w-4 h-4"></i>
               </button>
-              <button id="prevPage" onclick="changePage(-1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              <button id="prevPage" onclick="changePage(-1)" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled>
                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
               </button>
-
-              <div id="pageNumbers" class="flex items-center gap-1">
-                <span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
+              <div id="pageNumbers" class="flex items-center gap-1 px-2">
+                <span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
               </div>
-
-              <button id="nextPage" onclick="changePage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              <button id="nextPage" onclick="changePage(1)" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled>
                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
               </button>
-              <button id="lastPage" onclick="goToLastPage()" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+              <button id="lastPage" onclick="goToLastPage()" class="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed" disabled>
                 <i data-lucide="chevrons-right" class="w-4 h-4"></i>
               </button>
             </div>
-
           </div>
+        </div>
 
+        <!-- Mobile Cards -->
+        <div id="mobileCards" class="lg:hidden space-y-3">
+          <!-- Loading State -->
+          <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+            <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+            <p class="text-gray-500 text-sm">Loading enquiries...</p>
+          </div>
         </div>
 
       </main>
-
     </div>
-
   </div>
 
-  <!-- STATUS MODAL -->
-  <div id="statusModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-    <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="statusModalContent">
-
+  <!-- ADD ENQUIRY MODAL -->
+  <div id="addModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl transform scale-95 transition-transform duration-200" id="addModalContent">
+      
       <!-- Header -->
-      <div class="flex items-center gap-3 mb-6">
-        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-          <i data-lucide="refresh-cw" class="text-white w-5 h-5"></i>
-        </div>
-        <h2 class="text-xl font-semibold text-gray-800">Update Status</h2>
-      </div>
-
-      <!-- Form -->
-      <div class="space-y-5">
-
-        <!-- Status Dropdown -->
-        <div class="relative">
-          <select id="statusSelect" required
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white">
-            <option value="NEW" data-color="gray">New</option>
-            <option value="CONTACTED" data-color="blue">Contacted</option>
-            <option value="NO_RESPONSE" data-color="red">No Response</option>
-            <option value="FOLLOW_UP" data-color="yellow">Follow Up</option>
-            <option value="INTERESTED" data-color="green">Interested</option>
-            <option value="NOT_INTERESTED" data-color="gray">Not Interested</option>
-            <option value="ADMISSION_PROCESS" data-color="purple">Admission Process</option>
-            <option value="CONVERTED" data-color="green">Converted</option>
-          </select>
-          <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
-          <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-            New Status <span class="text-red-500">*</span>
-          </label>
-        </div>
-
-        <!-- Note (Required) -->
-        <div class="relative">
-          <textarea id="statusNote" required rows="3"
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
-            placeholder="Add note"></textarea>
-          <label for="statusNote"
-            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
-            Add Note <span class="text-red-500">*</span>
-          </label>
-          <p id="statusNoteError" class="hidden text-red-500 text-xs mt-1 ml-1">Note is required</p>
-        </div>
-
-        <!-- Follow-up Date -->
-        <div class="relative">
-          <input type="date" id="followUpDate" min="2022-01-01"
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
-          <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-            Follow-up Date (Optional)
-          </label>
-        </div>
-
-      </div>
-
-      <!-- Actions -->
-      <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-        <button onclick="closeModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
-          Cancel
-        </button>
-        <button onclick="openConfirmModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
-          <i data-lucide="check" class="w-4 h-4"></i>
-          Update Status
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- CUSTOM CONFIRM MODAL -->
-  <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-[60] opacity-0 transition-opacity duration-300">
-    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="confirmModalContent">
-
-      <div class="flex items-center gap-4 mb-4">
-        <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <i data-lucide="alert-triangle" class="text-amber-600 w-6 h-6"></i>
-        </div>
-        <div>
-          <h3 class="text-lg font-semibold text-gray-800">Confirm Update</h3>
-          <p class="text-sm text-gray-500">Are you sure you want to update this status?</p>
-        </div>
-      </div>
-
-      <div class="bg-gray-50 rounded-lg p-3 mb-5 text-sm">
-        <p><span class="text-gray-500">Status:</span> <span id="confirmStatusText" class="font-medium text-gray-800"></span></p>
-        <p><span class="text-gray-500">Note:</span> <span id="confirmNoteText" class="font-medium text-gray-800 line-clamp-2"></span></p>
-      </div>
-
-      <div class="flex gap-3">
-        <button onclick="closeConfirmModal()" class="flex-1 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
-          Cancel
-        </button>
-        <button onclick="executeUpdate()" class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all font-medium">
-          Yes, Update
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- QUICK UPDATE MODAL (Direct Notes) -->
-  <div id="quickUpdateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-    <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="quickUpdateModalContent">
-
-      <!-- Header -->
-      <div class="mb-6">
-        <h2 class="text-xl font-semibold text-gray-800">Quick Update</h2>
-        <p class="text-sm text-gray-500 mt-1">Status: <span id="quickCurrentStatus" class="font-medium text-gray-700">-</span></p>
-      </div>
-
-      <!-- Error Message -->
-      <div id="quickErrorMessage" class="hidden bg-red-50 border border-red-200 rounded-xl p-3 mb-4">
-        <p class="text-red-600 text-sm flex items-center gap-2">
-          <span class="font-medium">Error:</span>
-          <span id="quickErrorText">Something went wrong</span>
-        </p>
-      </div>
-
-      <!-- Target Status (Hidden) -->
-      <input type="hidden" id="quickTargetStatus" value="">
-
-      <!-- Form -->
-      <div class="space-y-5">
-
-        <!-- Note (Required) -->
-        <div class="relative">
-          <textarea id="quickNote" required rows="3"
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
-            placeholder="Add note"></textarea>
-          <label for="quickNote"
-            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
-            Add Note <span class="text-red-500">*</span>
-          </label>
-          <p id="quickNoteError" class="hidden text-red-500 text-xs mt-1 ml-1">Note is required</p>
-        </div>
-
-        <!-- Follow-up Date (Only for FOLLOW_UP status) -->
-        <div id="quickFollowUpDateContainer" class="relative hidden">
-          <input type="date" id="quickFollowUpDate" min="2022-01-01"
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
-          <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-            Follow-up Date <span class="text-red-500">*</span>
-          </label>
-        </div>
-
-      </div>
-
-      <!-- Actions -->
-      <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-        <button onclick="closeQuickUpdateModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
-          Cancel
-        </button>
-        <button onclick="submitQuickUpdate()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium">
-          Update
-        </button>
-      </div>
-
-    </div>
-  </div>
-
-  <!-- CREATE MODAL -->
-  <div id="createModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-    <div class="bg-white rounded-2xl w-full max-w-md p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="createModalContent">
-
-      <!-- Header -->
-      <div class="flex items-center gap-3 mb-6">
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
         <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
           <i data-lucide="user-plus" class="text-white w-5 h-5"></i>
         </div>
-        <h2 class="text-xl font-semibold text-gray-800">Add Enquiry</h2>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Add New Enquiry</h2>
+          <p class="text-sm text-gray-500">Enter student details below</p>
+        </div>
       </div>
 
       <!-- Form -->
-      <form id="createEnquiryForm" class="space-y-5">
-
+      <div class="p-6 space-y-4">
+        
         <!-- Name -->
-        <div class="relative">
-          <input type="text" id="name" required
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-            placeholder="Name">
-          <label for="name"
-            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
             Full Name <span class="text-red-500">*</span>
           </label>
-          <p id="nameError" class="hidden text-red-500 text-xs mt-1 ml-1">Name is required</p>
+          <input 
+            type="text" 
+            id="addName" 
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+            placeholder="Enter student name"
+          >
+          <p id="addNameError" class="hidden text-red-500 text-xs mt-1">Name is required</p>
         </div>
 
-        <!-- Mobile with +91 -->
-        <div class="relative">
-          <div class="flex">
-            <span class="inline-flex items-center px-4 py-3 rounded-l-xl border-2 border-r-0 border-gray-200 bg-gray-50 text-gray-600 font-medium">
-              +91
-            </span>
-            <input type="tel" id="mobile" required maxlength="10"
-              class="peer flex-1 px-4 py-3 rounded-r-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-              placeholder="Mobile">
-          </div>
-          <label for="mobile"
-            class="absolute left-[4.5rem] -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
+        <!-- Mobile -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
             Mobile Number <span class="text-red-500">*</span>
           </label>
-          <p id="mobileError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter valid 10-digit number</p>
+          <div class="flex">
+            <span class="inline-flex items-center px-4 py-2.5 rounded-l-xl border border-r-0 border-gray-200 bg-gray-100 text-gray-700 font-medium text-sm select-none">
+              +91
+            </span>
+            <input 
+              type="tel" 
+              id="addMobile" 
+              maxlength="11"
+              inputmode="numeric"
+              autocomplete="off"
+              class="flex-1 px-4 py-2.5 border border-gray-200 rounded-r-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm tracking-wider"
+              placeholder="98765 43210"
+            >
+          </div>
+          <p id="addMobileError" class="hidden text-red-500 text-xs mt-1">Enter valid 10-digit mobile number</p>
         </div>
 
         <!-- Email -->
-        <div class="relative">
-          <input type="email" id="email"
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-            placeholder="Email">
-          <label for="email"
-            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
-            Email (Optional)
-          </label>
-          <p id="emailError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter valid email</p>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">Email (Optional)</label>
+          <input 
+            type="email" 
+            id="addEmail" 
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+            placeholder="email@example.com"
+          >
+          <p id="addEmailError" class="hidden text-red-500 text-xs mt-1">Enter valid email</p>
         </div>
 
-        <!-- Course Dropdown -->
-        <div class="relative">
-          <select id="course" required
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white">
-            <option value="">Select Course</option>
-            <option value="Data Science">Data Science</option>
-            <option value="Python Programming">Python Programming</option>
-            <option value="Full Stack Web Development">Full Stack Web Development</option>
-            <option value="Web Designing">Web Designing</option>
-            <option value="Digital Marketing">Digital Marketing</option>
-            <option value="Cyber Security">Cyber Security</option>
-            <option value="Ethical Hacking">Ethical Hacking</option>
-            <option value="Machine Learning">Machine Learning</option>
-            <option value="Artificial Intelligence">Artificial Intelligence</option>
-            <option value="Java Programming">Java Programming</option>
-            <option value="C Programming">C Programming</option>
-            <option value="C++ Programming">C++ Programming</option>
-            <option value="PHP Development">PHP Development</option>
-            <option value="WordPress Development">WordPress Development</option>
-            <option value="Graphic Designing">Graphic Designing</option>
-            <option value="Video Editing">Video Editing</option>
-            <option value="Tally ERP / Accounting">Tally ERP / Accounting</option>
-            <option value="GST (Goods and Services Tax)">GST (Goods and Services Tax)</option>
-            <option value="Advanced Excel">Advanced Excel</option>
-            <option value="Basic Computer Course">Basic Computer Course</option>
-            <option value="MS Office (Word, Excel, PowerPoint)">MS Office (Word, Excel, PowerPoint)</option>
-            <option value="Typing Course">Typing Course</option>
-            <option value="Hardware & Networking">Hardware & Networking</option>
-            <option value="Computer Teacher Training Course (CTTC)">Computer Teacher Training Course (CTTC)</option>
-            <option value="Other">Other</option>
-          </select>
-          <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
-          <label for="course"
-            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-focus:text-blue-600">
-            Course <span class="text-red-500">*</span>
+        <!-- Course -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Course Interested <span class="text-red-500">*</span>
           </label>
-          <p id="courseError" class="hidden text-red-500 text-xs mt-1 ml-1">Select a course</p>
+          <div class="relative">
+            <select 
+              id="addCourse" 
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer"
+            >
+              <option value="">Select Course</option>
+              <option value="Data Science">Data Science</option>
+              <option value="Python Programming">Python Programming</option>
+              <option value="Full Stack Web Development">Full Stack Web Development</option>
+              <option value="Web Designing">Web Designing</option>
+              <option value="Digital Marketing">Digital Marketing</option>
+              <option value="Cyber Security">Cyber Security</option>
+              <option value="Ethical Hacking">Ethical Hacking</option>
+              <option value="Machine Learning">Machine Learning</option>
+              <option value="Artificial Intelligence">Artificial Intelligence</option>
+              <option value="Java Programming">Java Programming</option>
+              <option value="C Programming">C Programming</option>
+              <option value="C++ Programming">C++ Programming</option>
+              <option value="PHP Development">PHP Development</option>
+              <option value="WordPress Development">WordPress Development</option>
+              <option value="Graphic Designing">Graphic Designing</option>
+              <option value="Video Editing">Video Editing</option>
+              <option value="Tally ERP / Accounting">Tally ERP / Accounting</option>
+              <option value="GST (Goods and Services Tax)">GST (Goods and Services Tax)</option>
+              <option value="Advanced Excel">Advanced Excel</option>
+              <option value="Basic Computer Course">Basic Computer Course</option>
+              <option value="MS Office (Word, Excel, PowerPoint)">MS Office (Word, Excel, PowerPoint)</option>
+              <option value="Typing Course">Typing Course</option>
+              <option value="Hardware & Networking">Hardware & Networking</option>
+              <option value="Computer Teacher Training Course (CTTC)">Computer Teacher Training Course (CTTC)</option>
+              <option value="Other">Other</option>
+            </select>
+            <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
+          </div>
+          <p id="addCourseError" class="hidden text-red-500 text-xs mt-1">Please select a course</p>
         </div>
 
-        <!-- Custom Course Input (shown when Other selected) -->
-        <div id="customCourseContainer" class="hidden relative">
-          <input type="text" id="customCourse"
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all"
-            placeholder="Enter custom course">
-          <label for="customCourse"
-            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
-            Enter Custom Course <span class="text-red-500">*</span>
+        <!-- Custom Course Input (hidden by default) -->
+        <div id="customCourseContainer" class="hidden">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Custom Course <span class="text-red-500">*</span>
           </label>
-          <p id="customCourseError" class="hidden text-red-500 text-xs mt-1 ml-1">Enter course name</p>
+          <input 
+            type="text" 
+            id="addCustomCourse" 
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+            placeholder="Enter course name"
+          >
         </div>
 
-        <!-- Source Dropdown -->
-        <div class="relative">
-          <select id="source" required
-            class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all appearance-none bg-white">
-            <option value="walk_in">Walk In</option>
-            <option value="phone_call">Phone Call</option>
-            <option value="website">Website</option>
-            <option value="referral">Referral</option>
-            <option value="social_media">Social Media</option>
-            <option value="advertisement">Advertisement</option>
-            <option value="other">Other</option>
-          </select>
-          <i data-lucide="chevron-down" class="absolute right-4 top-3.5 text-gray-400 pointer-events-none w-5 h-5"></i>
-          <label for="source"
-            class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-focus:text-blue-600">
+        <!-- Source -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
             Source <span class="text-red-500">*</span>
           </label>
-          <p id="sourceError" class="hidden text-red-500 text-xs mt-1 ml-1">Select a source</p>
+          <div class="relative">
+            <select 
+              id="addSource" 
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer"
+            >
+              <option value="">Select Source</option>
+              <option value="walk_in">Walk In</option>
+              <option value="phone_call">Phone Call</option>
+              <option value="website">Website</option>
+              <option value="referral">Referral</option>
+              <option value="social_media">Social Media</option>
+              <option value="advertisement">Advertisement</option>
+              <option value="other">Other</option>
+            </select>
+            <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
+          </div>
+          <p id="addSourceError" class="hidden text-red-500 text-xs mt-1">Please select a source</p>
         </div>
 
-      </form>
+        <!-- Referral Fields (hidden by default) -->
+        <div id="referralContainer" class="hidden space-y-4 border-t border-gray-100 pt-4">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+              Reference Name <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="text" 
+              id="addRefName" 
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+              placeholder="Who referred this student?"
+            >
+            <p id="addRefNameError" class="hidden text-red-500 text-xs mt-1">Reference name is required</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+              Reference Contact <span class="text-red-500">*</span>
+            </label>
+            <input 
+              type="tel" 
+              id="addRefContact" 
+              maxlength="10"
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+              placeholder="Referrer's mobile number"
+            >
+            <p id="addRefContactError" class="hidden text-red-500 text-xs mt-1">Valid 10-digit number required</p>
+          </div>
+        </div>
 
-      <!-- Actions -->
-      <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-        <button onclick="closeCreateModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closeAddModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
           Cancel
         </button>
-        <button onclick="createEnquiry()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+        <button onclick="submitAddEnquiry()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/25 transition-all font-medium text-sm flex items-center gap-2">
           <i data-lucide="check" class="w-4 h-4"></i>
           Save Enquiry
         </button>
@@ -558,110 +438,197 @@
     </div>
   </div>
 
-  <!-- BULK UPLOAD MODAL -->
-  <div id="bulkUploadModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300">
-    <div class="bg-white rounded-2xl w-full max-w-lg p-8 shadow-2xl transform scale-95 transition-transform duration-300" id="bulkUploadModalContent">
-
+  <!-- UPDATE STATUS MODAL -->
+  <div id="updateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-2xl w-full max-w-md mx-4 shadow-2xl transform scale-95 transition-transform duration-200" id="updateModalContent">
+      
       <!-- Header -->
-      <div class="flex items-center gap-3 mb-6">
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
         <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="refresh-cw" class="text-white w-5 h-5"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Update Status</h2>
+          <p class="text-sm text-gray-500">Update enquiry progress</p>
+        </div>
+      </div>
+
+      <!-- Form -->
+      <div class="p-6 space-y-4">
+        
+        <!-- Hidden enquiry ID -->
+        <input type="hidden" id="updateEnquiryId">
+
+        <!-- Status -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Status <span class="text-red-500">*</span>
+          </label>
+          <div class="relative">
+            <select 
+              id="updateStatus" 
+              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer"
+            >
+              <option value="NEW">New Lead</option>
+              <option value="CONTACTED">Contacted</option>
+              <option value="NO_RESPONSE">Call Not Picked</option>
+              <option value="FOLLOW_UP">Call Back</option>
+              <option value="INTERESTED">Interested</option>
+              <option value="NOT_INTERESTED">Not Interested</option>
+              <option value="ADMISSION_PROCESS">Admission In Progress</option>
+              <option value="CONVERTED">Admission Done</option>
+            </select>
+            <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
+          </div>
+        </div>
+
+        <!-- Note -->
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Note <span class="text-red-500">*</span>
+          </label>
+          <textarea 
+            id="updateNote" 
+            rows="3"
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm resize-none"
+            placeholder="Add call notes or remarks..."
+          ></textarea>
+          <p id="updateNoteError" class="hidden text-red-500 text-xs mt-1">Note is required</p>
+        </div>
+
+        <!-- Follow-up Date (required for FOLLOW_UP status) -->
+        <div id="followUpDateContainer">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Follow-up Date <span id="followUpRequired" class="text-red-500 hidden">*</span>
+          </label>
+          <input 
+            type="date" 
+            id="updateFollowUpDate" 
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+          >
+          <p id="followUpError" class="hidden text-red-500 text-xs mt-1">Follow-up date is required for "Call Back" status</p>
+        </div>
+
+      </div>
+
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closeUpdateModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
+          Cancel
+        </button>
+        <button onclick="submitUpdate()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/25 transition-all font-medium text-sm flex items-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          Update Status
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- BULK UPLOAD MODAL -->
+  <div id="bulkUploadModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200">
+    <div class="bg-white rounded-2xl w-full max-w-lg mx-4 shadow-2xl transform scale-95 transition-transform duration-200" id="bulkUploadModalContent">
+      
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+        <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
           <i data-lucide="upload-cloud" class="text-white w-5 h-5"></i>
         </div>
         <div>
-          <h2 class="text-xl font-semibold text-gray-800">Bulk Upload Enquiries</h2>
-          <p class="text-sm text-gray-500">Upload CSV or Excel file with enquiry data</p>
+          <h2 class="text-lg font-semibold text-gray-800">Bulk Upload</h2>
+          <p class="text-sm text-gray-500">Upload multiple enquiries via CSV/Excel</p>
         </div>
       </div>
 
-      <!-- Upload Area -->
-      <div id="uploadArea" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-indigo-500 hover:bg-indigo-50/50 transition-all cursor-pointer">
-        <input type="file" id="bulkFileInput" accept=".csv,.xlsx,.xls" class="hidden">
-        <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i data-lucide="file-spreadsheet" class="w-8 h-8 text-indigo-600"></i>
-        </div>
-        <p class="text-gray-700 font-medium mb-1">Click to upload or drag & drop</p>
-        <p class="text-gray-500 text-sm">CSV, Excel files up to 5MB</p>
-      </div>
-
-      <!-- Template Download -->
-      <div class="flex items-center justify-center gap-4 mt-4 text-sm">
-        <button onclick="downloadTemplate()" class="text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1">
-          <i data-lucide="download" class="w-4 h-4"></i>
-          Download Template
-        </button>
-        <span class="text-gray-300">|</span>
-        <button onclick="showFormatGuide()" class="text-gray-500 hover:text-gray-700 font-medium flex items-center gap-1">
-          <i data-lucide="help-circle" class="w-4 h-4"></i>
-          Format Guide
-        </button>
-      </div>
-
-      <!-- Selected File Preview -->
-      <div id="selectedFileArea" class="hidden mt-4 bg-gray-50 rounded-xl p-4">
-        <div class="flex items-center justify-between">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-              <i data-lucide="file-check" class="w-5 h-5 text-green-600"></i>
-            </div>
-            <div>
-              <p id="selectedFileName" class="font-medium text-gray-800 text-sm"></p>
-              <p id="selectedFileSize" class="text-xs text-gray-500"></p>
-            </div>
+      <!-- Content -->
+      <div class="p-6 space-y-4">
+        
+        <!-- Upload Area -->
+        <div id="uploadArea" class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-emerald-500 hover:bg-emerald-50/50 transition-all cursor-pointer">
+          <input type="file" id="bulkFileInput" accept=".csv,.xlsx,.xls" class="hidden">
+          <div class="w-14 h-14 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-3">
+            <i data-lucide="file-spreadsheet" class="w-7 h-7 text-emerald-600"></i>
           </div>
-          <button onclick="clearSelectedFile()" class="text-gray-400 hover:text-red-500 transition-colors">
-            <i data-lucide="x" class="w-5 h-5"></i>
+          <p class="text-gray-700 font-medium mb-1">Click to upload or drag & drop</p>
+          <p class="text-gray-500 text-sm">CSV, Excel files up to 5MB</p>
+        </div>
+
+        <!-- Template Download -->
+        <div class="flex items-center justify-center gap-4 text-sm">
+          <button onclick="downloadTemplate()" class="text-emerald-600 hover:text-emerald-700 font-medium flex items-center gap-1.5">
+            <i data-lucide="download" class="w-4 h-4"></i>
+            Download Template
           </button>
         </div>
+
+        <!-- Selected File -->
+        <div id="selectedFileArea" class="hidden bg-gray-50 rounded-xl p-3">
+          <div class="flex items-center justify-between">
+            <div class="flex items-center gap-3">
+              <div class="w-9 h-9 bg-green-100 rounded-lg flex items-center justify-center">
+                <i data-lucide="file-check" class="w-4 h-4 text-green-600"></i>
+              </div>
+              <div>
+                <p id="selectedFileName" class="font-medium text-gray-800 text-sm"></p>
+                <p id="selectedFileSize" class="text-xs text-gray-500"></p>
+              </div>
+            </div>
+            <button onclick="clearSelectedFile()" class="text-gray-400 hover:text-red-500 transition-colors p-1">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Upload Progress -->
+        <div id="uploadProgressArea" class="hidden">
+          <div class="flex items-center justify-between mb-2">
+            <span class="text-sm font-medium text-gray-700">Uploading...</span>
+            <span id="uploadProgressPercent" class="text-sm text-gray-500">0%</span>
+          </div>
+          <div class="w-full bg-gray-200 rounded-full h-2">
+            <div id="uploadProgressBar" class="bg-emerald-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- Results -->
+        <div id="uploadResultsArea" class="hidden bg-gray-50 rounded-xl p-4">
+          <div class="flex items-center gap-3 mb-3">
+            <div id="resultIcon" class="w-9 h-9 rounded-full flex items-center justify-center">
+              <i data-lucide="check-circle" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <p id="resultTitle" class="font-medium text-gray-800 text-sm"></p>
+              <p id="resultSubtitle" class="text-xs text-gray-500"></p>
+            </div>
+          </div>
+          <div class="grid grid-cols-3 gap-2 text-center">
+            <div class="bg-white rounded-lg p-2">
+              <p id="successCount" class="text-lg font-bold text-green-600">0</p>
+              <p class="text-xs text-gray-500">Success</p>
+            </div>
+            <div class="bg-white rounded-lg p-2">
+              <p id="errorCount" class="text-lg font-bold text-red-600">0</p>
+              <p class="text-xs text-gray-500">Failed</p>
+            </div>
+            <div class="bg-white rounded-lg p-2">
+              <p id="totalCount" class="text-lg font-bold text-gray-700">0</p>
+              <p class="text-xs text-gray-500">Total</p>
+            </div>
+          </div>
+          <div id="errorDetails" class="hidden mt-3">
+            <p class="font-medium text-gray-700 mb-2 text-sm">Errors:</p>
+            <ul id="errorList" class="space-y-1 text-red-600 text-sm max-h-32 overflow-y-auto"></ul>
+          </div>
+        </div>
+
       </div>
 
-      <!-- Progress Area -->
-      <div id="uploadProgressArea" class="hidden mt-4">
-        <div class="flex items-center justify-between mb-2">
-          <span class="text-sm font-medium text-gray-700">Uploading...</span>
-          <span id="uploadProgressPercent" class="text-sm text-gray-500">0%</span>
-        </div>
-        <div class="w-full bg-gray-200 rounded-full h-2">
-          <div id="uploadProgressBar" class="bg-indigo-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
-        </div>
-      </div>
-
-      <!-- Results Area -->
-      <div id="uploadResultsArea" class="hidden mt-4 bg-gray-50 rounded-xl p-4">
-        <div class="flex items-center gap-3 mb-3">
-          <div id="resultIcon" class="w-10 h-10 rounded-full flex items-center justify-center">
-            <i data-lucide="check-circle" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <p id="resultTitle" class="font-medium text-gray-800"></p>
-            <p id="resultSubtitle" class="text-sm text-gray-500"></p>
-          </div>
-        </div>
-        <div class="grid grid-cols-3 gap-2 text-center">
-          <div class="bg-white rounded-lg p-2">
-            <p id="successCount" class="text-lg font-bold text-green-600">0</p>
-            <p class="text-xs text-gray-500">Success</p>
-          </div>
-          <div class="bg-white rounded-lg p-2">
-            <p id="errorCount" class="text-lg font-bold text-red-600">0</p>
-            <p class="text-xs text-gray-500">Failed</p>
-          </div>
-          <div class="bg-white rounded-lg p-2">
-            <p id="totalCount" class="text-lg font-bold text-gray-700">0</p>
-            <p class="text-xs text-gray-500">Total</p>
-          </div>
-        </div>
-        <div id="errorDetails" class="hidden mt-3 text-sm">
-          <p class="font-medium text-gray-700 mb-2">Errors:</p>
-          <ul id="errorList" class="space-y-1 text-red-600 max-h-32 overflow-y-auto"></ul>
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-        <button onclick="closeBulkUploadModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+      <!-- Footer -->
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closeBulkUploadModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
           Close
         </button>
-        <button id="uploadButton" onclick="submitBulkUpload()" disabled class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-indigo-600/30 transition-all font-medium flex items-center gap-2">
+        <button id="uploadButton" onclick="submitBulkUpload()" disabled class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-xl shadow-lg shadow-emerald-600/25 transition-all font-medium text-sm flex items-center gap-2">
           <i data-lucide="upload" class="w-4 h-4"></i>
           Upload File
         </button>
@@ -670,28 +637,34 @@
     </div>
   </div>
 
-  <!-- TOAST -->
+  <!-- TOAST NOTIFICATION -->
+  <div id="toast" class="fixed top-4 right-4 hidden z-50">
+    <div class="bg-white rounded-xl shadow-lg border border-gray-200 p-4 flex items-center gap-3 min-w-[300px]">
+      <div id="toastIcon" class="w-8 h-8 rounded-full flex items-center justify-center">
+        <i data-lucide="check-circle" class="w-4 h-4"></i>
+      </div>
+      <div class="flex-1">
+        <p id="toastTitle" class="font-medium text-gray-800 text-sm">Success</p>
+        <p id="toastMessage" class="text-gray-500 text-xs">Operation completed</p>
+      </div>
+      <button onclick="hideToast()" class="text-gray-400 hover:text-gray-600">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </div>
 
-  <div id="toast" class="fixed top-4 right-4 hidden"></div>
-
-  <!-- JS -->
-
+  <!-- Scripts -->
   <script src="js/api.js"></script>
-
-  <script src="js/ui.js"></script>
-
-  <script src="js/auth.js"></script>
-
   <script src="js/enquiry.js"></script>
-
   <script>
+    // Initialize Lucide icons
     lucide.createIcons();
-
-    // Set minimum date to today for all date inputs (prevent past dates)
+    
+    // Set minimum date to today for follow-up date inputs
     const today = new Date().toISOString().split('T')[0];
-    document.querySelectorAll('input[type="date"]').forEach(dateInput => dateInput.min = today);
+    document.getElementById('updateFollowUpDate').min = today;
 
-    // Mobile Menu Toggle
+    // Mobile menu functionality
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');
     const mobileCloseBtn = document.getElementById('mobileCloseBtn');
     const sidebar = document.getElementById('sidebar');
@@ -715,12 +688,22 @@
     mobileCloseBtn?.addEventListener('click', closeMobileMenu);
     mobileOverlay?.addEventListener('click', closeMobileMenu);
 
-    // Close on escape key
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') closeMobileMenu();
+      if (e.key === 'Escape') {
+        closeMobileMenu();
+        closeAddModal();
+        closeUpdateModal();
+        closeBulkUploadModal();
+      }
     });
+
+    // Logout function
+    function logout() {
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      window.location.href = 'index.html';
+    }
   </script>
 
 </body>
-
 </html>
