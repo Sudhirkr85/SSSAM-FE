@@ -5,6 +5,10 @@ let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
 
+// Sorting state
+let sortColumn = null;
+let sortDirection = 'asc'; // 'asc' or 'desc'
+
 // Payment mode badge styles (match API uppercase format)
 const paymentModeStyles = {
     'CASH': { bg: 'bg-green-100', text: 'text-green-700', icon: '💵' },
@@ -103,7 +107,46 @@ function renderTable() {
         return;
     }
 
-    table.innerHTML = payments.map(p => {
+    // Apply sorting if a column is selected
+    let sortedPayments = [...payments];
+    if (sortColumn) {
+        sortedPayments.sort((a, b) => {
+            let valueA, valueB;
+            
+            switch (sortColumn) {
+                case 'student':
+                    const admissionA = a._admissionData;
+                    const admissionB = b._admissionData;
+                    valueA = (admissionA?.enquiryId?.name || 'Unknown').toLowerCase();
+                    valueB = (admissionB?.enquiryId?.name || 'Unknown').toLowerCase();
+                    break;
+                case 'course':
+                    valueA = (a._admissionData?.enquiryId?.courseInterested || a._admissionData?.course || '-').toLowerCase();
+                    valueB = (b._admissionData?.enquiryId?.courseInterested || b._admissionData?.course || '-').toLowerCase();
+                    break;
+                case 'amount':
+                    valueA = a.amount || 0;
+                    valueB = b.amount || 0;
+                    break;
+                case 'mode':
+                    valueA = a.paymentMode || '';
+                    valueB = b.paymentMode || '';
+                    break;
+                case 'date':
+                    valueA = new Date(a.paymentDate || a.createdAt);
+                    valueB = new Date(b.paymentDate || b.createdAt);
+                    break;
+                default:
+                    return 0;
+            }
+            
+            if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+            if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }
+
+    table.innerHTML = sortedPayments.map(p => {
         const mode = p.paymentMode || 'CASH';
         const style = paymentModeStyles[mode] || paymentModeStyles['CASH'];
 
@@ -133,6 +176,41 @@ function renderTable() {
             </tr>
         `;
     }).join('');
+    
+    // Update sort icons
+    updateSortIcons();
+}
+
+function sortTable(column) {
+    if (sortColumn === column) {
+        // Toggle direction if same column
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New column, default to ascending
+        sortColumn = column;
+        sortDirection = 'asc';
+    }
+    renderTable();
+}
+
+function updateSortIcons() {
+    const headers = document.querySelectorAll('th[onclick]');
+    headers.forEach(th => {
+        const icon = th.querySelector('i');
+        if (icon) {
+            const column = th.getAttribute('onclick').match(/'([^']+)'/)[1];
+            if (column === sortColumn) {
+                icon.setAttribute('data-lucide', sortDirection === 'asc' ? 'chevron-up' : 'chevron-down');
+                icon.classList.remove('text-gray-400');
+                icon.classList.add('text-blue-600');
+            } else {
+                icon.setAttribute('data-lucide', 'chevrons-up-down');
+                icon.classList.remove('text-blue-600');
+                icon.classList.add('text-gray-400');
+            }
+        }
+    });
+    lucide.createIcons();
 }
 
 function renderEmptyState() {
@@ -155,35 +233,47 @@ function renderEmptyState() {
 }
 
 /* ======================
-STATS (from Dashboard API)
+STATS (from Payments API)
 ====================== */
 async function renderStatsFromDashboard() {
     try {
-        const res = await apiGet(API_ENDPOINTS.DASHBOARD.GET);
-        const data = res.data || res;
-
-        // Use dashboard payment stats
-        const paymentStats = data.payments || {};
-        const totalPayments = paymentStats.totalPayments || 0;
-
-        // Calculate total amount from all modes
+        // Calculate stats from the loaded payments data instead of dashboard API
+        const totalPayments = payments.length;
+        
+        // Calculate totals by payment mode
+        const modeStats = {
+            'CASH': { count: 0, amount: 0 },
+            'UPI': { count: 0, amount: 0 },
+            'CARD': { count: 0, amount: 0 },
+            'ONLINE': { count: 0, amount: 0 },
+            'CHEQUE': { count: 0, amount: 0 }
+        };
+        
         let totalAmount = 0;
-        ['CASH', 'UPI', 'CARD', 'ONLINE', 'CHEQUE'].forEach(mode => {
-            totalAmount += paymentStats[mode]?.amount || 0;
+        
+        payments.forEach(p => {
+            const mode = p.paymentMode || 'CASH';
+            const amount = p.amount || 0;
+            
+            if (modeStats[mode]) {
+                modeStats[mode].count++;
+                modeStats[mode].amount += amount;
+            }
+            totalAmount += amount;
         });
 
         // Update stats display
         document.getElementById('totalPayments').textContent = totalPayments;
         document.getElementById('totalAmount').textContent = formatCurrency(totalAmount);
 
-        document.getElementById('cashCount').textContent = paymentStats.CASH?.count || 0;
-        document.getElementById('cashAmount').textContent = formatCurrency(paymentStats.CASH?.amount || 0);
+        document.getElementById('cashCount').textContent = modeStats.CASH.count;
+        document.getElementById('cashAmount').textContent = formatCurrency(modeStats.CASH.amount);
 
-        document.getElementById('upiCount').textContent = paymentStats.UPI?.count || 0;
-        document.getElementById('upiAmount').textContent = formatCurrency(paymentStats.UPI?.amount || 0);
+        document.getElementById('upiCount').textContent = modeStats.UPI.count;
+        document.getElementById('upiAmount').textContent = formatCurrency(modeStats.UPI.amount);
 
-        document.getElementById('cardCount').textContent = paymentStats.CARD?.count || 0;
-        document.getElementById('cardAmount').textContent = formatCurrency(paymentStats.CARD?.amount || 0);
+        document.getElementById('cardCount').textContent = modeStats.CARD.count;
+        document.getElementById('cardAmount').textContent = formatCurrency(modeStats.CARD.amount);
     } catch (err) {
         console.error('Failed to load payment stats:', err);
     }

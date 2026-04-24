@@ -197,10 +197,30 @@
           <table class="w-full text-sm">
             <thead class="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th class="px-4 py-3 text-left font-medium text-gray-600">Student Details</th>
-                <th class="px-4 py-3 text-left font-medium text-gray-600">Course</th>
-                <th class="px-4 py-3 text-center font-medium text-gray-600">Status</th>
-                <th class="px-4 py-3 text-center font-medium text-gray-600">Counselor</th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('student')">
+                  <div class="flex items-center gap-1">
+                    Student Details
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-4 py-3 text-left font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('course')">
+                  <div class="flex items-center gap-1">
+                    Course
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-4 py-3 text-center font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('status')">
+                  <div class="flex items-center justify-center gap-1">
+                    Status
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-4 py-3 text-center font-medium text-gray-600 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('counselor')">
+                  <div class="flex items-center justify-center gap-1">
+                    Counselor
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
                 <th class="px-4 py-3 text-center font-medium text-gray-600">Actions</th>
               </tr>
             </thead>

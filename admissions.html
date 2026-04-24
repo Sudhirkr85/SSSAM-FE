@@ -161,10 +161,6 @@
               >
             </div>
           </div>
-          <button onclick="openAddModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/25 transition-all font-medium text-sm flex items-center gap-2">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            Add Admission
-          </button>
         </div>
 
         <!-- TABLE (Desktop) -->
@@ -172,12 +168,42 @@
           <table class="w-full text-sm">
             <thead class="bg-gray-50 text-gray-600 font-medium">
               <tr>
-                <th class="px-6 py-3 text-left">Student</th>
-                <th class="px-6 py-3 text-left">Course</th>
-                <th class="px-6 py-3 text-right">Total Fees</th>
-                <th class="px-6 py-3 text-right">Paid</th>
-                <th class="px-6 py-3 text-right">Remaining</th>
-                <th class="px-6 py-3 text-center">Type</th>
+                <th class="px-6 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('student')">
+                  <div class="flex items-center gap-1">
+                    Student
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-6 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('course')">
+                  <div class="flex items-center gap-1">
+                    Course
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-6 py-3 text-right cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('totalFees')">
+                  <div class="flex items-center justify-end gap-1">
+                    Total Fees
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-6 py-3 text-right cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('paid')">
+                  <div class="flex items-center justify-end gap-1">
+                    Paid
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-6 py-3 text-right cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('remaining')">
+                  <div class="flex items-center justify-end gap-1">
+                    Remaining
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
+                <th class="px-6 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('type')">
+                  <div class="flex items-center justify-center gap-1">
+                    Type
+                    <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                  </div>
+                </th>
                 <th class="px-6 py-3 text-center">Actions</th>
               </tr>
             </thead>
@@ -233,232 +259,12 @@
               <i data-lucide="user-check" class="w-8 h-8 text-gray-400"></i>
             </div>
             <h3 class="text-lg font-medium text-gray-800 mb-1">No admissions found</h3>
-            <p class="text-gray-500 text-sm mb-4">Start by adding a new admission</p>
-            <button onclick="openAddModal()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium text-sm">
-              Add Admission
-            </button>
+            <p class="text-gray-500 text-sm">No admissions available</p>
           </div>
         </div>
 
       </div>
     </main>
-  </div>
-
-  <!-- ADD ADMISSION MODAL -->
-  <div id="addModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200 p-4">
-    <div class="bg-white rounded-2xl w-full max-w-2xl shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col" id="addModalContent">
-      
-      <!-- Header -->
-      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100 flex-shrink-0">
-        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-          <i data-lucide="plus" class="text-white w-5 h-5"></i>
-        </div>
-        <div>
-          <h2 class="text-lg font-semibold text-gray-800">Add Admission</h2>
-          <p class="text-xs text-gray-500">Convert enquiry to admission</p>
-        </div>
-        <button onclick="closeAddModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <!-- Form -->
-      <div class="px-6 py-5 space-y-4 overflow-y-auto">
-        
-        <!-- Enquiry Select -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Select Enquiry <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <button 
-              type="button"
-              id="enquirySelectBtn"
-              onclick="toggleEnquiryDropdown()"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-left focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white flex items-center justify-between"
-            >
-              <span id="enquirySelectText" class="text-gray-500">Select an enquiry...</span>
-              <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400"></i>
-            </button>
-            
-            <!-- Dropdown -->
-            <div id="enquiryDropdown" class="hidden absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto z-50">
-              <div class="p-2 border-b border-gray-100 sticky top-0 bg-white">
-                <input 
-                  type="text" 
-                  id="enquirySearch" 
-                  placeholder="Search enquiries..."
-                  class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-                  oninput="filterEnquiries(this.value)"
-                >
-              </div>
-              <div id="enquiryList" class="divide-y divide-gray-50">
-                <!-- Enquiries loaded here -->
-              </div>
-            </div>
-          </div>
-          <input type="hidden" id="selectedEnquiryId">
-          <p id="enquiryError" class="hidden text-red-500 text-xs mt-1">Please select an enquiry</p>
-        </div>
-
-        <!-- Course -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Course <span class="text-red-500">*</span>
-          </label>
-          <input 
-            type="text" 
-            id="courseInput"
-            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
-            placeholder="Enter course name"
-          >
-          <p id="courseError" class="hidden text-red-500 text-xs mt-1">Course is required</p>
-        </div>
-
-        <!-- Total Fees -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Total Fees (₹) <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
-            <input 
-              type="number" 
-              id="totalFeesInput"
-              min="1"
-              step="1"
-              class="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
-              placeholder="Enter total fees"
-            >
-          </div>
-          <p id="totalFeesError" class="hidden text-red-500 text-xs mt-1">Total fees must be greater than 0</p>
-        </div>
-
-        <!-- Registration Amount -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Registration Amount (₹) <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
-            <input 
-              type="number" 
-              id="registrationAmountInput"
-              min="0"
-              step="1"
-              class="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
-              placeholder="First payment amount"
-            >
-          </div>
-          <p id="registrationAmountError" class="hidden text-red-500 text-xs mt-1">Registration amount must not exceed total fees</p>
-        </div>
-
-        <!-- Payment Date -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Payment Date <span class="text-red-500">*</span>
-          </label>
-          <input
-            type="date"
-            id="paymentDateInput"
-            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
-          >
-          <p id="paymentDateError" class="hidden text-red-500 text-xs mt-1">Payment date is required</p>
-        </div>
-
-        <!-- Initial Payment -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Initial Payment (₹) <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">₹</span>
-            <input
-              type="number"
-              id="initialPaymentInput"
-              min="0"
-              step="1"
-              class="w-full pl-8 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
-              placeholder="Amount paid now"
-            >
-          </div>
-          <p id="initialPaymentError" class="hidden text-red-500 text-xs mt-1">Initial payment is required</p>
-        </div>
-
-        <!-- Payment Mode -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Payment Mode <span class="text-red-500">*</span>
-          </label>
-          <div class="relative">
-            <select
-              id="paymentModeInput"
-              class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer"
-            >
-              <option value="CASH">💵 Cash</option>
-              <option value="UPI">📱 UPI</option>
-              <option value="CARD">💳 Card</option>
-              <option value="ONLINE">🏦 Online Transfer</option>
-              <option value="CHEQUE">📋 Cheque</option>
-              <option value="BANK_TRANSFER">🏛️ Bank Transfer</option>
-            </select>
-            <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
-          </div>
-          <p id="paymentModeError" class="hidden text-red-500 text-xs mt-1">Payment mode is required</p>
-        </div>
-
-        <!-- Payment Type -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Payment Type <span class="text-red-500">*</span>
-          </label>
-          <div class="grid grid-cols-2 gap-3">
-            <label class="cursor-pointer">
-              <input type="radio" name="paymentType" value="ONE_TIME" class="peer hidden" checked onchange="handlePaymentTypeChange(this.value)">
-              <div class="px-4 py-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
-                <div class="font-medium text-sm">One Time</div>
-                <div class="text-xs text-gray-500">Full payment</div>
-              </div>
-            </label>
-            <label class="cursor-pointer">
-              <input type="radio" name="paymentType" value="INSTALLMENT" class="peer hidden" onchange="handlePaymentTypeChange(this.value)">
-              <div class="px-4 py-3 border-2 border-gray-200 rounded-xl text-center peer-checked:border-blue-500 peer-checked:bg-blue-50 transition-all">
-                <div class="font-medium text-sm">Installment</div>
-                <div class="text-xs text-gray-500">Multiple payments</div>
-              </div>
-            </label>
-          </div>
-        </div>
-
-        <!-- Installments Section (shown only for INSTALLMENT) -->
-        <div id="installmentsSection" class="hidden">
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Future Installments
-          </label>
-          <div id="admissionInstallmentRows" class="space-y-3">
-            <!-- Rows added dynamically -->
-          </div>
-          <button onclick="addAdmissionInstallmentRow()" class="mt-3 w-full py-2 border-2 border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 text-gray-600 hover:text-blue-600 rounded-xl transition-all font-medium text-sm flex items-center justify-center gap-2">
-            <i data-lucide="plus" class="w-4 h-4"></i>
-            Add Installment
-          </button>
-          <p id="installmentsError" class="hidden text-red-500 text-xs mt-1"></p>
-        </div>
-
-      </div>
-
-      <!-- Footer -->
-      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
-        <button onclick="closeAddModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
-          Cancel
-        </button>
-        <button onclick="submitAddAdmission()" id="addSubmitBtn" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/25 transition-all font-medium text-sm flex items-center gap-2">
-          <i data-lucide="check" class="w-4 h-4"></i>
-          Save Admission
-        </button>
-      </div>
-
-    </div>
   </div>
 
   <!-- PAYMENT PLAN MODAL (Installments) -->

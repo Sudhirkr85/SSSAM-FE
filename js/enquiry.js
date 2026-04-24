@@ -12,6 +12,10 @@ let currentTab = 'all'; // 'all' or 'today'
 let enquiries = [];
 let selectedFile = null;
 
+// Sorting state
+let sortColumn = null;
+let sortDirection = 'asc'; // 'asc' or 'desc'
+
 // ==================== STATUS MAPPING (Indian CRM Style) ====================
 const STATUS_MAP = {
   'NEW': { label: 'New Lead', color: 'bg-blue-100 text-blue-700 border-blue-200' },
@@ -288,7 +292,40 @@ function renderTable() {
     return;
   }
 
-  tbody.innerHTML = enquiries.map(enquiry => {
+  // Apply sorting if a column is selected
+  let sortedEnquiries = [...enquiries];
+  if (sortColumn) {
+    sortedEnquiries.sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (sortColumn) {
+        case 'student':
+          valueA = (a.name || '').toLowerCase();
+          valueB = (b.name || '').toLowerCase();
+          break;
+        case 'course':
+          valueA = (a.courseInterested || '-').toLowerCase();
+          valueB = (b.courseInterested || '-').toLowerCase();
+          break;
+        case 'status':
+          valueA = a.status || '';
+          valueB = b.status || '';
+          break;
+        case 'counselor':
+          valueA = (a.assignedTo?.name || a.counselorId?.name || 'Unassigned').toLowerCase();
+          valueB = (b.assignedTo?.name || b.counselorId?.name || 'Unassigned').toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+      
+      if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+      if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  tbody.innerHTML = sortedEnquiries.map(enquiry => {
     const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
     const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
     
@@ -375,6 +412,41 @@ function renderMobileCards() {
     `;
   }).join('');
 
+  lucide.createIcons();
+  
+  // Update sort icons
+  updateSortIcons();
+}
+
+function sortTable(column) {
+  if (sortColumn === column) {
+    // Toggle direction if same column
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column, default to ascending
+    sortColumn = column;
+    sortDirection = 'asc';
+  }
+  renderTable();
+}
+
+function updateSortIcons() {
+  const headers = document.querySelectorAll('th[onclick]');
+  headers.forEach(th => {
+    const icon = th.querySelector('i');
+    if (icon) {
+      const column = th.getAttribute('onclick').match(/'([^']+)'/)[1];
+      if (column === sortColumn) {
+        icon.setAttribute('data-lucide', sortDirection === 'asc' ? 'chevron-up' : 'chevron-down');
+        icon.classList.remove('text-gray-400');
+        icon.classList.add('text-blue-600');
+      } else {
+        icon.setAttribute('data-lucide', 'chevrons-up-down');
+        icon.classList.remove('text-blue-600');
+        icon.classList.add('text-gray-400');
+      }
+    }
+  });
   lucide.createIcons();
 }
 

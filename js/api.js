@@ -99,7 +99,7 @@ async function apiGet(url, params = {}) {
 
     console.log('API GET Response:', { url, params, responseData });
 
-    // If response has pagination, return full data object with mapped array
+    // If response has nested pagination (data.pagination), extract it
     if (responseData.data?.pagination) {
         const dataObj = responseData.data;
         return {
@@ -109,6 +109,21 @@ async function apiGet(url, params = {}) {
             admissions: dataObj.admissions || [],
             payments: dataObj.payments || []
         };
+    }
+
+    // If response has pagination at top level and data is an array
+    if (responseData.pagination && Array.isArray(responseData.data)) {
+        return {
+            ...responseData,
+            enquiries: responseData.data || [],
+            admissions: responseData.data || [],
+            payments: responseData.data || []
+        };
+    }
+
+    // If response has pagination at top level with named arrays
+    if (responseData.pagination) {
+        return responseData;
     }
 
     // Return full response to preserve success/message/data structure

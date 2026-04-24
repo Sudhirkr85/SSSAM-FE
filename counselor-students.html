@@ -194,14 +194,54 @@
             <table class="w-full text-sm">
               <thead class="bg-gray-50 text-gray-600">
                 <tr>
-                  <th class="px-4 py-3 text-left">Student Name</th>
-                  <th class="px-4 py-3 text-left">Phone</th>
-                  <th class="px-4 py-3 text-left">Course</th>
-                  <th class="px-4 py-3 text-center">Status</th>
-                  <th class="px-4 py-3 text-center">Admission</th>
-                  <th class="px-4 py-3 text-right">Fees Paid</th>
-                  <th class="px-4 py-3 text-right">Pending</th>
-                  <th class="px-4 py-3 text-left">Last Follow-up</th>
+                  <th class="px-4 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('name')">
+                    <div class="flex items-center gap-1">
+                      Student Name
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('phone')">
+                    <div class="flex items-center gap-1">
+                      Phone
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('course')">
+                    <div class="flex items-center gap-1">
+                      Course
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('status')">
+                    <div class="flex items-center justify-center gap-1">
+                      Status
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-center cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('admission')">
+                    <div class="flex items-center justify-center gap-1">
+                      Admission
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('feesPaid')">
+                    <div class="flex items-center justify-end gap-1">
+                      Fees Paid
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-right cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('pending')">
+                    <div class="flex items-center justify-end gap-1">
+                      Pending
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
+                  <th class="px-4 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('followup')">
+                    <div class="flex items-center gap-1">
+                      Last Follow-up
+                      <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                    </div>
+                  </th>
                 </tr>
               </thead>
               <tbody id="studentsTable" class="divide-y divide-gray-100">

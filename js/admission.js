@@ -15,6 +15,10 @@ let currentAdmissionId = null;
 let installmentRows = [];
 let admissionInstallmentRows = []; // For add admission modal
 
+// Sorting state
+let sortColumn = null;
+let sortDirection = 'asc'; // 'asc' or 'desc'
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   initUserInfo();
@@ -122,7 +126,50 @@ function renderTable() {
 
   document.getElementById('emptyState')?.classList.add('hidden');
 
-  table.innerHTML = admissions.map(admission => {
+  // Apply sorting if a column is selected
+  let sortedAdmissions = [...admissions];
+  if (sortColumn) {
+    sortedAdmissions.sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (sortColumn) {
+        case 'student':
+          valueA = (a.enquiryId?.name || 'Unknown').toLowerCase();
+          valueB = (b.enquiryId?.name || 'Unknown').toLowerCase();
+          break;
+        case 'course':
+          valueA = (a.course || '-').toLowerCase();
+          valueB = (b.course || '-').toLowerCase();
+          break;
+        case 'totalFees':
+          valueA = a.totalFees || 0;
+          valueB = b.totalFees || 0;
+          break;
+        case 'paid':
+          const remainingA = a.remainingAmount ?? ((a.totalFees || 0) - (a.paidAmount || 0));
+          const remainingB = b.remainingAmount ?? ((b.totalFees || 0) - (b.paidAmount || 0));
+          valueA = (a.totalFees || 0) - remainingA;
+          valueB = (b.totalFees || 0) - remainingB;
+          break;
+        case 'remaining':
+          valueA = a.remainingAmount ?? ((a.totalFees || 0) - (a.paidAmount || 0));
+          valueB = b.remainingAmount ?? ((b.totalFees || 0) - (b.paidAmount || 0));
+          break;
+        case 'type':
+          valueA = a.paymentType || '';
+          valueB = b.paymentType || '';
+          break;
+        default:
+          return 0;
+      }
+      
+      if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+      if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  table.innerHTML = sortedAdmissions.map(admission => {
     const student = admission.enquiryId || {};
     const name = student.name || 'Unknown';
     const mobile = student.mobile || '';
@@ -245,6 +292,41 @@ function renderMobileCards() {
     `;
   }).join('');
 
+  lucide.createIcons();
+  
+  // Update sort icons
+  updateSortIcons();
+}
+
+function sortTable(column) {
+  if (sortColumn === column) {
+    // Toggle direction if same column
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column, default to ascending
+    sortColumn = column;
+    sortDirection = 'asc';
+  }
+  renderTable();
+}
+
+function updateSortIcons() {
+  const headers = document.querySelectorAll('th[onclick]');
+  headers.forEach(th => {
+    const icon = th.querySelector('i');
+    if (icon) {
+      const column = th.getAttribute('onclick').match(/'([^']+)'/)[1];
+      if (column === sortColumn) {
+        icon.setAttribute('data-lucide', sortDirection === 'asc' ? 'chevron-up' : 'chevron-down');
+        icon.classList.remove('text-gray-400');
+        icon.classList.add('text-blue-600');
+      } else {
+        icon.setAttribute('data-lucide', 'chevrons-up-down');
+        icon.classList.remove('text-blue-600');
+        icon.classList.add('text-gray-400');
+      }
+    }
+  });
   lucide.createIcons();
 }
 

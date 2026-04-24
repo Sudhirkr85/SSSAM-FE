@@ -173,11 +173,36 @@
 
                         <thead class="bg-gray-50 text-gray-600 font-medium">
                             <tr>
-                                <th class="px-6 py-3 text-left">Student</th>
-                                <th class="px-6 py-3">Course</th>
-                                <th class="px-6 py-3">Amount</th>
-                                <th class="px-6 py-3">Mode</th>
-                                <th class="px-6 py-3">Date</th>
+                                <th class="px-6 py-3 text-left cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('student')">
+                                    <div class="flex items-center gap-1">
+                                        Student
+                                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('course')">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Course
+                                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('amount')">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Amount
+                                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('mode')">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Mode
+                                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                                    </div>
+                                </th>
+                                <th class="px-6 py-3 cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('date')">
+                                    <div class="flex items-center justify-center gap-1">
+                                        Date
+                                        <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
 

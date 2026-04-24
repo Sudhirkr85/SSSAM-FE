@@ -247,9 +247,9 @@
           const admissionsData = response.admissions || {};
           document.getElementById('totalAdmissions').textContent = admissionsData.totalAdmissions || response.totalConversions || 0;
 
-          // Update Revenue - use yearlyRevenue as main total
-          const revenueData = response.revenue || {};
-          const totalRevenue = revenueData.yearlyRevenue || 0;
+          // Update Revenue - use totalPaid from fees summary or revenue data
+          const revenueData = response.revenue || response.fees || {};
+          const totalRevenue = revenueData.totalPaid || revenueData.yearlyRevenue || revenueData.totalRevenue || 0;
           document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
         }
       } catch (err) {

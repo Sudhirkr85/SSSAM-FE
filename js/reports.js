@@ -138,8 +138,8 @@ function buildSummaryData(admissionsRes, feesRes) {
 
   return {
     totalEnquiries: summary.totalEnquiries || 0,
-    convertedEnquiries: summary.enquiriesConverted || summary.totalAdmissions || 0,
-    totalRevenue: feeSummary.totalRevenueCollected || feeSummary.revenueInPeriod || 0,
+    convertedEnquiries: summary.totalAdmissions || 0,
+    totalRevenue: feeSummary.totalPaid || 0,
     pendingAmount: feeSummary.totalPending || 0,
     overdueAmount: 0 // Will be fetched from installment alerts
   };

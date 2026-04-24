@@ -8,6 +8,10 @@ let allStudents = [];
 let counselorId = '';
 let counselorName = '';
 
+// Sorting state
+let sortColumn = null;
+let sortDirection = 'asc'; // 'asc' or 'desc'
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   // Parse URL parameters
@@ -81,7 +85,56 @@ function renderStudentsTable(students) {
     return;
   }
 
-  table.innerHTML = students.map(s => `
+  // Apply sorting if a column is selected
+  let sortedStudents = [...students];
+  if (sortColumn) {
+    sortedStudents.sort((a, b) => {
+      let valueA, valueB;
+      
+      switch (sortColumn) {
+        case 'name':
+          valueA = (a.name || '').toLowerCase();
+          valueB = (b.name || '').toLowerCase();
+          break;
+        case 'phone':
+          valueA = (a.phone || '').toLowerCase();
+          valueB = (b.phone || '').toLowerCase();
+          break;
+        case 'course':
+          valueA = (a.course || '-').toLowerCase();
+          valueB = (b.course || '-').toLowerCase();
+          break;
+        case 'status':
+          valueA = (a.status || '').toLowerCase();
+          valueB = (b.status || '').toLowerCase();
+          break;
+        case 'admission':
+          valueA = a.hasAdmission ? 1 : 0;
+          valueB = b.hasAdmission ? 1 : 0;
+          break;
+        case 'feesPaid':
+          valueA = a.feesPaid || 0;
+          valueB = b.feesPaid || 0;
+          break;
+        case 'pending':
+          valueA = a.pendingFees || 0;
+          valueB = b.pendingFees || 0;
+          break;
+        case 'followup':
+          valueA = (a.lastFollowup || '').toLowerCase();
+          valueB = (b.lastFollowup || '').toLowerCase();
+          break;
+        default:
+          return 0;
+      }
+      
+      if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
+      if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  table.innerHTML = sortedStudents.map(s => `
     <tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick="navigateToStudentDetail('${escapeHtml(s.enquiryId)}', '${escapeHtml(s.admissionId)}', ${s.hasAdmission})">
       <td class="px-4 py-3">
         <div class="font-medium text-gray-800">${escapeHtml(s.name)}</div>
@@ -104,6 +157,41 @@ function renderStudentsTable(students) {
       <td class="px-4 py-3 text-gray-600 text-xs">${escapeHtml(s.lastFollowup || '-')}</td>
     </tr>
   `).join('');
+  
+  // Update sort icons
+  updateSortIcons();
+}
+
+function sortTable(column) {
+  if (sortColumn === column) {
+    // Toggle direction if same column
+    sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+  } else {
+    // New column, default to ascending
+    sortColumn = column;
+    sortDirection = 'asc';
+  }
+  renderStudentsTable(allStudents);
+}
+
+function updateSortIcons() {
+  const headers = document.querySelectorAll('th[onclick]');
+  headers.forEach(th => {
+    const icon = th.querySelector('i');
+    if (icon) {
+      const column = th.getAttribute('onclick').match(/'([^']+)'/)[1];
+      if (column === sortColumn) {
+        icon.setAttribute('data-lucide', sortDirection === 'asc' ? 'chevron-up' : 'chevron-down');
+        icon.classList.remove('text-gray-400');
+        icon.classList.add('text-blue-600');
+      } else {
+        icon.setAttribute('data-lucide', 'chevrons-up-down');
+        icon.classList.remove('text-blue-600');
+        icon.classList.add('text-gray-400');
+      }
+    }
+  });
+  lucide.createIcons();
 }
 
 function navigateToStudentDetail(enquiryId, admissionId, hasAdmission) {
