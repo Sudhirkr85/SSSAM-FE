@@ -699,7 +699,9 @@ function openConvertModal(id) {
 
 // Step 2: Setup Fees Modal
 function openSetupFeesModal(id) {
-    console.log('Opening setup fees modal for enquiry:', id);
+    // Use provided id or fall back to currentId from page context
+    const enquiryId = id || currentId;
+    console.log('Opening setup fees modal for enquiry:', enquiryId);
 
     const enquiryIdField = document.getElementById('setupFeesEnquiryId');
     const totalFeesField = document.getElementById('totalFees');
@@ -715,7 +717,7 @@ function openSetupFeesModal(id) {
         return;
     }
 
-    enquiryIdField.value = id;
+    enquiryIdField.value = enquiryId;
 
     // Reset form
     totalFeesField.value = '';

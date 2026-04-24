@@ -138,6 +138,12 @@
                         Update Status
                     </button>
 
+                    <button id="admissionSetupBtn" onclick="openSetupFeesModal()"
+                        class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl transition-all hover:scale-105 font-medium shadow-lg shadow-emerald-600/30 flex items-center gap-2">
+                        <i data-lucide="wallet" class="w-4 h-4"></i>
+                        Admission Setup
+                    </button>
+
                     <button id="convertToAdmissionBtn" onclick="openConvertModal(currentId)"
                         class="hidden px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl transition-all hover:scale-105 font-medium shadow-lg shadow-purple-600/30 flex items-center gap-2">
                         <i data-lucide="graduation-cap" class="w-4 h-4"></i>
@@ -321,7 +327,6 @@
                             <option value="FOLLOW_UP">Call Back</option>
                             <option value="INTERESTED">Interested</option>
                             <option value="NOT_INTERESTED">Not Interested</option>
-                            <option value="ADMISSION_PROCESS">Admission In Progress</option>
                         </select>
                         <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
                     </div>
