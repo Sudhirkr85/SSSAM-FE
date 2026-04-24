@@ -310,10 +310,9 @@ function sendWhatsAppMessage() {
 
     const message = `Hi ${e.name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-We tried reaching you regarding your enquiry for ${e.courseInterested}.
-Please let us know a convenient time to connect.`;
+Regarding your ${e.courseInterested} enquiry, please let me know a convenient time to connect.`;
 
     const encodedMessage = encodeURIComponent(message);
     const whatsappUrl = `https://wa.me/91${e.mobile}?text=${encodedMessage}`;
@@ -364,31 +363,32 @@ function selectWhatsAppMessage(type) {
         case 'followup':
             message = `Hi ${e.name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-We tried reaching you regarding your enquiry for ${e.courseInterested}.
-Please let us know a convenient time to connect.`;
+Regarding your ${e.courseInterested} enquiry, please let me know a convenient time to connect.`;
             break;
         case 'fee_reminder':
             message = `Hi ${e.name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-This is a gentle reminder about the pending fee payment for your ${e.courseInterested} course.
-Please let us know if you have any questions.`;
+Regarding your ${e.courseInterested} enquiry, please let me know a convenient time to connect.`;
             break;
         case 'admission_confirmation':
             message = `Hi ${e.name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-Congratulations! Your admission for ${e.courseInterested} has been confirmed.
-We look forward to having you with us.`;
+Regarding your ${e.courseInterested} enquiry, please let me know a convenient time to connect.`;
             break;
         case 'custom':
             const customMessage = prompt('Enter your custom message:');
             if (customMessage) {
-                message = customMessage;
+                message = `Hi ${e.name},
+
+This is ${counselorName} from SSSAM Academy, Gurgaon.
+
+${customMessage}`;
             } else {
                 closeWhatsAppModal();
                 return;
@@ -521,7 +521,23 @@ function closeDeleteEnquiryModal() {
     }, 300);
 }
 
+// Global flag to prevent duplicate API calls for delete
+let isDeleting = false;
+
 async function confirmDeleteEnquiry() {
+    // Prevent duplicate calls
+    if (isDeleting) return;
+    isDeleting = true;
+
+    // Get delete button and disable it
+    const deleteBtn = document.querySelector('#deleteEnquiryModal button[onclick="confirmDeleteEnquiry()"]');
+    const originalBtnText = deleteBtn ? deleteBtn.innerHTML : null;
+    if (deleteBtn) {
+        deleteBtn.disabled = true;
+        deleteBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Deleting...';
+        lucide.createIcons();
+    }
+
     try {
         await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(currentId));
         showToast('success', 'Enquiry deleted successfully');
@@ -531,6 +547,14 @@ async function confirmDeleteEnquiry() {
     } catch (error) {
         showToast('error', 'Failed to delete enquiry');
         closeDeleteEnquiryModal();
+    } finally {
+        // Reset flag and button (in case redirect fails or for future use)
+        isDeleting = false;
+        if (deleteBtn) {
+            deleteBtn.disabled = false;
+            deleteBtn.innerHTML = originalBtnText;
+            lucide.createIcons();
+        }
     }
 }
 
@@ -618,7 +642,23 @@ function submitStatusUpdate() {
     executeStatusUpdate(currentId, status, note, followUpDate);
 }
 
+// Global flag to prevent duplicate API calls for status update
+let isStatusUpdating = false;
+
 async function executeStatusUpdate(id, payload) {
+    // Prevent duplicate calls
+    if (isStatusUpdating) return;
+    isStatusUpdating = true;
+
+    // Get update button and disable it
+    const updateBtn = document.querySelector('#statusUpdateModal button[onclick="submitStatusUpdate()"]');
+    const originalBtnText = updateBtn ? updateBtn.innerHTML : null;
+    if (updateBtn) {
+        updateBtn.disabled = true;
+        updateBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Updating...';
+        lucide.createIcons();
+    }
+
     try {
         await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(id), payload);
         showToast('success', 'Status updated successfully');
@@ -626,6 +666,14 @@ async function executeStatusUpdate(id, payload) {
         loadEnquiryDetail(id);
     } catch {
         showToast('error', 'Failed to update status');
+    } finally {
+        // Reset flag and button
+        isStatusUpdating = false;
+        if (updateBtn) {
+            updateBtn.disabled = false;
+            updateBtn.innerHTML = originalBtnText;
+            lucide.createIcons();
+        }
     }
 }
 
@@ -1198,61 +1246,33 @@ function getLoggedInUserName() {
 const ENQUIRY_WHATSAPP_TEMPLATES = {
     enquiry: (name, course, counselorName) => `Hi ${name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-We noticed your enquiry about ${course}. I'd be happy to answer any questions you may have.
-
-Please let me know a convenient time to connect.
-
-Best regards,
-${counselorName}
-SSSAM Academy`,
+Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
 
     followup: (name, course, counselorName) => `Hi ${name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-I'm following up on your enquiry for ${course}. Have you had a chance to think about it?
-
-Please let me know if you have any questions or if you'd like to visit our center.
-
-Best regards,
-${counselorName}
-SSSAM Academy`,
+Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
 
     interested: (name, course, counselorName) => `Hi ${name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-I'm glad you're interested in ${course}! I can help you with the admission process.
-
-Would you like to schedule a visit to our center or discuss the course details?
-
-Best regards,
-${counselorName}
-SSSAM Academy`,
+Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
 
     notinterested: (name, course, counselorName) => `Hi ${name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-Thank you for your interest in ${course}. If your plans change in the future, please don't hesitate to reach out.
-
-Wishing you all the best!
-
-Best regards,
-${counselorName}
-SSSAM Academy`,
+Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
 
     custom: (name, counselorName) => `Hi ${name},
 
-This is ${counselorName} from SSSAM Academy Gurgaon.
+This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-[Your message here]
-
-Best regards,
-${counselorName}
-SSSAM Academy`
+[Your message here]`
 };
 
 function setupWhatsAppForEnquiry() {

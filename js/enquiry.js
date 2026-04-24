@@ -834,11 +834,27 @@ function handleUpdateStatusChange() {
   }
 }
 
+// Global flag to prevent duplicate API calls
+let isUpdating = false;
+
 async function submitUpdate() {
+  // Prevent duplicate calls
+  if (isUpdating) return;
+  isUpdating = true;
+
   const enquiryId = document.getElementById('updateEnquiryId').value;
   const status = document.getElementById('updateStatus').value;
   const note = document.getElementById('updateNote').value.trim();
   const followUpDate = document.getElementById('updateFollowUpDate').value;
+
+  // Get submit button and disable it
+  const submitBtn = document.querySelector('#updateModal button[onclick="submitUpdate()"]');
+  const originalBtnText = submitBtn ? submitBtn.innerHTML : null;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Please wait...';
+    lucide.createIcons();
+  }
 
   // Validation
   document.getElementById('updateNoteError').classList.add('hidden');
@@ -846,11 +862,21 @@ async function submitUpdate() {
 
   if (!note) {
     document.getElementById('updateNoteError').classList.remove('hidden');
+    isUpdating = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
     return;
   }
 
   if (status === 'FOLLOW_UP' && !followUpDate) {
     document.getElementById('followUpError').classList.remove('hidden');
+    isUpdating = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
     return;
   }
 
@@ -872,6 +898,14 @@ async function submitUpdate() {
     console.error('Failed to update status:', err);
     const message = err.response?.data?.message || 'Failed to update status';
     showError(message);
+  } finally {
+    // Reset flag and button
+    isUpdating = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+      lucide.createIcons();
+    }
   }
 }
 

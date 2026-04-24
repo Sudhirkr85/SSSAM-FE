@@ -880,52 +880,27 @@ function getLoggedInUserName() {
 const WHATSAPP_TEMPLATES = {
   followup: (data) => `Hi ${data.name},
 
-This is ${data.counselorName} from SSSAM Academy Gurgaon.
+This is ${data.counselorName} from SSSAM Academy, Gurgaon.
 
-We hope your classes for ${data.course} are going well. Just checking in to see if you need any assistance.
-
-For any queries, feel free to reach out.
-
-Best regards,
-SSSAM Academy`,
+Regarding your ${data.course} enquiry, please let me know a convenient time to connect.`,
 
   fee_reminder: (data) => `Hi ${data.name},
 
-This is ${data.counselorName} from SSSAM Academy Gurgaon.
+This is ${data.counselorName} from SSSAM Academy, Gurgaon.
 
-This is a friendly reminder that your next installment of ${data.amount} for ${data.course} is due on ${data.dueDate}.
-
-Please make the payment to continue your classes without interruption.
-
-Payment can be made via Cash, UPI, or Card at our center.
-
-Best regards,
-SSSAM Academy`,
+Regarding your ${data.course} enquiry, please let me know a convenient time to connect.`,
 
   admission_confirm: (data) => `Hi ${data.name},
 
-Welcome to SSSAM Academy Gurgaon! 🎉
+This is ${data.counselorName} from SSSAM Academy, Gurgaon.
 
-Your admission for ${data.course} has been confirmed.
-
-Total Fees: ${data.totalFees}
-Paid Amount: ${data.paidAmount}
-Remaining: ${data.remaining}
-
-We wish you the best for your learning journey!
-
-Best regards,
-${data.counselorName}
-SSSAM Academy`,
+Regarding your ${data.course} enquiry, please let me know a convenient time to connect.`,
 
   custom: (data) => `Hi ${data.name},
 
-This is ${data.counselorName} from SSSAM Academy Gurgaon.
+This is ${data.counselorName} from SSSAM Academy, Gurgaon.
 
-[Your message here]
-
-Best regards,
-SSSAM Academy`
+${data.customMessage || '[Your message here]'}`
 };
 
 function openWhatsAppModal() {
