@@ -156,9 +156,10 @@ function renderEnquiry(e) {
     // Created Date - formatted
     document.getElementById('infoCreated').textContent = formatDateTime(e.createdAt);
 
-    // Conditional: Show Convert to Admission button if status is INTERESTED
+    // Conditional: Show Convert to Admission button if status is INTERESTED and no admission exists
     const convertBtn = document.getElementById('convertToAdmissionBtn');
-    if (e.status === 'INTERESTED') {
+    const hasAdmission = e.hasAdmission || e.admissionId || e.status === 'CONVERTED' || e.status === 'ADMISSION_PROCESS';
+    if (e.status === 'INTERESTED' && !hasAdmission) {
         convertBtn.classList.remove('hidden');
     } else {
         convertBtn.classList.add('hidden');
@@ -1151,18 +1152,34 @@ async function submitSetupFees() {
         // Create Admission with payment plan in one call
         const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(id), payload);
 
-        // Handle response: { success: true, data: { admission: {...} } }
+        // Handle response: { success: true, data: { admission: {...}, alreadyExists: true/false } }
         const admission = admissionRes.data?.admission || admissionRes.admission || admissionRes;
         const admissionId = admission?._id;
+        const alreadyExists = admissionRes.data?.alreadyExists || false;
 
         if (!admissionId) {
             throw new Error('Failed to create admission');
         }
 
-        showToast('success', 'Admission created successfully');
+        // Show appropriate message
+        if (alreadyExists) {
+            showToast('info', 'Admission already exists for this enquiry');
+        } else {
+            showToast('success', 'Admission created successfully');
+        }
+
         closeSetupFeesModal();
         loadEnquiryDetail(id);
     } catch (err) {
+        // Check if it's actually a success response with alreadyExists
+        if (err.response?.data?.success === true && err.response?.data?.data?.alreadyExists === true) {
+            // This is actually a success case - admission already exists
+            showToast('info', 'Admission already exists for this enquiry');
+            closeSetupFeesModal();
+            loadEnquiryDetail(id);
+            return;
+        }
+
         // Extract specific error message from backend response
         const backendMessage = err.response?.data?.message || err.message || 'Please try again';
         const backendErrors = err.response?.data?.errors;

@@ -3,16 +3,25 @@ TOAST
 ====================== */
 function showToast(titleOrType, message, type) {
     // Handle both (type, message) and (title, message, type) signatures
-    const toastType = type || (titleOrType === 'Success' ? 'success' : titleOrType === 'Error' ? 'error' : titleOrType);
+    const toastType = type || (titleOrType === 'Success' ? 'success' : titleOrType === 'Error' ? 'error' : titleOrType === 'Info' ? 'info' : titleOrType);
     const toastMessage = message || titleOrType;
 
     const toast = document.getElementById('toast') || document.getElementById('toastContainer');
     if (!toast) return;
 
-    const bgColor = toastType === 'success' ? 'bg-green-50 border-green-500 text-green-800' : 'bg-red-50 border-red-500 text-red-800';
-    const icon = toastType === 'success'
-        ? '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
-        : '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+    const colors = {
+        success: 'bg-green-50 border-green-500 text-green-800',
+        error: 'bg-red-50 border-red-500 text-red-800',
+        info: 'bg-blue-50 border-blue-500 text-blue-800'
+    };
+    const icons = {
+        success: '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>',
+        error: '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>',
+        info: '<svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+    };
+
+    const bgColor = colors[toastType] || colors.info;
+    const icon = icons[toastType] || icons.info;
 
     const toastEl = document.createElement('div');
     toastEl.className = `flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 shadow-lg ${bgColor} toast-enter`;

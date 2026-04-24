@@ -664,15 +664,22 @@ async function submitAddAdmission() {
       payload.installments = installments;
     }
 
-    await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(enquiryId), payload);
+    const response = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(enquiryId), payload);
 
     closeAddModal();
-    showToast('Success', 'Admission created successfully', 'success');
+
+    // Handle already exists case
+    if (response?.data?.alreadyExists) {
+      showToast('Info', 'Admission already exists for this enquiry', 'success');
+    } else {
+      showToast('Success', 'Admission created successfully', 'success');
+    }
+
     loadAdmissions();
     loadEnquiriesForDropdown(); // Refresh dropdown
   } catch (err) {
     console.error('Failed to create admission:', err);
-    const message = err.response?.data?.message || 'Failed to create admission';
+    const message = err.response?.data?.message || err.message || 'Failed to create admission';
     showToast('Error', message, 'error');
   } finally {
     submitBtn.disabled = false;
