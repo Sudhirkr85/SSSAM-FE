@@ -97,8 +97,6 @@ async function apiGet(url, params = {}) {
     const res = await api.get(url, { params });
     const responseData = res.data;
 
-    console.log('API GET Response:', { url, params, responseData });
-
     // If response has nested pagination (data.pagination), extract it
     if (responseData.data?.pagination) {
         const dataObj = responseData.data;
@@ -146,19 +144,16 @@ async function apiPost(url, data) {
     const isFormData = data instanceof FormData;
     const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
     const res = await api.post(url, data, config);
-    console.log('API POST Response:', { url, data, responseData: res.data });
     return res.data;
 }
 
 async function apiPut(url, data) {
     const res = await api.put(url, data);
-    console.log('API PUT Response:', { url, data, responseData: res.data });
     return res.data;
 }
 
 async function apiDelete(url) {
     const res = await api.delete(url);
-    console.log('API DELETE Response:', { url, responseData: res.data });
     return res.data;
 }
 

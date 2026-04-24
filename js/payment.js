@@ -74,16 +74,14 @@ async function loadPayments(search = '') {
 async function enrichPaymentsWithAdmissionData() {
     // Get unique admission IDs from payments
     const admissionIds = [...new Set(payments.map(p => p.admissionId).filter(id => id))];
-    
+
     // Fetch each admission
     for (const admId of admissionIds) {
         try {
             const admRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(admId));
-            console.log('Admission detail response:', admRes);
             // Handle nested response structure: { data: { admission: { admission: {...} } } }
             const admissionWrapper = admRes.data?.admission || admRes.data || admRes;
             const admission = admissionWrapper.admission || admissionWrapper;
-            console.log('Extracted admission:', admission);
             // Store on the payment object for easy access
             payments.forEach(p => {
                 if (p.admissionId === admId) {
@@ -91,7 +89,12 @@ async function enrichPaymentsWithAdmissionData() {
                 }
             });
         } catch (err) {
-            console.error(`Failed to load admission ${admId}:`, err);
+            // If admission not found, mark payment as invalid
+            payments.forEach(p => {
+                if (p.admissionId === admId) {
+                    p._admissionData = null;
+                }
+            });
         }
     }
 }
@@ -102,17 +105,20 @@ RENDER TABLE
 function renderTable() {
     const table = document.getElementById('paymentTable');
 
-    if (!payments.length) {
+    // Filter out payments with invalid/missing admission data
+    const validPayments = payments.filter(p => p._admissionData !== null);
+
+    if (!validPayments.length) {
         renderEmptyState();
         return;
     }
 
     // Apply sorting if a column is selected
-    let sortedPayments = [...payments];
+    let sortedPayments = [...validPayments];
     if (sortColumn) {
         sortedPayments.sort((a, b) => {
             let valueA, valueB;
-            
+
             switch (sortColumn) {
                 case 'student':
                     const admissionA = a._admissionData;
@@ -139,7 +145,7 @@ function renderTable() {
                 default:
                     return 0;
             }
-            
+
             if (valueA < valueB) return sortDirection === 'asc' ? -1 : 1;
             if (valueA > valueB) return sortDirection === 'asc' ? 1 : -1;
             return 0;
@@ -153,7 +159,7 @@ function renderTable() {
         // Get admission data from enriched payment
         const admission = p._admissionData;
         const enquiry = admission?.enquiryId || {};
-        
+
         const studentName = enquiry.name || 'Unknown';
         const mobile = enquiry.mobile || '';
         const course = enquiry.courseInterested || admission?.course || '-';
@@ -176,7 +182,7 @@ function renderTable() {
             </tr>
         `;
     }).join('');
-    
+
     // Update sort icons
     updateSortIcons();
 }

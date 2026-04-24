@@ -11,20 +11,16 @@ if (loginForm) {
         try {
             const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, { email, password });
 
-            console.log('Login response:', res);
-
             // Handle different response structures
             const token = res.token || res.data?.token || res.accessToken;
             const user = res.user || res.data?.user || res.data;
 
             if (!token) {
-                console.error('No token in response:', res);
                 showToast('error', 'Login failed: No token received');
                 return;
             }
 
             if (!user) {
-                console.error('No user data in response:', res);
                 showToast('error', 'Login failed: No user data received');
                 return;
             }
@@ -33,13 +29,9 @@ if (loginForm) {
             localStorage.setItem('token', token);
             safeSetLocalStorage('user', user);
 
-            console.log('Token saved:', token);
-            console.log('User saved:', user);
-
             window.location.href = 'dashboard.html';
 
         } catch (err) {
-            console.error('Login error:', err);
             const message = err.response?.data?.message || err.message || 'Login failed';
             showToast('error', message);
         }
