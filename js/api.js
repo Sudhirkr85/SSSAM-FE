@@ -97,6 +97,8 @@ async function apiGet(url, params = {}) {
     const res = await api.get(url, { params });
     const responseData = res.data;
 
+    console.log('API GET Response:', { url, params, responseData });
+
     // If response has pagination, return full data object with mapped array
     if (responseData.pagination) {
         const dataArray = responseData.data || [];
@@ -108,25 +110,28 @@ async function apiGet(url, params = {}) {
         };
     }
 
-    // For non-paginated responses, return data directly
-    return responseData.data || responseData;
+    // Return full response to preserve success/message/data structure
+    return responseData;
 }
 
 async function apiPost(url, data) {
     const isFormData = data instanceof FormData;
     const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
     const res = await api.post(url, data, config);
-    return res.data.data || res.data;
+    console.log('API POST Response:', { url, data, responseData: res.data });
+    return res.data;
 }
 
 async function apiPut(url, data) {
     const res = await api.put(url, data);
-    return res.data.data || res.data;
+    console.log('API PUT Response:', { url, data, responseData: res.data });
+    return res.data;
 }
 
 async function apiDelete(url) {
     const res = await api.delete(url);
-    return res.data.data || res.data;
+    console.log('API DELETE Response:', { url, responseData: res.data });
+    return res.data;
 }
 
 /* ======================

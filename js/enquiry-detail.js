@@ -43,13 +43,20 @@ const sourceMap = {
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
+    console.log('DOM Loaded - Enquiry Detail Page');
+    console.log('Current URL:', window.location.href);
+    console.log('URL Search:', window.location.search);
+
     // Get enquiry ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     currentId = urlParams.get('id');
+    console.log('Extracted ID from URL:', currentId);
 
     if (currentId) {
+        console.log('Calling loadEnquiryDetail with ID:', currentId);
         loadEnquiryDetail(currentId);
     } else {
+        console.error('No enquiry ID in URL');
         showToast('error', 'No enquiry ID provided');
     }
 
@@ -67,18 +74,25 @@ document.addEventListener('DOMContentLoaded', () => {
 LOAD DATA
 ====================== */
 async function loadEnquiryDetail(id) {
+    console.log('Loading enquiry detail for ID:', id);
     try {
         const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_BY_ID(id));
-        const enquiry = res.data?.enquiry || res.enquiry;
+        console.log('API Response:', res);
+
+        // API returns { success, message, data: { enquiry: {...} } }
+        const enquiry = res.data?.enquiry;
+        console.log('Extracted enquiry:', enquiry);
 
         if (!enquiry) {
+            console.error('Enquiry not found in response');
             showToast('error', 'Enquiry not found');
             return;
         }
 
         renderEnquiry(enquiry);
         renderTimeline(enquiry.statusHistory || []);
-    } catch {
+    } catch (error) {
+        console.error('Error loading enquiry details:', error);
         showToast('error', 'Failed to load enquiry details');
     }
 }
@@ -107,19 +121,15 @@ function renderEnquiry(e) {
     }[statusInfo.color] || 'bg-gray-100 text-gray-800';
     statusBadge.innerHTML = `<span class="px-2 py-1 rounded-full text-xs font-semibold ${colorClass}">${statusInfo.text}</span>`;
 
-    // Basic Info Grid
-    document.getElementById('basicMobile').textContent = e.mobile || '-';
-    document.getElementById('basicStatus').innerHTML = `<span class="px-2 py-1 rounded-full text-xs font-semibold ${colorClass}">${statusInfo.text}</span>`;
-    
     // Assigned To - handle null or isUnassigned
-    const assignedTo = (e.assignedTo === null || e.isUnassigned === true) 
-        ? 'Unassigned' 
+    const assignedTo = (e.assignedTo === null || e.isUnassigned === true)
+        ? 'Unassigned'
         : (typeof e.assignedTo === 'string' ? e.assignedTo : e.assignedTo?.name || 'Unassigned');
-    document.getElementById('basicAssigned').textContent = assignedTo;
-    
+    document.getElementById('infoAssigned').textContent = assignedTo;
+
     // Follow-up Date - handle null
-    document.getElementById('basicFollowUp').textContent = e.followUpDate 
-        ? formatDateTime(e.followUpDate) 
+    document.getElementById('infoFollowUpDate').textContent = e.followUpDate
+        ? formatDateTime(e.followUpDate)
         : 'Not Scheduled';
 
     // ===== MORE DETAILS (Collapsible) =====
@@ -130,9 +140,15 @@ function renderEnquiry(e) {
     // Source - human readable
     document.getElementById('infoSource').textContent = sourceMap[e.source] || e.source || '-';
     
-    // Reference Info - show '-' if null
-    document.getElementById('infoRefName').textContent = e.referenceName || '-';
-    document.getElementById('infoRefContact').textContent = e.referenceContact || '-';
+    // Reference Info - show section only if data exists
+    const referralSection = document.getElementById('referralSection');
+    if (e.referenceName || e.referenceContact) {
+        referralSection.classList.remove('hidden');
+        document.getElementById('infoRefName').textContent = e.referenceName || '-';
+        document.getElementById('infoRefContact').textContent = e.referenceContact || '-';
+    } else {
+        referralSection.classList.add('hidden');
+    }
     
     // Created By
     document.getElementById('infoCreatedBy').textContent = e.createdBy?.name || '-';
@@ -431,12 +447,13 @@ function closeStatusUpdateModal() {
 
 function selectStatus(status) {
     selectedStatus = status;
-    
+
     // Update button styles
     document.querySelectorAll('.status-option').forEach(btn => {
         btn.classList.remove('border-blue-500', 'bg-blue-50');
         btn.classList.add('border-gray-200', 'bg-gray-50');
     });
+}
 
 function submitStatusUpdate() {
     if (!selectedStatus) {
