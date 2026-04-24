@@ -173,6 +173,14 @@ function renderEnquiry(e) {
         cancelAdmissionBtn.classList.add('hidden');
     }
 
+    // Conditional: Hide Admission Setup button if already converted or in progress
+    const admissionSetupBtn = document.getElementById('admissionSetupBtn');
+    if (e.status === 'CONVERTED' || e.status === 'ADMISSION_PROCESS') {
+        admissionSetupBtn.classList.add('hidden');
+    } else {
+        admissionSetupBtn.classList.remove('hidden');
+    }
+
     // Conditional: Show Delete Enquiry button only for admin users
     const deleteBtn = document.getElementById('deleteEnquiryBtn');
     if (isAdmin()) {
@@ -952,6 +960,9 @@ function onInstallmentDateChange(changedInput) {
             }
         }
     }
+
+    // Recalculate remaining amount after date change
+    updateRemainingAmount();
 }
 
 // Remove Installment Row
