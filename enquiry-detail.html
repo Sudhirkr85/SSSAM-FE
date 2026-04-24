@@ -242,68 +242,45 @@
         <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl transform scale-95 transition-transform duration-300 max-h-[85vh] overflow-y-auto" id="whatsappModalContent">
 
             <!-- Header -->
-            <div class="flex items-center gap-3 mb-6">
+            <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 bg-green-500 rounded-xl flex items-center justify-center">
                     <i data-lucide="message-circle" class="text-white w-5 h-5"></i>
                 </div>
-                <h2 class="text-xl font-semibold text-gray-800">Send WhatsApp Message</h2>
+                <div>
+                    <h2 class="text-xl font-semibold text-gray-800">Send WhatsApp Message</h2>
+                    <p id="whatsappMobileDisplay" class="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                        <i data-lucide="phone" class="w-3 h-3"></i>
+                        <span></span>
+                    </p>
+                </div>
             </div>
 
-            <!-- Message Options -->
-            <div class="space-y-3 mb-6">
-                <button onclick="selectWhatsAppMessage('followup')" class="w-full p-4 bg-gray-50 hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="phone" class="w-5 h-5 text-blue-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Follow-up Message</p>
-                            <p class="text-xs text-gray-500">Reminder about enquiry</p>
-                        </div>
-                    </div>
-                </button>
+            <!-- Template -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Template:</label>
+                <select id="whatsappTemplate" class="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-gray-700">
+                    <option value="enquiry">1. First Response</option>
+                    <option value="followup">2. Follow-up</option>
+                    <option value="interested">3. Interested</option>
+                    <option value="notinterested">4. Not Interested</option>
+                    <option value="custom">5. Custom Message</option>
+                </select>
+            </div>
 
-                <button onclick="selectWhatsAppMessage('fee_reminder')" class="w-full p-4 bg-gray-50 hover:bg-amber-50 border-2 border-gray-200 hover:border-amber-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="wallet" class="w-5 h-5 text-amber-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Fee Reminder</p>
-                            <p class="text-xs text-gray-500">Payment due notification</p>
-                        </div>
-                    </div>
-                </button>
-
-                <button onclick="selectWhatsAppMessage('admission_confirmation')" class="w-full p-4 bg-gray-50 hover:bg-green-50 border-2 border-gray-200 hover:border-green-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Admission Confirmation</p>
-                            <p class="text-xs text-gray-500">Welcome message</p>
-                        </div>
-                    </div>
-                </button>
-
-                <button onclick="selectWhatsAppMessage('custom')" class="w-full p-4 bg-gray-50 hover:bg-purple-50 border-2 border-gray-200 hover:border-purple-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="edit" class="w-5 h-5 text-purple-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Custom Message</p>
-                            <p class="text-xs text-gray-500">Write your own message</p>
-                        </div>
-                    </div>
-                </button>
+            <!-- Message -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-700 mb-2">Message:</label>
+                <textarea id="whatsappMessage" rows="6" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 text-gray-700 resize-none" placeholder="Type your message..."></textarea>
             </div>
 
             <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+            <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
                 <button onclick="closeWhatsAppModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
                     Cancel
+                </button>
+                <button onclick="openEnquiryWhatsApp()" class="px-5 py-2.5 bg-green-500 hover:bg-green-600 text-white rounded-xl transition-colors font-medium flex items-center gap-2">
+                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                    Open WhatsApp
                 </button>
             </div>
 
@@ -311,122 +288,71 @@
     </div>
 
     <!-- STATUS UPDATE MODAL -->
-    <div id="statusUpdateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
-        <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl transform scale-95 transition-transform duration-300 max-h-[85vh] overflow-y-auto" id="statusUpdateModalContent">
+    <div id="statusUpdateModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-200 p-4">
+        <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col" id="statusUpdateModalContent">
 
             <!-- Header -->
-            <div class="flex items-center gap-3 mb-6">
-                <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
+            <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100">
+                <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center">
                     <i data-lucide="refresh-cw" class="text-white w-5 h-5"></i>
                 </div>
-                <h2 class="text-xl font-semibold text-gray-800">Update Status</h2>
+                <div>
+                    <h2 class="text-lg font-semibold text-gray-800">Update Status</h2>
+                    <p class="text-sm text-gray-500">Update enquiry progress</p>
+                </div>
             </div>
 
-            <input type="hidden" id="statusUpdateEnquiryId">
+            <!-- Form -->
+            <div class="p-6 space-y-4 overflow-y-auto">
 
-            <!-- Status Options -->
-            <div class="space-y-3 mb-6">
-                <button onclick="selectStatus('CONTACTED')" class="status-option w-full p-4 bg-gray-50 hover:bg-blue-50 border-2 border-gray-200 hover:border-blue-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="phone" class="w-5 h-5 text-blue-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Mark as Contacted</p>
-                            <p class="text-xs text-gray-500">Successfully connected with lead</p>
-                        </div>
-                    </div>
-                </button>
+                <!-- Hidden enquiry ID -->
+                <input type="hidden" id="statusUpdateEnquiryId">
 
-                <button onclick="selectStatus('FOLLOW_UP')" class="status-option w-full p-4 bg-gray-50 hover:bg-amber-50 border-2 border-gray-200 hover:border-amber-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="calendar" class="w-5 h-5 text-amber-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Schedule Follow-up</p>
-                            <p class="text-xs text-gray-500">Set a callback date</p>
-                        </div>
+                <!-- Status -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Status <span class="text-red-500">*</span>
+                    </label>
+                    <div class="relative">
+                        <select id="statusUpdateStatus" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer">
+                            <option value="" disabled selected>Select Status</option>
+                            <option value="CONTACTED">Contacted</option>
+                            <option value="NO_RESPONSE">Call Not Picked</option>
+                            <option value="FOLLOW_UP">Call Back</option>
+                            <option value="INTERESTED">Interested</option>
+                            <option value="NOT_INTERESTED">Not Interested</option>
+                            <option value="ADMISSION_PROCESS">Admission In Progress</option>
+                        </select>
+                        <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
                     </div>
-                </button>
+                </div>
 
-                <button onclick="selectStatus('NO_RESPONSE')" class="status-option w-full p-4 bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 hover:border-gray-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-gray-200 rounded-lg flex items-center justify-center">
-                            <i data-lucide="phone-off" class="w-5 h-5 text-gray-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Call Not Picked</p>
-                            <p class="text-xs text-gray-500">No response to call</p>
-                        </div>
-                    </div>
-                </button>
+                <!-- Note -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Note <span class="text-red-500">*</span>
+                    </label>
+                    <textarea id="statusUpdateNote" rows="3" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm resize-none" placeholder="Add call notes or remarks..."></textarea>
+                    <p id="statusUpdateNoteError" class="hidden text-red-500 text-xs mt-1">Note is required</p>
+                </div>
 
-                <button onclick="selectStatus('INTERESTED')" class="status-option w-full p-4 bg-gray-50 hover:bg-green-50 border-2 border-gray-200 hover:border-green-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="thumbs-up" class="w-5 h-5 text-green-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Mark Interested</p>
-                            <p class="text-xs text-gray-500">Lead shows interest</p>
-                        </div>
-                    </div>
-                </button>
+                <!-- Follow-up Date (required for FOLLOW_UP status) -->
+                <div id="followUpDateContainer">
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">
+                        Follow-up Date <span id="followUpRequired" class="text-red-500 hidden">*</span>
+                    </label>
+                    <input type="date" id="statusUpdateFollowUpDate" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm">
+                    <p id="followUpDateError" class="hidden text-red-500 text-xs mt-1">Follow-up date is required for "Call Back" status</p>
+                </div>
 
-                <button onclick="selectStatus('NOT_INTERESTED')" class="status-option w-full p-4 bg-gray-50 hover:bg-red-50 border-2 border-gray-200 hover:border-red-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="thumbs-down" class="w-5 h-5 text-red-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Mark Not Interested</p>
-                            <p class="text-xs text-gray-500">Lead declined</p>
-                        </div>
-                    </div>
-                </button>
-
-                <button onclick="selectStatus('CONVERTED')" class="status-option w-full p-4 bg-gray-50 hover:bg-purple-50 border-2 border-gray-200 hover:border-purple-300 rounded-xl transition-all text-left">
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
-                            <i data-lucide="graduation-cap" class="w-5 h-5 text-purple-600"></i>
-                        </div>
-                        <div>
-                            <p class="font-medium text-gray-800">Convert to Admission</p>
-                            <p class="text-xs text-gray-500">Lead converted to admission</p>
-                        </div>
-                    </div>
-                </button>
             </div>
 
-            <!-- Note Input -->
-            <div class="relative mb-4">
-                <textarea id="statusUpdateNote" required rows="3"
-                    class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 placeholder-transparent focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all resize-none"
-                    placeholder="Add note"></textarea>
-                <label for="statusUpdateNote"
-                    class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3.5 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-blue-600">
-                    Add Note <span class="text-red-500">*</span>
-                </label>
-                <p id="statusUpdateNoteError" class="hidden text-red-500 text-xs mt-1 ml-1">Note is required</p>
-            </div>
-
-            <!-- Follow-up Date (Conditional) -->
-            <div id="followUpDateContainer" class="relative mb-6 hidden">
-                <input type="date" id="statusUpdateFollowUpDate"
-                    class="peer w-full px-4 py-3 rounded-xl border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all">
-                <label class="absolute left-4 -top-2.5 bg-white px-1 text-xs text-gray-500">
-                    Follow-up Date <span class="text-red-500">*</span>
-                </label>
-                <p id="followUpDateError" class="hidden text-red-500 text-xs mt-1 ml-1">Follow-up date is required</p>
-            </div>
-
-            <!-- Actions -->
-            <div class="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
-                <button onclick="closeStatusUpdateModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+            <!-- Footer -->
+            <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+                <button onclick="closeStatusUpdateModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
                     Cancel
                 </button>
-                <button onclick="submitStatusUpdate()" class="px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-lg shadow-blue-600/30 transition-all transform hover:scale-105 font-medium flex items-center gap-2">
+                <button onclick="submitStatusUpdate()" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl shadow-lg shadow-indigo-600/25 transition-all font-medium text-sm flex items-center gap-2">
                     <i data-lucide="check" class="w-4 h-4"></i>
                     Update Status
                 </button>

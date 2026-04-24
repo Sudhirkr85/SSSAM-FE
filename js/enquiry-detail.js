@@ -325,7 +325,17 @@ WHATSAPP MODAL
 function openWhatsAppModal() {
     const modal = document.getElementById('whatsappModal');
     const modalContent = document.getElementById('whatsappModalContent');
-    
+    const mobileDisplay = document.getElementById('whatsappMobileDisplay');
+    const enquiry = window.currentEnquiryData;
+
+    // Populate mobile number
+    if (mobileDisplay && enquiry?.mobile) {
+        mobileDisplay.querySelector('span').textContent = enquiry.mobile;
+    }
+
+    // Generate initial message
+    generateEnquiryWhatsAppMessage();
+
     modal.classList.remove('hidden');
     setTimeout(() => {
         modal.classList.remove('opacity-0');
@@ -406,22 +416,25 @@ ${customMessage}`;
 STATUS UPDATE MODAL
 ==================== */
 function openStatusUpdateModal() {
-    selectedStatus = null;
     document.getElementById('statusUpdateEnquiryId').value = currentId;
-    
+
     // Reset form
+    document.getElementById('statusUpdateStatus').value = '';
     document.getElementById('statusUpdateNote').value = '';
     document.getElementById('statusUpdateFollowUpDate').value = '';
     document.getElementById('followUpDateContainer').classList.add('hidden');
+    document.getElementById('followUpRequired').classList.add('hidden');
     document.getElementById('statusUpdateNoteError').classList.add('hidden');
     document.getElementById('followUpDateError').classList.add('hidden');
-    
-    // Reset status option selections
-    document.querySelectorAll('.status-option').forEach(btn => {
-        btn.classList.remove('border-blue-500', 'bg-blue-50');
-        btn.classList.add('border-gray-200', 'bg-gray-50');
-    });
-    
+
+    // Setup status change listener
+    const statusSelect = document.getElementById('statusUpdateStatus');
+    statusSelect.onchange = function() {
+        const isFollowUp = this.value === 'FOLLOW_UP';
+        document.getElementById('followUpDateContainer').classList.toggle('hidden', !isFollowUp);
+        document.getElementById('followUpRequired').classList.toggle('hidden', !isFollowUp);
+    };
+
     // Show modal
     const modal = document.getElementById('statusUpdateModal');
     const modalContent = document.getElementById('statusUpdateModalContent');
@@ -445,50 +458,43 @@ function closeStatusUpdateModal() {
     }, 300);
 }
 
-function selectStatus(status) {
-    selectedStatus = status;
-
-    // Update button styles
-    document.querySelectorAll('.status-option').forEach(btn => {
-        btn.classList.remove('border-blue-500', 'bg-blue-50');
-        btn.classList.add('border-gray-200', 'bg-gray-50');
-    });
-}
+// Note: selectStatus function removed - using dropdown instead
 
 function submitStatusUpdate() {
-    if (!selectedStatus) {
-        /* ... */
+    const status = document.getElementById('statusUpdateStatus').value;
+    const note = document.getElementById('statusUpdateNote').value.trim();
+    const followUpDate = document.getElementById('statusUpdateFollowUpDate').value;
+
+    // Validate status
+    if (!status) {
         showToast('error', 'Please select a status');
         return;
     }
-    
-    const note = document.getElementById('statusUpdateNote').value.trim();
-    const followUpDate = document.getElementById('statusUpdateFollowUpDate').value;
-    
+
     // Validate note
     if (!note) {
         document.getElementById('statusUpdateNoteError').classList.remove('hidden');
         return;
     }
     document.getElementById('statusUpdateNoteError').classList.add('hidden');
-    
+
     // Validate follow-up date if status is FOLLOW_UP
-    if (selectedStatus === 'FOLLOW_UP' && !followUpDate) {
+    if (status === 'FOLLOW_UP' && !followUpDate) {
         document.getElementById('followUpDateError').classList.remove('hidden');
         return;
     }
     document.getElementById('followUpDateError').classList.add('hidden');
-    
+
     // Build payload
     const payload = {
-        status: selectedStatus,
+        status: status,
         note: note
     };
-    
+
     if (followUpDate) {
         payload.followUpDate = followUpDate;
     }
-    
+
     // Execute update
     executeStatusUpdate(currentId, payload);
 }
@@ -1243,6 +1249,14 @@ function getLoggedInUserName() {
     return user.name || user.fullName || user.userName || 'Counselor';
 }
 
+// Replace dynamic placeholders in message
+function replaceMessagePlaceholders(message, name, course, counselorName) {
+    return message
+        .replace(/\{name\}/g, name)
+        .replace(/\{course\}/g, course)
+        .replace(/\{counselorName\}/g, counselorName);
+}
+
 const ENQUIRY_WHATSAPP_TEMPLATES = {
     enquiry: (name, course, counselorName) => `Hi ${name},
 
@@ -1268,43 +1282,18 @@ This is ${counselorName} from SSSAM Academy, Gurgaon.
 
 Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
 
-    custom: (name, counselorName) => `Hi ${name},
+    custom: (name, course, counselorName) => `Hi {name},
 
-This is ${counselorName} from SSSAM Academy, Gurgaon.
+This is {counselorName} from SSSAM Academy, Gurgaon.
 
-[Your message here]`
+Regarding your {course} enquiry, please let me know a convenient time to connect.`
 };
 
 function setupWhatsAppForEnquiry() {
-    const btn = document.getElementById('whatsappBtn');
-    const menu = document.getElementById('whatsappMenu');
     const templateSelect = document.getElementById('whatsappTemplate');
-    const sendBtn = document.getElementById('sendWhatsappBtn');
 
-    if (!btn || !menu) {
-        console.log('WhatsApp elements not found');
-        return;
-    }
-
-    btn.addEventListener('click', (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        menu.classList.toggle('hidden');
-        if (!menu.classList.contains('hidden')) {
-            generateEnquiryWhatsAppMessage();
-        }
-    });
-
-    menu.addEventListener('click', (e) => e.stopPropagation());
-
-    document.addEventListener('click', (e) => {
-        if (!menu.contains(e.target) && !btn.contains(e.target)) {
-            menu.classList.add('hidden');
-        }
-    });
-
+    // Setup template change listener for modal
     templateSelect?.addEventListener('change', generateEnquiryWhatsAppMessage);
-    sendBtn?.addEventListener('click', openEnquiryWhatsApp);
 }
 
 function generateEnquiryWhatsAppMessage() {
@@ -1320,9 +1309,10 @@ function generateEnquiryWhatsAppMessage() {
     const mobile = enquiry.mobile || '-';
     const course = enquiry.courseInterested || 'Course';
 
-    // Show mobile number in menu header
+    // Show mobile number in modal header
     if (mobileDisplay) {
-        mobileDisplay.textContent = mobile !== '-' ? `📞 ${mobile}` : '';
+        const span = mobileDisplay.querySelector('span');
+        if (span) span.textContent = mobile !== '-' ? mobile : '';
     }
 
     const template = templateSelect.value;
@@ -1342,9 +1332,12 @@ function generateEnquiryWhatsAppMessage() {
             message = ENQUIRY_WHATSAPP_TEMPLATES.notinterested(name, course, counselorName);
             break;
         case 'custom':
-            message = ENQUIRY_WHATSAPP_TEMPLATES.custom(name, counselorName);
+            message = ENQUIRY_WHATSAPP_TEMPLATES.custom(name, course, counselorName);
             break;
     }
+
+    // Apply placeholder replacement for dynamic values
+    message = replaceMessagePlaceholders(message, name, course, counselorName);
 
     textarea.value = message;
 }
@@ -1373,7 +1366,7 @@ function openEnquiryWhatsApp() {
     const url = `https://wa.me/${formattedMobile}?text=${encodedMessage}`;
 
     window.open(url, '_blank');
-    document.getElementById('whatsappMenu')?.classList.add('hidden');
+    closeWhatsAppModal();
     showToast('success', 'WhatsApp opened');
 }
 
