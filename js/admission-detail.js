@@ -26,16 +26,24 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== DATA LOADING ====================
 async function loadAdmissionDetail() {
   showLoadingState();
-  
+
   try {
     // Load admission details
     const admissionRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(admissionId));
-    admissionData = admissionRes.admission || admissionRes;
-    
+
+    // Handle nested response structure: { success, message, data: { admission: { admission, totalPaid, remainingAmount } } }
+    const admissionWrapper = admissionRes.data?.admission || admissionRes.data || admissionRes;
+    admissionData = admissionWrapper.admission || admissionWrapper;
+
+    // Store calculated totals from wrapper if available
+    admissionData.totalPaid = admissionWrapper.totalPaid ?? admissionData.totalPaid;
+    admissionData.remainingAmount = admissionWrapper.remainingAmount ?? admissionData.remainingAmount;
+
     // Load payments
     const paymentsRes = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(admissionId));
-    payments = paymentsRes.payments || [];
-    
+    // API returns { success, message, data: { payments: [...] } }
+    payments = paymentsRes.data?.payments || paymentsRes.payments || [];
+
     renderAdmissionDetail();
     showContentState();
   } catch (err) {
@@ -64,10 +72,9 @@ function renderAdmissionDetail() {
   const paymentType = admissionData.paymentType || 'ONE_TIME';
   
   const totalFees = admissionData.totalFees || 0;
-  // Backend sends remainingAmount, calculate paidAmount from it
-  // registrationAmount is already part of the paid amount
+  // Use totalPaid from API response if available, otherwise calculate from remainingAmount
   const remaining = admissionData.remainingAmount ?? (totalFees - (admissionData.paidAmount || 0));
-  const paidAmount = totalFees - remaining;
+  const paidAmount = admissionData.totalPaid ?? (totalFees - remaining);
   
   // Student info
   document.getElementById('studentName').textContent = studentName;
@@ -126,7 +133,7 @@ function renderAdmissionDetail() {
 function calculateNextDue(admission, paymentsList) {
   const totalFees = admission.totalFees || 0;
   const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
-  const paidAmount = totalFees - remaining;
+  const paidAmount = admission.totalPaid ?? (totalFees - remaining);
   
   if (remaining <= 0) {
     return { amount: 0, date: 'Paid' };
@@ -172,10 +179,11 @@ function renderInstallmentTable() {
   const table = document.getElementById('installmentTable');
   const section = document.getElementById('installmentSection');
   const noInstallments = document.getElementById('noInstallments');
-  
+
   const installments = admissionData?.installments || [];
   const totalFees = admissionData?.totalFees || 0;
-  const paidAmount = admissionData?.paidAmount || 0;
+  const remaining = admissionData?.remainingAmount ?? (totalFees - (admissionData?.paidAmount || 0));
+  const paidAmount = admissionData?.totalPaid ?? (totalFees - remaining);
   const registrationAmount = admissionData?.registrationAmount || 0;
   
   document.getElementById('installmentCount').textContent = `${installments.length} installments`;
@@ -385,7 +393,7 @@ function renderTimeline() {
 
 // ==================== ADD PAYMENT MODAL ====================
 function openAddPaymentModal() {
-  const remaining = (admissionData?.totalFees || 0) - (admissionData?.paidAmount || 0);
+  const remaining = admissionData?.remainingAmount ?? ((admissionData?.totalFees || 0) - (admissionData?.totalPaid || 0));
   
   if (remaining <= 0) {
     showToast('Info', 'This admission is fully paid', 'info');
@@ -437,8 +445,8 @@ async function submitAddPayment() {
   const type = document.getElementById('paymentTypeSelect').value;
   const note = document.getElementById('paymentNote').value.trim();
   
-  const remaining = (admissionData?.totalFees || 0) - (admissionData?.paidAmount || 0);
-  
+  const remaining = admissionData?.remainingAmount ?? ((admissionData?.totalFees || 0) - (admissionData?.totalPaid || 0));
+
   // Validation
   const errorEl = document.getElementById('paymentAmountError');
   
@@ -690,7 +698,7 @@ async function submitInstallmentPlan() {
 function openRefundModal() {
   if (!admissionData) return;
   
-  const paidAmount = admissionData.paidAmount || 0;
+  const paidAmount = admissionData?.totalPaid || 0;
   const refundPayments = payments.filter(p => p.type === 'refund');
   const totalRefunded = refundPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const maxRefundable = paidAmount - totalRefunded;
@@ -744,11 +752,11 @@ async function submitRefund() {
   const mode = document.getElementById('refundMode').value;
   const note = document.getElementById('refundNote').value.trim();
   
-  const paidAmount = admissionData?.paidAmount || 0;
+  const paidAmount = admissionData?.totalPaid || 0;
   const refundPayments = payments.filter(p => p.type === 'refund');
   const totalRefunded = refundPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const maxRefundable = paidAmount - totalRefunded;
-  
+
   // Validation
   const errorEl = document.getElementById('refundAmountError');
   
@@ -965,8 +973,8 @@ function updateWhatsAppMessage() {
     amount: nextDue.amount > 0 ? formatCurrency(nextDue.amount) : formatCurrency(admissionData?.totalFees || 0),
     dueDate: nextDue.date !== '--' ? nextDue.date : 'As discussed',
     totalFees: formatCurrency(admissionData?.totalFees || 0),
-    paidAmount: formatCurrency(admissionData?.paidAmount || 0),
-    remaining: formatCurrency(Math.max(0, (admissionData?.totalFees || 0) - (admissionData?.paidAmount || 0))),
+    paidAmount: formatCurrency(admissionData?.totalPaid || 0),
+    remaining: formatCurrency(Math.max(0, admissionData?.remainingAmount ?? ((admissionData?.totalFees || 0) - (admissionData?.totalPaid || 0)))),
     counselorName: getLoggedInUserName()
   };
   
