@@ -135,12 +135,26 @@ function buildSummaryData(admissionsRes, feesRes) {
   const feesData = feesRes?.data || {};
   const summary = admissionsData.summary || {};
   const feeSummary = feesData.summary || {};
+  const periodPayments = feesData.periodPayments || [];
+
+  // Calculate totalPaid from periodPayments if backend returns null
+  let totalPaid = feeSummary.totalPaid;
+  if (totalPaid === null || totalPaid === undefined) {
+    totalPaid = periodPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+  }
+
+  // Calculate totalPending if backend returns null
+  let totalPending = feeSummary.totalPending;
+  if (totalPending === null || totalPending === undefined) {
+    const totalFeesExpected = feeSummary.totalFeesExpected || 0;
+    totalPending = Math.max(0, totalFeesExpected - totalPaid);
+  }
 
   return {
     totalEnquiries: summary.totalEnquiries || 0,
     convertedEnquiries: summary.totalAdmissions || 0,
-    totalRevenue: feeSummary.totalPaid || 0,
-    pendingAmount: feeSummary.totalPending || 0,
+    totalRevenue: totalPaid || 0,
+    pendingAmount: totalPending || 0,
     overdueAmount: 0 // Will be fetched from installment alerts
   };
 }
