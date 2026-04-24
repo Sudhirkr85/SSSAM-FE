@@ -82,35 +82,101 @@ function getDateRangeForFilter(filterType) {
 async function loadReports() {
   showLoadingState();
 
-  const dateRange = getDateRangeForFilter(currentFilter);
+  // Map filter to API range parameter
+  const rangeMap = {
+    'today': 'daily',
+    'last7days': 'weekly',
+    'thisMonth': 'monthly',
+    'thisYear': 'yearly',
+    'allTime': 'all'
+  };
+  const range = rangeMap[currentFilter] || 'monthly';
 
   try {
-    // Build params
-    const params = {
-      startDate: dateRange.startDate,
-      endDate: dateRange.endDate
-    };
+    // Fetch all reports in parallel using correct API endpoints
+    const [admissionsRes, feesRes, courseRes, counselorRes] = await Promise.all([
+      apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, { range }).catch(() => null),
+      apiGet(API_ENDPOINTS.REPORTS.FEES, { range }).catch(() => null),
+      apiGet(API_ENDPOINTS.REPORTS.COURSE_PERFORMANCE).catch(() => null),
+      apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, { range }).catch(() => null)
+    ]);
 
-    // Fetch summary from backend
-    const response = await apiGet(API_ENDPOINTS.REPORTS.SUMMARY, params);
+    // Build summary data from API responses
+    const summaryData = buildSummaryData(admissionsRes, feesRes);
+    renderSummaryCards(summaryData);
 
-    renderSummaryCards(response);
-    renderCourseTable(response.courseStats || []);
-    renderPaymentTable(response.paymentStats || []);
-    renderSourceTable(response.sourceStats || []);
+    // Course performance table
+    const courseStats = courseRes?.data?.courseStats || [];
+    renderCourseTable(courseStats);
 
-    // Fetch counselor performance
-    await loadCounselorPerformance(params);
+    // Payment summary from fees report
+    const paymentStats = buildPaymentStats(feesRes);
+    renderPaymentTable(paymentStats);
+
+    // Source stats from admissions data
+    const sourceStats = buildSourceStats(admissionsRes);
+    renderSourceTable(sourceStats);
+
+    // Counselor performance table
+    const counselorStats = counselorRes?.data?.counselorStats || [];
+    renderCounselorTable(counselorStats);
 
     hideLoadingState();
   } catch (err) {
     console.error('Failed to load reports:', err);
     hideLoadingState();
     showToast('Error', 'Failed to load reports', 'error');
-
-    // Use mock data for demo if API fails
-    useMockData();
   }
+}
+
+// Build summary data from admissions and fees responses
+function buildSummaryData(admissionsRes, feesRes) {
+  const admissionsData = admissionsRes?.data || {};
+  const feesData = feesRes?.data || {};
+  const summary = admissionsData.summary || {};
+  const feeSummary = feesData.summary || {};
+
+  return {
+    totalEnquiries: summary.totalEnquiries || 0,
+    convertedEnquiries: summary.enquiriesConverted || summary.totalAdmissions || 0,
+    totalRevenue: feeSummary.totalRevenueCollected || feeSummary.revenueInPeriod || 0,
+    pendingAmount: feeSummary.totalPending || 0,
+    overdueAmount: 0 // Will be fetched from installment alerts
+  };
+}
+
+// Build payment stats from fees report data
+function buildPaymentStats(feesRes) {
+  const periodPayments = feesRes?.data?.periodPayments || [];
+
+  // Group by payment mode
+  const modeStats = {};
+  periodPayments.forEach(p => {
+    const mode = p.paymentMode || 'CASH';
+    if (!modeStats[mode]) {
+      modeStats[mode] = { count: 0, amount: 0 };
+    }
+    modeStats[mode].count++;
+    modeStats[mode].amount += p.amount || 0;
+  });
+
+  return Object.entries(modeStats).map(([mode, stats]) => ({
+    mode,
+    count: stats.count,
+    amount: stats.amount
+  }));
+}
+
+// Build source stats from admissions/enquiries data
+function buildSourceStats(admissionsRes) {
+  // If API provides source stats directly, use them
+  const sourceStats = admissionsRes?.data?.sourceStats;
+  if (sourceStats && Array.isArray(sourceStats)) {
+    return sourceStats;
+  }
+
+  // Otherwise, return empty - will show "No data available"
+  return [];
 }
 
 // ==================== RENDER FUNCTIONS ====================
@@ -222,22 +288,11 @@ function renderSourceTable(sources) {
   }).join('');
 }
 
-// ==================== COUNSELOR PERFORMANCE ====================
-async function loadCounselorPerformance(params) {
-  try {
-    const counselorData = await apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, params);
-    renderCounselorTable(counselorData || []);
-  } catch (err) {
-    console.error('Failed to load counselor performance:', err);
-    // Use mock counselor data if API fails
-    renderCounselorTable(getMockCounselorData());
-  }
-}
 
 function renderCounselorTable(counselors) {
   const table = document.getElementById('counselorTable');
 
-  if (counselors.length === 0) {
+  if (!counselors || counselors.length === 0) {
     table.innerHTML = `
       <tr>
         <td colspan="4" class="px-4 py-8 text-center text-gray-500">
@@ -248,14 +303,16 @@ function renderCounselorTable(counselors) {
     return;
   }
 
-  table.innerHTML = counselors.map(c => `
-    <tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick="navigateToCounselorStudents('${escapeHtml(c.name)}', '${escapeHtml(c.id || '')}')">
-      <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.name)}</td>
-      <td class="px-4 py-3 text-center text-gray-600">${c.totalLeads || 0}</td>
-      <td class="px-4 py-3 text-center text-gray-600">${c.converted || 0}</td>
-      <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(c.revenue || 0)}</td>
+  table.innerHTML = counselors.map(c => {
+    const period = c.period || {};
+    return `
+    <tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick="navigateToCounselorStudents('${escapeHtml(c.counselorName)}', '${escapeHtml(c.counselorId || '')}')">
+      <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.counselorName)}</td>
+      <td class="px-4 py-3 text-center text-gray-600">${period.assignedEnquiries || 0}</td>
+      <td class="px-4 py-3 text-center text-gray-600">${period.convertedEnquiries || 0}</td>
+      <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(period.revenue || 0)}</td>
     </tr>
-  `).join('');
+  `}).join('');
 }
 
 function navigateToCounselorStudents(counselorName, counselorId) {
@@ -266,52 +323,6 @@ function navigateToCounselorStudents(counselorName, counselorId) {
   window.location.href = `counselor-students.html?${params.toString()}`;
 }
 
-function getMockCounselorData() {
-  return [
-    { id: '1', name: 'Rajesh Kumar', totalLeads: 45, converted: 18, revenue: 180000 },
-    { id: '2', name: 'Priya Sharma', totalLeads: 38, converted: 15, revenue: 150000 },
-    { id: '3', name: 'Amit Patel', totalLeads: 32, converted: 9, revenue: 95000 },
-    { id: '4', name: 'Sneha Gupta', totalLeads: 28, converted: 8, revenue: 85000 },
-    { id: '5', name: 'Vikram Singh', totalLeads: 13, converted: 2, revenue: 25000 }
-  ];
-}
-
-// ==================== MOCK DATA (FOR DEMO) ====================
-function useMockData() {
-  const mockData = {
-    totalEnquiries: 156,
-    convertedEnquiries: 42,
-    totalRevenue: 485000,
-    pendingAmount: 125000,
-    overdueAmount: 35000,
-    courseStats: [
-      { course: 'Python Programming', enquiries: 45, admissions: 18, revenue: 180000 },
-      { course: 'Data Science', enquiries: 32, admissions: 12, revenue: 144000 },
-      { course: 'Web Development', enquiries: 28, admissions: 8, revenue: 96000 },
-      { course: 'Digital Marketing', enquiries: 18, admissions: 3, revenue: 45000 },
-      { course: 'Cyber Security', enquiries: 15, admissions: 1, revenue: 20000 }
-    ],
-    paymentStats: [
-      { mode: 'CASH', count: 25, amount: 125000 },
-      { mode: 'UPI', count: 18, amount: 108000 },
-      { mode: 'CARD', count: 8, amount: 72000 },
-      { mode: 'ONLINE', count: 12, amount: 180000 }
-    ],
-    sourceStats: [
-      { source: 'walk_in', enquiries: 60, converted: 20 },
-      { source: 'website', enquiries: 45, converted: 12 },
-      { source: 'referral', enquiries: 30, converted: 8 },
-      { source: 'social_media', enquiries: 15, converted: 2 },
-      { source: 'phone_call', enquiries: 6, converted: 0 }
-    ]
-  };
-
-  renderSummaryCards(mockData);
-  renderCourseTable(mockData.courseStats);
-  renderPaymentTable(mockData.paymentStats);
-  renderSourceTable(mockData.sourceStats);
-  renderCounselorTable(getMockCounselorData());
-}
 
 // ==================== HELPER FUNCTIONS ====================
 function formatCurrency(amount) {

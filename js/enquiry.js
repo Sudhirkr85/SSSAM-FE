@@ -143,46 +143,86 @@ async function loadEnquiries() {
     const search = document.getElementById('searchInput').value.trim();
     const status = document.getElementById('statusFilter').value;
 
+    // For Today Calls tab - fetch both NEW and FOLLOW_UP like today.js does
+    if (currentTab === 'today') {
+      // Load both NEW enquiries and FOLLOW_UP enquiries (like today.js)
+      const [newRes, followUpRes] = await Promise.all([
+        // NEW enquiries - fresh leads to call
+        apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+          page: 1,
+          limit: 100,
+          status: 'NEW'
+        }),
+        // FOLLOW_UP enquiries - all of them (we'll filter client-side)
+        apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+          page: 1,
+          limit: 100,
+          status: 'FOLLOW_UP'
+        })
+      ]);
+
+      // Get all NEW enquiries
+      const newEnquiries = newRes.enquiries || [];
+
+      // Filter FOLLOW_UP enquiries for today or overdue (client-side filtering)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const followUpEnquiries = (followUpRes.enquiries || []).filter(e => {
+        if (!e.followUpDate) return false;
+        const followUpDate = new Date(e.followUpDate);
+        followUpDate.setHours(0, 0, 0, 0);
+        // Show if follow-up date is today or in the past (overdue)
+        return followUpDate <= today;
+      });
+
+      // Merge and remove duplicates (by _id)
+      const combined = [...newEnquiries, ...followUpEnquiries];
+      const unique = combined.filter((item, index, self) =>
+        index === self.findIndex((t) => t._id === item._id)
+      );
+
+      // Sort: NEW first, then by follow-up date (overdue first, then today)
+      let allEnquiries = unique.sort((a, b) => {
+        // NEW status comes first
+        if (a.status === 'NEW' && b.status !== 'NEW') return -1;
+        if (a.status !== 'NEW' && b.status === 'NEW') return 1;
+
+        // Then sort by follow-up date (overdue first, then today)
+        const dateA = a.followUpDate ? new Date(a.followUpDate) : new Date(8640000000000000);
+        const dateB = b.followUpDate ? new Date(b.followUpDate) : new Date(8640000000000000);
+        return dateA - dateB;
+      });
+
+      // Simple pagination (client-side since we have all data)
+      const totalCount = allEnquiries.length;
+      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+      const endIndex = startIndex + ITEMS_PER_PAGE;
+      const paginatedEnquiries = allEnquiries.slice(startIndex, endIndex);
+
+      totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
+
+      enquiries = paginatedEnquiries;
+
+      renderTable();
+      renderMobileCards();
+      updatePaginationToday(totalCount);
+      updateCountDisplayToday(totalCount);
+      return;
+    }
+
+    // For All Enquiries tab - normal API call
     const params = {
       page: currentPage,
       limit: ITEMS_PER_PAGE
     };
 
     if (search) params.search = search;
-    
-    // For Today Calls tab - fetch both NEW and FOLLOW_UP, then filter client-side
-    if (currentTab === 'today') {
-      // Don't send status filter - we'll fetch multiple statuses and combine
-      delete params.status;
-    } else if (status) {
-      params.status = status;
-    }
+    if (status) params.status = status;
 
     const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
-    
-    let allEnquiries = res.enquiries || [];
-    
-    // For Today tab, filter to show only NEW and FOLLOW_UP (today/overdue)
-    if (currentTab === 'today') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      allEnquiries = allEnquiries.filter(e => {
-        // Include NEW enquiries
-        if (e.status === 'NEW') return true;
-        
-        // Include FOLLOW_UP if due today or overdue
-        if (e.status === 'FOLLOW_UP' && e.followUpDate) {
-          const followUpDate = new Date(e.followUpDate);
-          followUpDate.setHours(0, 0, 0, 0);
-          return followUpDate <= today;
-        }
-        
-        return false;
-      });
-    }
-    
-    enquiries = allEnquiries;
+
+    enquiries = res.enquiries || [];
     const pagination = res.pagination || {};
     totalPages = pagination.totalPages || 1;
     totalCount = pagination.totalCount || 0;
@@ -196,6 +236,47 @@ async function loadEnquiries() {
     showError('Failed to load enquiries. Please try again.');
     renderEmptyState();
   }
+}
+
+// Pagination update for Today tab (client-side pagination)
+function updatePaginationToday(totalCount) {
+  const start = totalCount > 0 ? ((currentPage - 1) * ITEMS_PER_PAGE) + 1 : 0;
+  const end = Math.min(start + ITEMS_PER_PAGE - 1, totalCount);
+
+  document.getElementById('showingFrom').textContent = start;
+  document.getElementById('showingTo').textContent = end;
+  document.getElementById('totalItems').textContent = totalCount;
+
+  document.getElementById('firstPage').disabled = currentPage === 1;
+  document.getElementById('prevPage').disabled = currentPage === 1;
+  document.getElementById('nextPage').disabled = currentPage >= totalPages;
+  document.getElementById('lastPage').disabled = currentPage >= totalPages;
+
+  // Page numbers
+  const pageNumbers = document.getElementById('pageNumbers');
+  let html = '';
+
+  let startPage = Math.max(1, currentPage - 2);
+  let endPage = Math.min(totalPages, startPage + 4);
+
+  if (endPage - startPage < 4) {
+    startPage = Math.max(1, endPage - 4);
+  }
+
+  for (let i = startPage; i <= endPage; i++) {
+    if (i === currentPage) {
+      html += `<span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">${i}</span>`;
+    } else {
+      html += `<button onclick="goToPage(${i})" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">${i}</button>`;
+    }
+  }
+
+  pageNumbers.innerHTML = html;
+}
+
+function updateCountDisplayToday(totalCount) {
+  const countDisplay = document.getElementById('enquiryCountDisplay');
+  countDisplay.textContent = `Total Calls: ${totalCount}`;
 }
 
 // ==================== RENDER FUNCTIONS ====================

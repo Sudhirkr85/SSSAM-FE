@@ -1,4 +1,5 @@
 let enquiries = [];
+let allEnquiries = []; // Store full data before pagination for correct counts
 let selectedId = null;
 
 // Pagination state
@@ -60,11 +61,11 @@ async function loadTodayCalls() {
         );
         
         // Sort: NEW first, then by follow-up date (overdue first, then today)
-        enquiries = unique.sort((a, b) => {
+        allEnquiries = unique.sort((a, b) => {
             // NEW status comes first
             if (a.status === 'NEW' && b.status !== 'NEW') return -1;
             if (a.status !== 'NEW' && b.status === 'NEW') return 1;
-            
+
             // Then sort by follow-up date (overdue first, then today)
             const dateA = a.followUpDate ? new Date(a.followUpDate) : new Date(8640000000000000);
             const dateB = b.followUpDate ? new Date(b.followUpDate) : new Date(8640000000000000);
@@ -72,16 +73,16 @@ async function loadTodayCalls() {
         });
 
         // Simple pagination (client-side since we have all data)
-        const totalCount = enquiries.length;
+        const totalCount = allEnquiries.length;
         const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
         const endIndex = startIndex + ITEMS_PER_PAGE;
-        const paginatedEnquiries = enquiries.slice(startIndex, endIndex);
-        
+        const paginatedEnquiries = allEnquiries.slice(startIndex, endIndex);
+
         totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-        paginationData = { 
-            page: currentPage, 
-            totalPages: totalPages, 
-            totalCount: totalCount 
+        paginationData = {
+            page: currentPage,
+            totalPages: totalPages,
+            totalCount: totalCount
         };
 
         // Use paginated data for display
@@ -90,6 +91,11 @@ async function loadTodayCalls() {
         renderTable();
         renderStats();
         updatePaginationInfoFromServer(paginationData);
+
+        // Update sidebar badge if function exists
+        if (typeof updateFollowupBadge === 'function') {
+            updateFollowupBadge(allEnquiries.length);
+        }
     } catch (err) {
         console.error('Error loading today calls:', err);
         showToast('error', 'Failed to load data');
@@ -218,17 +224,17 @@ STATS
 ====================== */
 function renderStats() {
     const total = paginationData.totalCount || 0;
-    
-    // Count NEW enquiries (fresh leads)
-    const newCount = enquiries.filter(e => e.status === 'NEW').length;
-    
-    // Count FOLLOW_UP enquiries (today + overdue)
-    const followUpCount = enquiries.filter(e => e.status === 'FOLLOW_UP').length;
+
+    // Count NEW enquiries (fresh leads) from allEnquiries for correct count
+    const newCount = allEnquiries.filter(e => e.status === 'NEW').length;
+
+    // Count FOLLOW_UP enquiries (today + overdue) from allEnquiries for correct count
+    const followUpCount = allEnquiries.filter(e => e.status === 'FOLLOW_UP').length;
 
     document.getElementById('totalCalls').textContent = total;
     document.getElementById('pendingCalls').textContent = newCount;
     document.getElementById('doneCalls').textContent = followUpCount;
-    
+
     // Update labels
     const pendingLabel = document.getElementById('pendingLabel');
     const doneLabel = document.getElementById('doneLabel');

@@ -64,8 +64,10 @@ function renderAdmissionDetail() {
   const paymentType = admissionData.paymentType || 'ONE_TIME';
   
   const totalFees = admissionData.totalFees || 0;
-  const paidAmount = admissionData.paidAmount || 0;
-  const remaining = totalFees - paidAmount;
+  // Backend sends remainingAmount, calculate paidAmount from it
+  // registrationAmount is already part of the paid amount
+  const remaining = admissionData.remainingAmount ?? (totalFees - (admissionData.paidAmount || 0));
+  const paidAmount = totalFees - remaining;
   
   // Student info
   document.getElementById('studentName').textContent = studentName;
@@ -123,8 +125,8 @@ function renderAdmissionDetail() {
 
 function calculateNextDue(admission, paymentsList) {
   const totalFees = admission.totalFees || 0;
-  const paidAmount = admission.paidAmount || 0;
-  const remaining = totalFees - paidAmount;
+  const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
+  const paidAmount = totalFees - remaining;
   
   if (remaining <= 0) {
     return { amount: 0, date: 'Paid' };
