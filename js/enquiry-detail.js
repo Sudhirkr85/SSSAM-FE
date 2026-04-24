@@ -641,20 +641,6 @@ function validateStatusNote() {
     return true;
 }
 
-function submitStatusUpdate() {
-    if (!validateStatusNote()) {
-        showToast('error', 'Please add a note');
-        return;
-    }
-
-    const status = document.getElementById('statusTargetStatus').value;
-    const note = document.getElementById('statusNote').value;
-    const followUpDate = document.getElementById('statusFollowUpDate').value;
-
-    // Directly execute status update without confirmation modal
-    executeStatusUpdate(currentId, status, note, followUpDate);
-}
-
 // Global flag to prevent duplicate API calls for status update
 let isStatusUpdating = false;
 
