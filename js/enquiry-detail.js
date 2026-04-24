@@ -333,6 +333,13 @@ function openWhatsAppModal() {
         mobileDisplay.querySelector('span').textContent = enquiry.mobile;
     }
 
+    // Setup template change listener (ensure it works)
+    const templateSelect = document.getElementById('whatsappTemplate');
+    if (templateSelect) {
+        templateSelect.removeEventListener('change', generateEnquiryWhatsAppMessage);
+        templateSelect.addEventListener('change', generateEnquiryWhatsAppMessage);
+    }
+
     // Generate initial message
     generateEnquiryWhatsAppMessage();
 
@@ -1268,27 +1275,27 @@ Regarding your ${course} enquiry, please let me know a convenient time to connec
 
     followup: (name, course, counselorName) => `Hi ${name},
 
-This is ${counselorName} from SSSAM Academy, Gurgaon.
+This is ${counselorName} from SSSAM Academy.
 
-Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
+Following up on your ${course} enquiry. Are you still interested?`,
 
     interested: (name, course, counselorName) => `Hi ${name},
 
-This is ${counselorName} from SSSAM Academy, Gurgaon.
+This is ${counselorName} from SSSAM Academy.
 
-Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
+Great to know you're interested in ${course}! Let's proceed with admission.`,
 
     notinterested: (name, course, counselorName) => `Hi ${name},
 
+This is ${counselorName} from SSSAM Academy.
+
+Thank you for your time. If you need any assistance in future, feel free to reach out.`,
+
+    custom: (name, course, counselorName) => `Hi ${name},
+
 This is ${counselorName} from SSSAM Academy, Gurgaon.
 
-Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
-
-    custom: (name, course, counselorName) => `Hi {name},
-
-This is {counselorName} from SSSAM Academy, Gurgaon.
-
-Regarding your {course} enquiry, please let me know a convenient time to connect.`
+I'd like to discuss your ${course} enquiry...`
 };
 
 function setupWhatsAppForEnquiry() {
@@ -1337,9 +1344,6 @@ function generateEnquiryWhatsAppMessage() {
             message = ENQUIRY_WHATSAPP_TEMPLATES.custom(name, course, counselorName);
             break;
     }
-
-    // Apply placeholder replacement for dynamic values
-    message = replaceMessagePlaceholders(message, name, course, counselorName);
 
     textarea.value = message;
 }
