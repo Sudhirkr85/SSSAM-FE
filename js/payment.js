@@ -19,23 +19,44 @@ INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
     loadPayments();
+    initSearchListener();
 });
+
+function initSearchListener() {
+    let searchTimeout;
+    document.getElementById('searchInput')?.addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            currentPage = 1;
+            loadPayments(e.target.value);
+        }, 300);
+    });
+}
 
 /* ======================
 LOAD DATA
 ====================== */
-async function loadPayments() {
+async function loadPayments(search = '') {
     try {
-        // Use the correct endpoint: GET /api/payments with pagination
-        const res = await apiGet(API_ENDPOINTS.PAYMENTS.GET_ALL, {
+        const params = {
             page: currentPage,
             limit: ITEMS_PER_PAGE
-        });
+        };
+        
+        if (search) {
+            params.search = search;
+        }
+
+        // Use the correct endpoint: GET /api/payments with pagination
+        const res = await apiGet(API_ENDPOINTS.PAYMENTS.GET_ALL, params);
 
         // Response: { payments: [...], pagination: {...} }
         payments = res.payments || [];
         const pagination = res.pagination || { page: 1, totalPages: 1, totalCount: 0 };
         totalPages = pagination.totalPages || 1;
+
+        // Fetch admission details for each payment to get student/course data
+        await enrichPaymentsWithAdmissionData();
 
         renderTable();
         renderStatsFromDashboard(); // Get stats from dashboard API
@@ -43,6 +64,31 @@ async function loadPayments() {
     } catch (err) {
         showToast('error', 'Failed to load payments');
         renderEmptyState();
+    }
+}
+
+async function enrichPaymentsWithAdmissionData() {
+    // Get unique admission IDs from payments
+    const admissionIds = [...new Set(payments.map(p => p.admissionId).filter(id => id))];
+    
+    // Fetch each admission
+    for (const admId of admissionIds) {
+        try {
+            const admRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(admId));
+            console.log('Admission detail response:', admRes);
+            // Handle nested response structure: { data: { admission: { admission: {...} } } }
+            const admissionWrapper = admRes.data?.admission || admRes.data || admRes;
+            const admission = admissionWrapper.admission || admissionWrapper;
+            console.log('Extracted admission:', admission);
+            // Store on the payment object for easy access
+            payments.forEach(p => {
+                if (p.admissionId === admId) {
+                    p._admissionData = admission;
+                }
+            });
+        } catch (err) {
+            console.error(`Failed to load admission ${admId}:`, err);
+        }
     }
 }
 
@@ -61,10 +107,13 @@ function renderTable() {
         const mode = p.paymentMode || 'CASH';
         const style = paymentModeStyles[mode] || paymentModeStyles['CASH'];
 
-        // API returns populated admissionId with enquiryId
-        const studentName = p.admissionId?.enquiryId?.name || 'Unknown';
-        const mobile = p.admissionId?.enquiryId?.mobile || '';
-        const course = p.admissionId?.enquiryId?.courseInterested || '-';
+        // Get admission data from enriched payment
+        const admission = p._admissionData;
+        const enquiry = admission?.enquiryId || {};
+        
+        const studentName = enquiry.name || 'Unknown';
+        const mobile = enquiry.mobile || '';
+        const course = enquiry.courseInterested || admission?.course || '-';
 
         return `
             <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">

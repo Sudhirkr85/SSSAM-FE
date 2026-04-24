@@ -585,8 +585,8 @@ async function submitAddAdmission() {
     hasError = true;
   }
 
-  if (initialPayment < 0) {
-    document.getElementById('initialPaymentError').textContent = 'Initial payment cannot be negative';
+  if (initialPayment <= 0) {
+    document.getElementById('initialPaymentError').textContent = 'Initial payment is required and must be greater than 0';
     document.getElementById('initialPaymentError').classList.remove('hidden');
     document.getElementById('initialPaymentInput').classList.add('border-red-500');
     hasError = true;
@@ -596,6 +596,12 @@ async function submitAddAdmission() {
     document.getElementById('initialPaymentError').textContent = 'Initial payment cannot exceed total fees';
     document.getElementById('initialPaymentError').classList.remove('hidden');
     document.getElementById('initialPaymentInput').classList.add('border-red-500');
+    hasError = true;
+  }
+
+  if (!initialPaymentMode) {
+    document.getElementById('paymentModeError').classList.remove('hidden');
+    document.getElementById('paymentModeInput').classList.add('border-red-500');
     hasError = true;
   }
 
@@ -648,6 +654,7 @@ async function submitAddAdmission() {
   try {
     // Build payload per API contract
     const payload = {
+      course,
       paymentType,
       totalFees,
       registrationAmount,

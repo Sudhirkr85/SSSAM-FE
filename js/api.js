@@ -100,13 +100,14 @@ async function apiGet(url, params = {}) {
     console.log('API GET Response:', { url, params, responseData });
 
     // If response has pagination, return full data object with mapped array
-    if (responseData.pagination) {
-        const dataArray = responseData.data || [];
+    if (responseData.data?.pagination) {
+        const dataObj = responseData.data;
         return {
             ...responseData,
-            enquiries: dataArray,
-            admissions: dataArray,
-            payments: dataArray
+            ...dataObj,
+            enquiries: dataObj.enquiries || [],
+            admissions: dataObj.admissions || [],
+            payments: dataObj.payments || []
         };
     }
 
