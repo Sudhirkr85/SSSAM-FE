@@ -130,10 +130,15 @@
       
       <!-- HEADER -->
       <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
-        <h1 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
-          <i data-lucide="user-check" class="w-6 h-6 text-blue-600"></i>
-          Admissions
-        </h1>
+        <div class="flex items-center gap-3">
+          <button id="sidebarToggle" onclick="toggleSidebar()" class="hidden lg:flex w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl items-center justify-center transition-colors" title="Hide Sidebar">
+            <i data-lucide="panel-left" class="w-5 h-5 text-gray-600"></i>
+          </button>
+          <h1 class="text-xl font-semibold text-gray-800 flex items-center gap-2">
+            <i data-lucide="user-check" class="w-6 h-6 text-blue-600"></i>
+            Admissions
+          </h1>
+        </div>
         <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium text-sm">
           <i data-lucide="log-out" class="w-5 h-5"></i>
           <span>Logout</span>
@@ -758,6 +763,8 @@
       }
     });
   </script>
+
+  <script src="js/sidebar.js"></script>
 
 </body>
 </html>

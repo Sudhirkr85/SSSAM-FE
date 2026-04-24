@@ -85,7 +85,12 @@
 
             <!-- NAVBAR -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
-                <h1 class="text-lg font-semibold text-gray-800">Payments</h1>
+                <div class="flex items-center gap-3">
+                    <button id="sidebarToggle" onclick="toggleSidebar()" class="hidden lg:flex w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl items-center justify-center transition-colors" title="Hide Sidebar">
+                        <i data-lucide="panel-left" class="w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <h1 class="text-lg font-semibold text-gray-800">Payments</h1>
+                </div>
                 <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium">
                     <i data-lucide="log-out" class="w-5 h-5"></i>
                     <span>Logout</span>
@@ -231,7 +236,9 @@
 
     <script src="js/auth.js"></script>
 
-    <script src="js/payment.js"></script>
+    <script src="js/payments.js"></script>
+
+    <script src="js/sidebar.js"></script>
 
     <script>
         lucide.createIcons();

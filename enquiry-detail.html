@@ -81,6 +81,10 @@
             <!-- Header -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
                 <div class="flex items-center gap-3">
+                    <button id="sidebarToggle" onclick="toggleSidebar()" class="hidden lg:flex w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl items-center justify-center transition-colors" title="Hide Sidebar">
+                        <i data-lucide="panel-left" class="w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <div class="h-6 w-px bg-gray-200 hidden lg:block"></div>
                     <a href="enquiries.html" class="w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl flex items-center justify-center transition-colors">
                         <i data-lucide="arrow-left" class="w-5 h-5 text-gray-600"></i>
                     </a>
@@ -432,6 +436,7 @@
                         <div class="relative">
                             <input type="date" id="initialPaymentDate" required
                                 class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500">
+                            <p id="initialPaymentDateError" class="hidden text-red-500 text-xs mt-0.5 absolute -bottom-5 left-0">Date is required</p>
                         </div>
                         <div class="relative">
                             <select id="initialPaymentMode" required
@@ -467,6 +472,7 @@
                             <input type="date" id="pendingDueDate"
                                 class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-amber-200 text-gray-800 text-sm focus:outline-none focus:border-amber-500">
                             <label class="absolute left-3 -top-2 bg-amber-50 px-1 text-xs text-amber-700">Due Date</label>
+                            <p id="pendingDueDateError" class="hidden text-red-500 text-xs mt-0.5 absolute -bottom-5 left-0">Due date is required</p>
                         </div>
                     </div>
                 </div>
@@ -490,6 +496,7 @@
                             <div class="relative">
                                 <input type="date" class="installment-date w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
                                     min="" onchange="onInstallmentDateChange(this)">
+                                <p class="installment-date-error hidden text-red-500 text-xs mt-0.5 absolute -bottom-4 left-0">Date required</p>
                             </div>
                             <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2 h-[40px] flex items-center justify-center">
                                 <i data-lucide="x" class="w-4 h-4"></i>
@@ -665,6 +672,8 @@
     <script src="js/auth.js"></script>
 
     <script src="js/enquiry-detail.js"></script>
+
+    <script src="js/sidebar.js"></script>
 
     <script>
         lucide.createIcons();

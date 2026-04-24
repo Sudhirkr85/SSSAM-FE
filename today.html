@@ -93,7 +93,12 @@
             
             <!-- NAVBAR -->
             <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
-                <h1 class="text-lg font-semibold">Today Calls</h1>
+                <div class="flex items-center gap-3">
+                    <button id="sidebarToggle" onclick="toggleSidebar()" class="hidden lg:flex w-10 h-10 bg-gray-100 hover:bg-gray-200 rounded-xl items-center justify-center transition-colors" title="Hide Sidebar">
+                        <i data-lucide="panel-left" class="w-5 h-5 text-gray-600"></i>
+                    </button>
+                    <h1 class="text-lg font-semibold">Today Calls</h1>
+                </div>
                 <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600">
                     <i data-lucide="log-out"></i> Logout
                 </button>
@@ -191,7 +196,7 @@
 
     <!-- STATUS MODAL -->
     <div id="statusModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
-        <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl transform scale-95 transition-transform duration-300 max-h-[85vh] overflow-y-auto" id="statusModalContent">
+        <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="statusModalContent">
 
             <!-- Header -->
             <div class="flex items-center gap-3 mb-6">
@@ -423,6 +428,8 @@
     <script src="js/auth.js"></script>
 
     <script src="js/today.js"></script>
+
+    <script src="js/sidebar.js"></script>
 
     <script>
         lucide.createIcons();

@@ -925,6 +925,7 @@ function addInstallmentRow() {
         <div class="relative">
             <input type="date" class="installment-date w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
                 min="${minDate}" onchange="onInstallmentDateChange(this)">
+            <p class="installment-date-error hidden text-red-500 text-xs mt-0.5 absolute -bottom-4 left-0">Date required</p>
         </div>
         <button type="button" onclick="removeInstallmentRow(this)" class="text-red-500 hover:text-red-700 px-2 h-[40px] flex items-center justify-center">
             <i data-lucide="x" class="w-4 h-4"></i>
@@ -1092,11 +1093,14 @@ function validateSetupFeesForm() {
     }
 
     // Validate Initial Payment Date (required)
+    const initialPaymentDateError = document.getElementById('initialPaymentDateError');
     if (initialPaymentDateField && !initialPaymentDateField.value) {
         initialPaymentDateField.classList.add('border-red-500', 'focus:border-red-500');
+        if (initialPaymentDateError) initialPaymentDateError.classList.remove('hidden');
         valid = false;
     } else if (initialPaymentDateField) {
         initialPaymentDateField.classList.remove('border-red-500', 'focus:border-red-500');
+        if (initialPaymentDateError) initialPaymentDateError.classList.add('hidden');
     }
 
     // Validate Initial Payment Mode (required)
@@ -1105,6 +1109,23 @@ function validateSetupFeesForm() {
         valid = false;
     } else if (initialPaymentModeField) {
         initialPaymentModeField.classList.remove('border-red-500', 'focus:border-red-500');
+    }
+
+    // Validate Pending Due Date for ONE_TIME when remaining > 0
+    const pendingAmountSection = document.getElementById('pendingAmountSection');
+    if (paymentType === 'ONE_TIME' && pendingAmountSection && !pendingAmountSection.classList.contains('hidden')) {
+        const pendingDueDate = document.getElementById('pendingDueDate');
+        const pendingDueDateError = document.getElementById('pendingDueDateError');
+        const remainingAmount = parseFloat(document.getElementById('remainingAmountDisplay')?.textContent?.replace('₹', '').replace(',', '') || 0);
+
+        if (remainingAmount > 0 && pendingDueDate && !pendingDueDate.value) {
+            pendingDueDate.classList.add('border-red-500', 'focus:border-red-500');
+            if (pendingDueDateError) pendingDueDateError.classList.remove('hidden');
+            valid = false;
+        } else if (pendingDueDate) {
+            pendingDueDate.classList.remove('border-red-500', 'focus:border-red-500');
+            if (pendingDueDateError) pendingDueDateError.classList.add('hidden');
+        }
     }
 
     // Validate that total entered amount doesn't exceed total fees
@@ -1121,6 +1142,24 @@ function validateSetupFeesForm() {
         } else {
             document.getElementById('installmentsError').classList.add('hidden');
         }
+
+        // Validate each installment has a date
+        const rows = document.querySelectorAll('.installment-row');
+        rows.forEach(row => {
+            const dateInput = row.querySelector('.installment-date');
+            const dateError = row.querySelector('.installment-date-error');
+            const amountInput = row.querySelector('.installment-amount');
+
+            // Only validate date if amount is entered
+            if (amountInput && amountInput.value && dateInput && !dateInput.value) {
+                dateInput.classList.add('border-red-500', 'focus:border-red-500');
+                if (dateError) dateError.classList.remove('hidden');
+                valid = false;
+            } else if (dateInput) {
+                dateInput.classList.remove('border-red-500', 'focus:border-red-500');
+                if (dateError) dateError.classList.add('hidden');
+            }
+        });
     }
 
     return valid;
@@ -1171,13 +1210,39 @@ async function submitSetupFees() {
         // Create Admission with payment plan in one call
         const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(id), payload);
 
-        // Handle response: { success: true, data: { admission: {...}, alreadyExists: true/false } }
-        const admission = admissionRes.data?.admission || admissionRes.admission || admissionRes;
+        // DEBUG: Log full response
+        console.log('Admission API Response:', admissionRes);
+
+        // Handle multiple possible response formats:
+        // Format 1: { success: true, data: { admission: {...}, alreadyExists: true/false } }
+        // Format 2: { success: true, admission: {...}, alreadyExists: true/false }
+        // Format 3: { _id: ..., ... } (direct admission object)
+        let admission = null;
+        let alreadyExists = false;
+
+        if (admissionRes.data?.admission) {
+            // Format 1
+            admission = admissionRes.data.admission;
+            alreadyExists = admissionRes.data.alreadyExists || false;
+        } else if (admissionRes.admission) {
+            // Format 2
+            admission = admissionRes.admission;
+            alreadyExists = admissionRes.alreadyExists || false;
+        } else if (admissionRes._id) {
+            // Format 3 - direct admission object
+            admission = admissionRes;
+            alreadyExists = false;
+        } else if (admissionRes.data?._id) {
+            // Format 4 - admission in data directly
+            admission = admissionRes.data;
+            alreadyExists = admissionRes.data.alreadyExists || false;
+        }
+
         const admissionId = admission?._id;
-        const alreadyExists = admissionRes.data?.alreadyExists || false;
 
         if (!admissionId) {
-            throw new Error('Failed to create admission');
+            console.error('No admission ID found in response:', admissionRes);
+            throw new Error('Failed to create admission - invalid response format');
         }
 
         // Show appropriate message
@@ -1190,8 +1255,16 @@ async function submitSetupFees() {
         closeSetupFeesModal();
         loadEnquiryDetail(id);
     } catch (err) {
-        // Check if it's actually a success response with alreadyExists
-        if (err.response?.data?.success === true && err.response?.data?.data?.alreadyExists === true) {
+        console.error('Error in submitSetupFees:', err);
+        console.log('Error response:', err.response);
+        console.log('Error data:', err.response?.data);
+
+        // Check multiple formats for alreadyExists in error response
+        const errData = err.response?.data;
+        const alreadyExists = errData?.alreadyExists || errData?.data?.alreadyExists || false;
+        const hasSuccess = errData?.success === true || errData?.data?.success === true;
+
+        if (hasSuccess && alreadyExists) {
             // This is actually a success case - admission already exists
             showToast('info', 'Admission already exists for this enquiry');
             closeSetupFeesModal();
@@ -1200,13 +1273,12 @@ async function submitSetupFees() {
         }
 
         // Extract specific error message from backend response
-        const backendMessage = err.response?.data?.message || err.message || 'Please try again';
-        const backendErrors = err.response?.data?.errors;
+        const backendMessage = errData?.message || err.message || 'Please try again';
+        const backendErrors = errData?.errors || errData?.data?.errors;
         let errorMsg = backendMessage;
         if (backendErrors && backendErrors.length > 0) {
-            errorMsg = backendErrors.map(e => e.message).join(', ');
+            errorMsg = backendErrors.map(e => e.message || e).join(', ');
         }
-        console.error('Error:', err);
 
         // Close setup modal and show error in centered popup
         closeSetupFeesModal();
