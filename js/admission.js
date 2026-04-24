@@ -13,6 +13,7 @@ let enquiries = [];
 let selectedEnquiryId = null;
 let currentAdmissionId = null;
 let installmentRows = [];
+let admissionInstallmentRows = []; // For add admission modal
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -345,14 +346,24 @@ function openAddModal() {
   document.getElementById('totalFeesInput').value = '';
   document.getElementById('registrationAmountInput').value = '';
   document.querySelector('input[name="paymentType"][value="ONE_TIME"]').checked = true;
-  
+
+  // Set default payment date to today
+  document.getElementById('paymentDateInput').value = new Date().toISOString().split('T')[0];
+  document.getElementById('initialPaymentInput').value = '';
+  document.getElementById('paymentModeInput').value = 'CASH';
+
+  // Reset installments
+  admissionInstallmentRows = [{ amount: '', dueDate: '' }];
+  renderAdmissionInstallmentRows();
+  document.getElementById('installmentsSection').classList.add('hidden');
+
   // Clear errors
   clearAddErrors();
-  
+
   // Show modal
   const modal = document.getElementById('addModal');
   const content = document.getElementById('addModalContent');
-  
+
   modal.classList.remove('hidden');
   modal.classList.add('flex');
   setTimeout(() => {
@@ -360,7 +371,7 @@ function openAddModal() {
     content.classList.remove('scale-95');
     content.classList.add('scale-100');
   }, 10);
-  
+
   lucide.createIcons();
 }
 
@@ -380,10 +391,11 @@ function closeAddModal() {
 }
 
 function clearAddErrors() {
-  ['enquiry', 'course', 'totalFees', 'registrationAmount'].forEach(id => {
+  ['enquiry', 'course', 'totalFees', 'registrationAmount', 'paymentDate', 'initialPayment', 'paymentMode'].forEach(id => {
     document.getElementById(`${id}Error`)?.classList.add('hidden');
     document.getElementById(`${id}Input`)?.classList.remove('border-red-500');
   });
+  document.getElementById('installmentsError')?.classList.add('hidden');
 }
 
 function toggleEnquiryDropdown() {
@@ -455,62 +467,205 @@ function selectEnquiry(id, name, mobile) {
 }
 
 function handlePaymentTypeChange(value) {
-  // Can be used to show/hide installment fields immediately if needed
+  const installmentsSection = document.getElementById('installmentsSection');
+  if (value === 'INSTALLMENT') {
+    installmentsSection.classList.remove('hidden');
+    if (admissionInstallmentRows.length === 0) {
+      admissionInstallmentRows = [{ amount: '', dueDate: '' }];
+    }
+    renderAdmissionInstallmentRows();
+  } else {
+    installmentsSection.classList.add('hidden');
+  }
+  lucide.createIcons();
+}
+
+// ==================== ADMISSION INSTALLMENT ROWS ====================
+function renderAdmissionInstallmentRows() {
+  const container = document.getElementById('admissionInstallmentRows');
+  if (!container) return;
+
+  container.innerHTML = admissionInstallmentRows.map((row, index) => `
+    <div class="installment-row flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+      <div class="flex-1">
+        <label class="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
+        <div class="relative">
+          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
+          <input
+            type="number"
+            value="${row.amount}"
+            onchange="updateAdmissionInstallmentRow(${index}, 'amount', this.value)"
+            class="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+            placeholder="Amount"
+            min="1"
+          >
+        </div>
+      </div>
+      <div class="flex-1">
+        <label class="text-xs text-gray-500 mb-1 block">Due Date</label>
+        <input
+          type="date"
+          value="${row.dueDate}"
+          onchange="updateAdmissionInstallmentRow(${index}, 'dueDate', this.value)"
+          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+        >
+      </div>
+      <button
+        onclick="removeAdmissionInstallmentRow(${index})"
+        class="mt-5 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+        ${admissionInstallmentRows.length === 1 ? 'disabled' : ''}
+      >
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+      </button>
+    </div>
+  `).join('');
+
+  lucide.createIcons();
+}
+
+function addAdmissionInstallmentRow() {
+  admissionInstallmentRows.push({ amount: '', dueDate: '' });
+  renderAdmissionInstallmentRows();
+}
+
+function removeAdmissionInstallmentRow(index) {
+  if (admissionInstallmentRows.length > 1) {
+    admissionInstallmentRows.splice(index, 1);
+    renderAdmissionInstallmentRows();
+  }
+}
+
+function updateAdmissionInstallmentRow(index, field, value) {
+  admissionInstallmentRows[index][field] = value;
 }
 
 async function submitAddAdmission() {
   clearAddErrors();
-  
+
   const enquiryId = document.getElementById('selectedEnquiryId').value;
   const course = document.getElementById('courseInput').value.trim();
   const totalFees = parseFloat(document.getElementById('totalFeesInput').value) || 0;
   const registrationAmount = parseFloat(document.getElementById('registrationAmountInput').value) || 0;
   const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value || 'ONE_TIME';
-  
+  const paymentDate = document.getElementById('paymentDateInput').value;
+  const initialPayment = parseFloat(document.getElementById('initialPaymentInput').value) || 0;
+  const initialPaymentMode = document.getElementById('paymentModeInput').value;
+
   let hasError = false;
-  
+
   if (!enquiryId) {
     document.getElementById('enquiryError').classList.remove('hidden');
     hasError = true;
   }
-  
+
   if (!course) {
     document.getElementById('courseError').classList.remove('hidden');
     document.getElementById('courseInput').classList.add('border-red-500');
     hasError = true;
   }
-  
+
   if (totalFees <= 0) {
     document.getElementById('totalFeesError').classList.remove('hidden');
     document.getElementById('totalFeesInput').classList.add('border-red-500');
     hasError = true;
   }
-  
+
   if (registrationAmount > totalFees) {
     document.getElementById('registrationAmountError').textContent = 'Registration amount cannot exceed total fees';
     document.getElementById('registrationAmountError').classList.remove('hidden');
     document.getElementById('registrationAmountInput').classList.add('border-red-500');
     hasError = true;
   }
-  
+
+  if (!paymentDate) {
+    document.getElementById('paymentDateError').classList.remove('hidden');
+    document.getElementById('paymentDateInput').classList.add('border-red-500');
+    hasError = true;
+  }
+
+  if (initialPayment < 0) {
+    document.getElementById('initialPaymentError').textContent = 'Initial payment cannot be negative';
+    document.getElementById('initialPaymentError').classList.remove('hidden');
+    document.getElementById('initialPaymentInput').classList.add('border-red-500');
+    hasError = true;
+  }
+
+  if (initialPayment > totalFees) {
+    document.getElementById('initialPaymentError').textContent = 'Initial payment cannot exceed total fees';
+    document.getElementById('initialPaymentError').classList.remove('hidden');
+    document.getElementById('initialPaymentInput').classList.add('border-red-500');
+    hasError = true;
+  }
+
+  // Validate installments for INSTALLMENT type
+  let installments = null;
+  if (paymentType === 'INSTALLMENT') {
+    installments = [];
+    for (const row of admissionInstallmentRows) {
+      if (!row.amount || parseFloat(row.amount) <= 0) {
+        const errorEl = document.getElementById('installmentsError');
+        errorEl.textContent = 'All installments must have a valid amount';
+        errorEl.classList.remove('hidden');
+        hasError = true;
+        break;
+      }
+      if (!row.dueDate) {
+        const errorEl = document.getElementById('installmentsError');
+        errorEl.textContent = 'All installments must have a due date';
+        errorEl.classList.remove('hidden');
+        hasError = true;
+        break;
+      }
+      installments.push({
+        amount: parseFloat(row.amount),
+        dueDate: row.dueDate
+      });
+    }
+
+    // Validate total matches
+    if (!hasError && installments.length > 0) {
+      const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
+      const expectedRemaining = totalFees - initialPayment;
+      if (totalInstallments !== expectedRemaining) {
+        const errorEl = document.getElementById('installmentsError');
+        errorEl.textContent = `Installments total (${formatCurrency(totalInstallments)}) must equal remaining amount (${formatCurrency(expectedRemaining)})`;
+        errorEl.classList.remove('hidden');
+        hasError = true;
+      }
+    }
+  }
+
   if (hasError) return;
-  
+
   // Submit
   const submitBtn = document.getElementById('addSubmitBtn');
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
   lucide.createIcons();
-  
+
   try {
-    // Build payload per API contract - only required fields
+    // Build payload per API contract
     const payload = {
+      paymentType,
       totalFees,
       registrationAmount,
-      paymentType
+      paymentDate,
+      initialPayment,
+      initialPaymentMode
     };
-    
+
+    // Add paymentMethod for ONE_TIME (required)
+    if (paymentType === 'ONE_TIME') {
+      payload.paymentMethod = initialPaymentMode;
+    }
+
+    // Add installments for INSTALLMENT type
+    if (paymentType === 'INSTALLMENT' && installments && installments.length > 0) {
+      payload.installments = installments;
+    }
+
     await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(enquiryId), payload);
-    
+
     closeAddModal();
     showToast('Success', 'Admission created successfully', 'success');
     loadAdmissions();

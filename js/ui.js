@@ -1,17 +1,32 @@
 /* ======================
 TOAST
 ====================== */
-function showToast(type, message) {
-    const toast = document.getElementById('toast');
+function showToast(titleOrType, message, type) {
+    // Handle both (type, message) and (title, message, type) signatures
+    const toastType = type || (titleOrType === 'Success' ? 'success' : titleOrType === 'Error' ? 'error' : titleOrType);
+    const toastMessage = message || titleOrType;
 
-    toast.innerHTML = `     <div class="bg-white shadow-lg rounded-lg px-4 py-3 border-l-4 ${type === 'success' ? 'border-green-500' : 'border-red-500'
-        }">       <p class="text-sm">${message}</p>     </div>
-  `;
+    const toast = document.getElementById('toast') || document.getElementById('toastContainer');
+    if (!toast) return;
 
-    toast.classList.remove('hidden');
+    const bgColor = toastType === 'success' ? 'bg-green-50 border-green-500 text-green-800' : 'bg-red-50 border-red-500 text-red-800';
+    const icon = toastType === 'success'
+        ? '<svg class="w-5 h-5 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>'
+        : '<svg class="w-5 h-5 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>';
+
+    const toastEl = document.createElement('div');
+    toastEl.className = `flex items-center gap-3 px-4 py-3 rounded-lg border-l-4 shadow-lg ${bgColor} toast-enter`;
+    toastEl.innerHTML = `
+        ${icon}
+        <p class="text-sm font-medium">${toastMessage}</p>
+    `;
+
+    toast.appendChild(toastEl);
 
     setTimeout(() => {
-        toast.classList.add('hidden');
+        toastEl.classList.remove('toast-enter');
+        toastEl.classList.add('toast-exit');
+        setTimeout(() => toastEl.remove(), 300);
     }, 3000);
 }
 
