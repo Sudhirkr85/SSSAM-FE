@@ -165,12 +165,32 @@ async function apiDelete(url) {
 /* ======================
 ROLE-BASED UTILITIES
 ====================== */
-function getCurrentUser() {
+
+// Safe localStorage parsing utility
+function safeParseLocalStorage(key, defaultValue = {}) {
     try {
-        return JSON.parse(localStorage.getItem('user') || '{}');
-    } catch {
-        return {};
+        const value = localStorage.getItem(key);
+        if (!value || value === 'undefined' || value === 'null') {
+            return defaultValue;
+        }
+        return JSON.parse(value);
+    } catch (error) {
+        console.warn(`Failed to parse localStorage key "${key}":`, error);
+        return defaultValue;
     }
+}
+
+// Safe localStorage set utility
+function safeSetLocalStorage(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch (error) {
+        console.error(`Failed to set localStorage key "${key}":`, error);
+    }
+}
+
+function getCurrentUser() {
+    return safeParseLocalStorage('user', {});
 }
 
 function getUserRole() {

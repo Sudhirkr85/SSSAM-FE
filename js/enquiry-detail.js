@@ -7,12 +7,12 @@ let currentEnquiryData = null;
 ROLE CHECK HELPERS
 ====================== */
 function isAdmin() {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = safeParseLocalStorage('user', {});
     return user.role === 'admin';
 }
 
 function isCounselor() {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = safeParseLocalStorage('user', {});
     return user.role === 'counselor' || user.role === 'user';
 }
 
@@ -322,7 +322,7 @@ function sendWhatsAppMessage() {
         return;
     }
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = safeParseLocalStorage('user', {});
     const counselorName = user.name || 'SSSAM Academy';
 
     const message = `Hi ${e.name},
@@ -336,51 +336,6 @@ Regarding your ${e.courseInterested} enquiry, please let me know a convenient ti
     window.open(whatsappUrl, '_blank');
 }
 
-/* ====================
-WHATSAPP MODAL
-==================== */
-function openWhatsAppModal() {
-    const modal = document.getElementById('whatsappModal');
-    const modalContent = document.getElementById('whatsappModalContent');
-    const mobileDisplay = document.getElementById('whatsappMobileDisplay');
-    const enquiry = window.currentEnquiryData;
-
-    // Populate mobile number
-    if (mobileDisplay && enquiry?.mobile) {
-        mobileDisplay.querySelector('span').textContent = enquiry.mobile;
-    }
-
-    // Setup template change listener (ensure it works)
-    const templateSelect = document.getElementById('whatsappTemplate');
-    if (templateSelect) {
-        templateSelect.removeEventListener('change', generateEnquiryWhatsAppMessage);
-        templateSelect.addEventListener('change', generateEnquiryWhatsAppMessage);
-    }
-
-    // Generate initial message
-    generateEnquiryWhatsAppMessage();
-
-    modal.classList.remove('hidden');
-    setTimeout(() => {
-        modal.classList.remove('opacity-0');
-        modalContent.classList.remove('scale-95');
-        modalContent.classList.add('scale-100');
-    }, 10);
-    lucide.createIcons();
-}
-
-function closeWhatsAppModal() {
-    const modal = document.getElementById('whatsappModal');
-    const modalContent = document.getElementById('whatsappModalContent');
-    
-    modal.classList.add('opacity-0');
-    modalContent.classList.remove('scale-100');
-    modalContent.classList.add('scale-95');
-    setTimeout(() => {
-        modal.classList.add('hidden');
-    }, 300);
-}
-
 function selectWhatsAppMessage(type) {
     const e = currentEnquiryData;
     if (!e || !e.mobile) {
@@ -389,7 +344,7 @@ function selectWhatsAppMessage(type) {
         return;
     }
 
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = safeParseLocalStorage('user', {});
     const counselorName = user.name || 'SSSAM Academy';
     let message = '';
 
@@ -1454,7 +1409,7 @@ WHATSAPP INTEGRATION
 ====================== */
 // Get logged-in user name from localStorage
 function getLoggedInUserName() {
-    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const user = safeParseLocalStorage('user', {});
     return user.name || user.fullName || user.userName || 'Counselor';
 }
 

@@ -28,7 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initUserInfo() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = safeParseLocalStorage('user', {});
   const nameEl = document.getElementById('userName');
   const roleEl = document.getElementById('userRole');
   if (nameEl) nameEl.textContent = user.name || 'User';

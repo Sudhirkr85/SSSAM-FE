@@ -6,7 +6,7 @@
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   // Check if user is admin (reports usually admin-only)
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = safeParseLocalStorage('user', {});
   if (user.role !== 'admin') {
     showToast('Warning', 'Reports are available for admin users only', 'warning');
   }

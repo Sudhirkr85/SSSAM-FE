@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function initUserProfile() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = safeParseLocalStorage('user', {});
   const name = user.name || user.fullName || 'User';
   const role = user.role || 'counselor';
   
@@ -119,7 +119,7 @@ function initEventListeners() {
 }
 
 function checkAdminFeatures() {
-  const user = JSON.parse(localStorage.getItem('user') || '{}');
+  const user = safeParseLocalStorage('user', {});
   if (user.role === 'admin') {
     document.getElementById('bulkUploadBtn')?.classList.remove('hidden');
     document.getElementById('reportsMenu')?.classList.remove('hidden');
