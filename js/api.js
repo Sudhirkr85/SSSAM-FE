@@ -121,6 +121,18 @@ async function apiGet(url, params = {}) {
         };
     }
 
+    // If response has data as object with named arrays (no pagination)
+    if (responseData.data && typeof responseData.data === 'object' && !Array.isArray(responseData.data)) {
+        const dataObj = responseData.data;
+        return {
+            ...responseData,
+            ...dataObj,
+            enquiries: dataObj.enquiries || [],
+            admissions: dataObj.admissions || [],
+            payments: dataObj.payments || []
+        };
+    }
+
     // If response has pagination at top level with named arrays
     if (responseData.pagination) {
         return responseData;
