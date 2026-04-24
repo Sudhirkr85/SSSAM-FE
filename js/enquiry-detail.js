@@ -1183,26 +1183,44 @@ async function submitSetupFees() {
     const totalFees = parseFloat(document.getElementById('totalFees').value);
     const paymentType = document.getElementById('paymentType').value;
 
-    // Get initial payment details (always required now)
+    // Get initial payment details
     const initialPaymentField = document.getElementById('initialPayment');
     const initialPaymentModeField = document.getElementById('initialPaymentMode');
+    const initialPaymentDateField = document.getElementById('initialPaymentDate');
     const initialPayment = initialPaymentField ? parseFloat(initialPaymentField.value) || 0 : 0;
     const initialPaymentMode = initialPaymentModeField?.value || 'CASH';
+    const paymentDate = initialPaymentDateField?.value || new Date().toISOString().split('T')[0];
 
     try {
-        // Build request payload - match API contract
-        const payload = {
-            totalFees: totalFees,
-            paymentType: paymentType,
-            registrationAmount: initialPayment,
-            paymentMethod: initialPaymentMode
-        };
+        // Build request payload per API documentation
+        let payload;
 
-        // For INSTALLMENT, add installments array
-        if (paymentType === 'INSTALLMENT') {
-            payload.installments = getInstallmentsData();
+        if (paymentType === 'ONE_TIME') {
+            // ONE_TIME: Use initialPayment as registrationAmount (full payment)
+            // API: registrationAmount = total amount being paid now
+            payload = {
+                paymentType: 'ONE_TIME',
+                paymentMethod: initialPaymentMode,
+                totalFees: totalFees,
+                registrationAmount: initialPayment > 0 ? initialPayment : totalFees, // If partial initial, use that
+                paymentDate: paymentDate
+            };
+        } else {
+            // INSTALLMENT: Send initial payment details and installments
+            payload = {
+                paymentType: 'INSTALLMENT',
+                totalFees: totalFees,
+                registrationAmount: initialPayment, // Registration/initial payment amount
+                installments: getInstallmentsData()
+            };
+
+            // Only add initialPayment fields if initial payment > 0
+            if (initialPayment > 0) {
+                payload.initialPayment = initialPayment;
+                payload.initialPaymentMode = initialPaymentMode;
+                payload.paymentDate = paymentDate;
+            }
         }
-        // Note: ONE_TIME payments don't send remaining amount - backend handles this
 
         // DEBUG: Log exact payload being sent
         console.log('Sending payload:', JSON.stringify(payload, null, 2));
@@ -1213,27 +1231,29 @@ async function submitSetupFees() {
         // DEBUG: Log full response
         console.log('Admission API Response:', admissionRes);
 
-        // Handle multiple possible response formats:
-        // Format 1: { success: true, data: { admission: {...}, alreadyExists: true/false } }
-        // Format 2: { success: true, admission: {...}, alreadyExists: true/false }
-        // Format 3: { _id: ..., ... } (direct admission object)
+        // Handle API response structure per docs:
+        // { success: true, data: { admission: { admission: {...} }, alreadyExists: true/false } }
         let admission = null;
         let alreadyExists = false;
 
-        if (admissionRes.data?.admission) {
-            // Format 1
+        if (admissionRes.data?.admission?.admission) {
+            // Standard API format: data.admission.admission contains the admission object
+            admission = admissionRes.data.admission.admission;
+            alreadyExists = admissionRes.data.alreadyExists || false;
+        } else if (admissionRes.data?.admission?._id) {
+            // Flat format: admission directly has _id
             admission = admissionRes.data.admission;
             alreadyExists = admissionRes.data.alreadyExists || false;
-        } else if (admissionRes.admission) {
-            // Format 2
+        } else if (admissionRes.admission?._id) {
+            // Direct admission format
             admission = admissionRes.admission;
             alreadyExists = admissionRes.alreadyExists || false;
         } else if (admissionRes._id) {
-            // Format 3 - direct admission object
+            // Direct object format
             admission = admissionRes;
             alreadyExists = false;
         } else if (admissionRes.data?._id) {
-            // Format 4 - admission in data directly
+            // Direct in data
             admission = admissionRes.data;
             alreadyExists = admissionRes.data.alreadyExists || false;
         }
