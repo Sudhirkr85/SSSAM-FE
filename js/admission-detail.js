@@ -31,13 +31,12 @@ async function loadAdmissionDetail() {
     // Load admission details
     const admissionRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(admissionId));
 
-    // Handle nested response structure: { success, message, data: { admission: { admission, totalPaid, remainingAmount } } }
-    const admissionWrapper = admissionRes.data?.admission || admissionRes.data || admissionRes;
-    admissionData = admissionWrapper.admission || admissionWrapper;
-
-    // Store calculated totals from wrapper if available
-    admissionData.totalPaid = admissionWrapper.totalPaid ?? admissionData.totalPaid;
-    admissionData.remainingAmount = admissionWrapper.remainingAmount ?? admissionData.remainingAmount;
+    // Backend now returns: { success, message, data: { admission: {...}, totalPaid, remainingAmount } }
+    const data = admissionRes.data;
+    admissionData = data.admission;
+    // Store calculated totals from backend
+    admissionData.totalPaid = data.totalPaid;
+    admissionData.remainingAmount = data.remainingAmount;
 
     // Load payments
     const paymentsRes = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(admissionId));
@@ -72,9 +71,13 @@ function renderAdmissionDetail() {
   const paymentType = admissionData.paymentType || 'ONE_TIME';
   
   const totalFees = admissionData.totalFees || 0;
-  // Use totalPaid from API response if available, otherwise calculate from remainingAmount
-  const remaining = admissionData.remainingAmount ?? (totalFees - (admissionData.paidAmount || 0));
-  const paidAmount = admissionData.totalPaid ?? (totalFees - remaining);
+  // Calculate total paid from payments array (excluding refunds)
+  const calculatedPaid = payments
+    .filter(p => p.type !== 'refund')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  // Use calculated paid amount, fallback to backend totalPaid
+  const paidAmount = calculatedPaid || (admissionData.totalPaid ?? 0);
+  const remaining = admissionData.remainingAmount ?? (totalFees - paidAmount);
   
   // Student info
   document.getElementById('studentName').textContent = studentName;
@@ -132,8 +135,12 @@ function renderAdmissionDetail() {
 
 function calculateNextDue(admission, paymentsList) {
   const totalFees = admission.totalFees || 0;
-  const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
-  const paidAmount = admission.totalPaid ?? (totalFees - remaining);
+  // Calculate total paid from payments array (excluding refunds)
+  const calculatedPaid = paymentsList
+    .filter(p => p.type !== 'refund')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const paidAmount = calculatedPaid || (admission.totalPaid ?? 0);
+  const remaining = admission.remainingAmount ?? (totalFees - paidAmount);
   
   if (remaining <= 0) {
     return { amount: 0, date: 'Paid' };
@@ -182,8 +189,12 @@ function renderInstallmentTable() {
 
   const installments = admissionData?.installments || [];
   const totalFees = admissionData?.totalFees || 0;
-  const remaining = admissionData?.remainingAmount ?? (totalFees - (admissionData?.paidAmount || 0));
-  const paidAmount = admissionData?.totalPaid ?? (totalFees - remaining);
+  // Calculate total paid from payments array (excluding refunds)
+  const calculatedPaid = payments
+    .filter(p => p.type !== 'refund')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const paidAmount = calculatedPaid || (admissionData?.totalPaid ?? 0);
+  const remaining = admissionData?.remainingAmount ?? (totalFees - paidAmount);
   const registrationAmount = admissionData?.registrationAmount || 0;
   
   document.getElementById('installmentCount').textContent = `${installments.length} installments`;
@@ -698,7 +709,11 @@ async function submitInstallmentPlan() {
 function openRefundModal() {
   if (!admissionData) return;
   
-  const paidAmount = admissionData?.totalPaid || 0;
+  // Calculate total paid from payments array (excluding refunds)
+  const calculatedPaid = payments
+    .filter(p => p.type !== 'refund')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const paidAmount = calculatedPaid || (admissionData?.totalPaid ?? 0);
   const refundPayments = payments.filter(p => p.type === 'refund');
   const totalRefunded = refundPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
   const maxRefundable = paidAmount - totalRefunded;

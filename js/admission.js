@@ -1066,8 +1066,8 @@ async function openViewPaymentsModal(admissionId) {
   
   // Set summary
   const total = admission.totalFees || 0;
-  const paid = admission.paidAmount || 0;
-  const remaining = total - paid;
+  const remaining = admission.remainingAmount ?? (total - (admission.paidAmount || 0));
+  const paid = total - remaining;
   
   document.getElementById('viewTotal').textContent = formatCurrency(total);
   document.getElementById('viewPaid').textContent = formatCurrency(paid);
