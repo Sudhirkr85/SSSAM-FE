@@ -152,7 +152,7 @@ function buildSummaryData(admissionsRes, feesRes) {
 
   return {
     totalEnquiries: summary.totalEnquiries || 0,
-    convertedEnquiries: summary.totalAdmissions || 0,
+    convertedEnquiries: summary.enquiriesConverted || summary.totalAdmissions || 0,
     totalRevenue: totalPaid || 0,
     pendingAmount: totalPending || 0,
     overdueAmount: 0 // Will be fetched from installment alerts
