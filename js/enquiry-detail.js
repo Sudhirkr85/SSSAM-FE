@@ -165,6 +165,14 @@ function renderEnquiry(e) {
         convertBtn.classList.add('hidden');
     }
 
+    // Conditional: Show Cancel Admission button if status is ADMISSION_PROCESS
+    const cancelAdmissionBtn = document.getElementById('cancelAdmissionProcessBtn');
+    if (e.status === 'ADMISSION_PROCESS') {
+        cancelAdmissionBtn.classList.remove('hidden');
+    } else {
+        cancelAdmissionBtn.classList.add('hidden');
+    }
+
     // Conditional: Show Delete Enquiry button only for admin users
     const deleteBtn = document.getElementById('deleteEnquiryBtn');
     if (isAdmin()) {
@@ -1232,6 +1240,90 @@ function closeErrorModal() {
 }
 
 /* ======================
+CANCEL ADMISSION PROCESS MODAL
+====================== */
+function openCancelAdmissionModal() {
+    // Reset form
+    document.getElementById('cancelAdmissionStatus').value = '';
+    document.getElementById('cancelAdmissionNote').value = '';
+    document.getElementById('cancelAdmissionStatusError').classList.add('hidden');
+    document.getElementById('cancelAdmissionNoteError').classList.add('hidden');
+
+    // Show modal
+    const modal = document.getElementById('cancelAdmissionModal');
+    const modalContent = document.getElementById('cancelAdmissionModalContent');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+    lucide.createIcons();
+}
+
+function closeCancelAdmissionModal() {
+    const modal = document.getElementById('cancelAdmissionModal');
+    const modalContent = document.getElementById('cancelAdmissionModalContent');
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
+async function confirmCancelAdmission() {
+    const status = document.getElementById('cancelAdmissionStatus').value;
+    const note = document.getElementById('cancelAdmissionNote').value.trim();
+
+    // Validate
+    let hasError = false;
+
+    if (!status) {
+        document.getElementById('cancelAdmissionStatusError').classList.remove('hidden');
+        hasError = true;
+    } else {
+        document.getElementById('cancelAdmissionStatusError').classList.add('hidden');
+    }
+
+    if (!note) {
+        document.getElementById('cancelAdmissionNoteError').classList.remove('hidden');
+        hasError = true;
+    } else {
+        document.getElementById('cancelAdmissionNoteError').classList.add('hidden');
+    }
+
+    if (hasError) return;
+
+    // Submit
+    const submitBtn = document.getElementById('confirmCancelAdmissionBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Cancelling...';
+    lucide.createIcons();
+
+    try {
+        const payload = {
+            status: status,
+            note: note
+        };
+
+        await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(currentId), payload);
+
+        closeCancelAdmissionModal();
+        showToast('success', 'Admission process cancelled');
+        loadEnquiryDetail(currentId);
+    } catch (err) {
+        console.error('Failed to cancel admission process:', err);
+        const message = err.response?.data?.message || 'Failed to cancel admission process';
+        showToast('error', message);
+    } finally {
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Cancel Process';
+        lucide.createIcons();
+    }
+}
+
+/* ======================
 CONFIRM MODAL
 ====================== */
 function closeConfirmModal() {
@@ -1404,3 +1496,6 @@ window.closeConfirmModal = closeConfirmModal;
 window.executeConfirmAction = executeConfirmAction;
 window.showErrorModal = showErrorModal;
 window.closeErrorModal = closeErrorModal;
+window.openCancelAdmissionModal = openCancelAdmissionModal;
+window.closeCancelAdmissionModal = closeCancelAdmissionModal;
+window.confirmCancelAdmission = confirmCancelAdmission;

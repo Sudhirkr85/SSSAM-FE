@@ -150,6 +150,12 @@
                         Convert to Admission
                     </button>
 
+                    <button id="cancelAdmissionProcessBtn" onclick="openCancelAdmissionModal()"
+                        class="hidden px-5 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl transition-all hover:scale-105 font-medium shadow-lg shadow-amber-600/30 flex items-center gap-2">
+                        <i data-lucide="x-circle" class="w-4 h-4"></i>
+                        Cancel Admission
+                    </button>
+
                     <button id="deleteEnquiryBtn" onclick="openDeleteEnquiryModal()"
                         class="hidden px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl transition-all hover:scale-105 font-medium shadow-lg shadow-red-600/30 flex items-center gap-2">
                         <i data-lucide="trash-2" class="w-4 h-4"></i>
@@ -513,6 +519,52 @@
         </div>
     </div>
 
+    <!-- CANCEL ADMISSION PROCESS MODAL -->
+    <div id="cancelAdmissionModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-[60] opacity-0 transition-opacity duration-300">
+        <div class="bg-white rounded-2xl w-full max-w-md p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="cancelAdmissionModalContent">
+
+            <div class="flex items-center gap-4 mb-4">
+                <div class="w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="x-circle" class="text-amber-600 w-6 h-6"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-800">Cancel Admission Process</h3>
+                    <p class="text-sm text-gray-500">Revert to previous status</p>
+                </div>
+            </div>
+
+            <div class="space-y-4 mb-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Revert to Status <span class="text-red-500">*</span></label>
+                    <select id="cancelAdmissionStatus" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 bg-white">
+                        <option value="">Select status...</option>
+                        <option value="INTERESTED">Interested</option>
+                        <option value="FOLLOW_UP">Follow Up</option>
+                        <option value="NO_RESPONSE">No Response</option>
+                        <option value="CONTACTED">Contacted</option>
+                    </select>
+                    <p id="cancelAdmissionStatusError" class="hidden text-red-500 text-xs mt-1">Please select a status</p>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Note <span class="text-red-500">*</span></label>
+                    <textarea id="cancelAdmissionNote" rows="3" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-100 resize-none" placeholder="Why are you cancelling the admission process?"></textarea>
+                    <p id="cancelAdmissionNoteError" class="hidden text-red-500 text-xs mt-1">Note is required</p>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeCancelAdmissionModal()" class="flex-1 px-4 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors font-medium">
+                    Back
+                </button>
+                <button onclick="confirmCancelAdmission()" id="confirmCancelAdmissionBtn" class="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl shadow-lg shadow-amber-600/30 transition-all font-medium">
+                    Cancel Process
+                </button>
+            </div>
+
+        </div>
+    </div>
+
     <!-- CUSTOM CONFIRM MODAL -->
     <div id="confirmModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-[60] opacity-0 transition-opacity duration-300">
         <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl transform scale-95 transition-transform duration-300" id="confirmModalContent">
@@ -602,7 +654,7 @@
     </div>
 
     <!-- Toast -->
-    <div id="toast" class="fixed top-4 right-4 hidden"></div>
+    <div id="toast" class="fixed top-4 right-4 z-50 space-y-3"></div>
 
     <!-- Scripts -->
 
