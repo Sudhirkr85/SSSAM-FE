@@ -149,7 +149,9 @@ function calculateNextDue(admission, paymentsList) {
   // Check if there are installments
   const installments = admission.installments || [];
   if (installments.length === 0) {
-    return { amount: remaining, date: 'On Demand' };
+    // For ONE_TIME payments, use fullPaymentDueDate if available, otherwise use admission creation date
+    const dueDate = admission.fullPaymentDueDate || admission.createdAt;
+    return { amount: remaining, date: dueDate ? formatDate(dueDate) : 'Not Specified' };
   }
   
   // Find first unpaid installment

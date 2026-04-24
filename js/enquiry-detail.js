@@ -1198,12 +1198,14 @@ async function submitSetupFees() {
         if (paymentType === 'ONE_TIME') {
             // ONE_TIME: Use initialPayment as registrationAmount (full payment)
             // API: registrationAmount = total amount being paid now
+            const pendingDueDateField = document.getElementById('pendingDueDate');
             payload = {
                 paymentType: 'ONE_TIME',
                 paymentMethod: initialPaymentMode,
                 totalFees: totalFees,
                 registrationAmount: initialPayment > 0 ? initialPayment : totalFees, // If partial initial, use that
-                paymentDate: paymentDate
+                paymentDate: paymentDate,
+                fullPaymentDueDate: pendingDueDateField?.value || null
             };
         } else {
             // INSTALLMENT: Send initial payment details and installments
