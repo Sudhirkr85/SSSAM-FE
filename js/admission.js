@@ -128,10 +128,11 @@ function renderTable() {
     const mobile = student.mobile || '';
     const course = admission.course || '-';
     const totalFees = admission.totalFees || 0;
-    const paidAmount = admission.paidAmount || 0;
-    const remaining = totalFees - paidAmount;
+    // Backend sends remainingAmount, calculate paid from it
+    const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
+    const paidAmount = totalFees - remaining;
     const paymentType = admission.paymentType || 'ONE_TIME';
-    
+
     return `
       <tr class="finance-row border-b border-gray-50 last:border-0 cursor-pointer hover:bg-indigo-50/50 transition-colors" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
         <td class="px-6 py-4">
@@ -189,10 +190,11 @@ function renderMobileCards() {
     const mobile = student.mobile || '';
     const course = admission.course || '-';
     const totalFees = admission.totalFees || 0;
-    const paidAmount = admission.paidAmount || 0;
-    const remaining = totalFees - paidAmount;
+    // Backend sends remainingAmount, calculate paid from it
+    const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
+    const paidAmount = totalFees - remaining;
     const paymentType = admission.paymentType || 'ONE_TIME';
-    
+
     return `
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
         <div class="flex items-center justify-between">
@@ -206,10 +208,10 @@ function renderMobileCards() {
             </div>
           </div>
           <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${getPaymentTypeBadgeClass(paymentType)}">
-            ${paymentType === 'ONE_TIME' ? 'One Time' : 'Installment'}
+            ${paymentType === 'ONE Time' ? 'One Time' : 'Installment'}
           </span>
         </div>
-        
+
         <div class="grid grid-cols-3 gap-2 text-center">
           <div class="bg-gray-50 rounded-lg p-2">
             <div class="text-xs text-gray-500">Total</div>
