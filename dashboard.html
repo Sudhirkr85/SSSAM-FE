@@ -234,21 +234,30 @@
     async function loadDashboardStats() {
       try {
         // Load dashboard data from API
-        const response = await apiGet(API_ENDPOINTS.DASHBOARD.GET);
-        
+        const res = await apiGet(API_ENDPOINTS.DASHBOARD.GET);
+
+        // Handle API response structure: { success, message, data }
+        const response = res.data || res;
+
         if (response) {
+          // Update Total Leads
           document.getElementById('totalLeads').textContent = response.totalEnquiries || 0;
-          document.getElementById('todayCalls').textContent = response.todayCalls || 0;
-          document.getElementById('totalAdmissions').textContent = response.totalAdmissions || 0;
-          document.getElementById('totalRevenue').textContent = formatCurrency(response.totalRevenue || 0);
+
+          // Update Total Admissions
+          const admissionsData = response.admissions || {};
+          document.getElementById('totalAdmissions').textContent = admissionsData.totalAdmissions || response.totalConversions || 0;
+
+          // Update Revenue - use yearlyRevenue as main total
+          const revenueData = response.revenue || {};
+          const totalRevenue = revenueData.yearlyRevenue || 0;
+          document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
         }
       } catch (err) {
         console.error('Failed to load dashboard stats:', err);
         // Use mock data for demo
-        document.getElementById('totalLeads').textContent = '156';
-        document.getElementById('todayCalls').textContent = '8';
-        document.getElementById('totalAdmissions').textContent = '42';
-        document.getElementById('totalRevenue').textContent = '₹4,85,000';
+        document.getElementById('totalLeads').textContent = '42';
+        document.getElementById('totalAdmissions').textContent = '9';
+        document.getElementById('totalRevenue').textContent = '₹13,448';
       }
     }
 

@@ -7,12 +7,18 @@ async function loadDashboard() {
         // Use role-based dashboard API endpoint
         const endpoint = getDashboardEndpoint();
         const res = await apiGet(endpoint);
+
+        // Handle API response structure: { success, message, data }
         const data = res.data || res;
 
         // Update simplified stats (3 cards: Leads, Admissions, Revenue)
         document.getElementById('totalLeads').textContent = data.totalEnquiries || 0;
-        document.getElementById('totalAdmissions').textContent = data.totalAdmissions || 0;
-        document.getElementById('totalRevenue').textContent = formatCurrency(data.totalRevenue || 0);
+
+        const admissionsData = data.admissions || {};
+        document.getElementById('totalAdmissions').textContent = admissionsData.totalAdmissions || data.totalConversions || 0;
+
+        const revenueData = data.revenue || {};
+        document.getElementById('totalRevenue').textContent = formatCurrency(revenueData.yearlyRevenue || 0);
     } catch (error) {
         // Check for 403 access denied
         if (error.response?.status === 403) {

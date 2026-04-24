@@ -355,50 +355,94 @@ async function executeUpdate() {
 ACTION BUTTONS
 ====================== */
 function getActionButtons(id, status) {
-    // For today calls, only show next logical action + follow up
-    const nextActions = {
-        'NEW': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-        'CONTACTED': { status: 'FOLLOW_UP', label: 'Follow Up', color: 'amber' },
-        'FOLLOW_UP': { status: 'INTERESTED', label: 'Interested', color: 'green' },
-        'INTERESTED': { status: 'ADMISSION_PROCESS', label: 'Admission', color: 'purple' },
-        'ADMISSION_PROCESS': { convert: true, label: 'Convert', color: 'purple' },
-        'NO_RESPONSE': { status: 'CONTACTED', label: 'Contacted', color: 'blue' },
-        'NOT_INTERESTED': null,
-        'CONVERTED': null
-    };
+    // Generate unique dropdown ID for each row
+    const dropdownId = `action-dropdown-${id}`;
+    
+    // Status options for the dropdown
+    const statusOptions = [
+        { value: 'CONTACTED', label: 'Contacted', icon: 'phone' },
+        { value: 'NO_RESPONSE', label: 'Call Not Picked', icon: 'phone-off' },
+        { value: 'FOLLOW_UP', label: 'Follow Up', icon: 'calendar-clock' },
+        { value: 'INTERESTED', label: 'Interested', icon: 'thumbs-up' },
+        { value: 'NOT_INTERESTED', label: 'Not Interested', icon: 'thumbs-down' },
+        { value: 'ADMISSION_PROCESS', label: 'Admission Process', icon: 'graduation-cap' }
+    ];
 
-    const action = nextActions[status];
+    // Filter out current status from options
+    const availableOptions = statusOptions.filter(opt => opt.value !== status);
 
-    // Always show Add Follow Up button (opens simple modal)
-    const followUpBtn = `
-        <button onclick="event.stopPropagation(); openFollowUpModal('${id}')"
-            class="px-2 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-medium transition-colors">
-            Add Follow Up
-        </button>
+    return `
+        <div class="relative inline-block text-left" onclick="event.stopPropagation();">
+            <button onclick="toggleActionDropdown('${dropdownId}')" 
+                class="inline-flex items-center gap-1 px-3 py-1.5 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors">
+                <span>Action</span>
+                <i data-lucide="chevron-down" class="w-4 h-4"></i>
+            </button>
+            <div id="${dropdownId}" class="hidden absolute right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-100 z-50 py-1">
+                ${availableOptions.map(opt => `
+                    <button onclick="handleAction('${id}', '${opt.value}'); hideAllDropdowns();"
+                        class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
+                        <i data-lucide="${opt.icon}" class="w-4 h-4 text-gray-500"></i>
+                        ${opt.label}
+                    </button>
+                `).join('')}
+
+                <div class="border-t border-gray-100 my-1"></div>
+                <button onclick="event.stopPropagation(); openFollowUpModal('${id}'); hideAllDropdowns();"
+                    class="w-full text-left px-4 py-2 text-sm text-amber-700 hover:bg-amber-50 flex items-center gap-2 transition-colors">
+                    <i data-lucide="calendar-plus" class="w-4 h-4"></i>
+                    Add Follow Up
+                </button>
+                <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'; hideAllDropdowns();"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2 transition-colors">
+                    <i data-lucide="eye" class="w-4 h-4 text-gray-500"></i>
+                    View Details
+                </button>
+            </div>
+        </div>
     `;
+}
 
-    if (!action) {
-        return followUpBtn;
-    }
-
-    if (action.convert) {
-        return `
-            <button onclick="event.stopPropagation(); window.location.href='enquiry-detail.html?id=${id}'"
-                class="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors mr-1">
-                Setup Admission
-            </button>
-            ${followUpBtn}
-        `;
-    } else {
-        return `
-            <button onclick="event.stopPropagation(); openQuickUpdateModal('${id}', '${action.status}', '${status}')"
-                class="px-2 py-1 bg-${action.color}-600 hover:bg-${action.color}-700 text-white rounded text-xs font-medium transition-colors mr-1">
-                ${action.label}
-            </button>
-            ${followUpBtn}
-        `;
+// Toggle dropdown visibility
+function toggleActionDropdown(dropdownId) {
+    const dropdown = document.getElementById(dropdownId);
+    if (!dropdown) return;
+    
+    // Hide all other dropdowns first
+    hideAllDropdowns();
+    
+    // Toggle this dropdown
+    dropdown.classList.toggle('hidden');
+    
+    // Re-create icons inside dropdown
+    if (!dropdown.classList.contains('hidden') && typeof lucide !== 'undefined') {
+        lucide.createIcons();
     }
 }
+
+// Hide all dropdowns
+function hideAllDropdowns() {
+    document.querySelectorAll('[id^="action-dropdown-"]').forEach(el => {
+        el.classList.add('hidden');
+    });
+}
+
+// Handle action selection
+function handleAction(id, newStatus) {
+    // Set the status in the dropdown and open the modal
+    const statusSelect = document.getElementById('statusSelect');
+    if (statusSelect) {
+        statusSelect.value = newStatus;
+    }
+    openModal(id);
+}
+
+// Close dropdowns when clicking outside
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.relative.inline-block')) {
+        hideAllDropdowns();
+    }
+});
 
 /* ======================
 SIMPLE FOLLOW UP MODAL (No Status Change)
