@@ -1196,10 +1196,12 @@ async function submitBulkUpload() {
 }
 
 function showUploadResults(results) {
-  const success = results.success || 0;
-  const failed = results.failed || 0;
-  const total = results.total || 0;
-  const errors = results.errors || [];
+  // Updated to match new backend response format
+  const data = results.data || {};
+  const success = data.successCount || 0;
+  const failed = data.failedCount || 0;
+  const total = data.totalRows || 0;
+  const errors = data.errors || [];
 
   document.getElementById('successCount').textContent = success;
   document.getElementById('errorCount').textContent = failed;
