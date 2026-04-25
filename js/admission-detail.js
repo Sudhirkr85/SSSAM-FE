@@ -802,13 +802,10 @@ async function submitRefund() {
       admissionId: admissionId,
       amount: amount,
       paymentMode: mode,
-      type: 'refund'
+      type: 'refund',
+      refundReason: note,
+      paymentDate: new Date().toISOString().split('T')[0]
     };
-    
-    // Only add note if it has a value
-    if (note) {
-      payload.note = note;
-    }
     
     await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
     

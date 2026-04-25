@@ -72,6 +72,12 @@ function initEventListeners() {
     loadEnquiries();
   });
 
+  // Follow-up date filter
+  document.getElementById('followUpDateFilter')?.addEventListener('change', () => {
+    currentPage = 1;
+    loadEnquiries();
+  });
+
   // Course dropdown - show custom input for "Other"
   document.getElementById('addCourse')?.addEventListener('change', handleCourseChange);
 
@@ -126,6 +132,62 @@ function checkAdminFeatures() {
   }
 }
 
+// ==================== HELPER FUNCTIONS ====================
+function formatDate(dateStr) {
+  if (!dateStr) return '-';
+  const date = new Date(dateStr);
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-IN', { month: 'short' });
+  return `${day} ${month}`;
+}
+
+function getFollowUpTooltip(enquiry) {
+  let tooltip = '';
+  
+  // Add current status
+  if (enquiry.status) {
+    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
+    tooltip += `Status: ${statusInfo.label}`;
+  }
+  
+  // Add follow-up date if exists
+  if (enquiry.followUpDate) {
+    const followUpDate = new Date(enquiry.followUpDate);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    followUpDate.setHours(0, 0, 0, 0);
+    
+    const diffTime = followUpDate - today;
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    let status = '';
+    
+    if (diffDays < 0) {
+      status = 'Overdue';
+    } else if (diffDays === 0) {
+      status = 'Today';
+    } else if (diffDays === 1) {
+      status = 'Tomorrow';
+    } else {
+      status = formatDate(enquiry.followUpDate);
+    }
+    
+    if (tooltip) tooltip += '&#10;';
+    tooltip += `Follow-up: ${status}`;
+  }
+  
+  // Add latest note from status history (always show if exists)
+  if (enquiry.statusHistory && enquiry.statusHistory.length > 0) {
+    const latestEntry = enquiry.statusHistory[0];
+    if (latestEntry.note) {
+      if (tooltip) tooltip += '&#10;';
+      tooltip += `Note: ${latestEntry.note}`;
+    }
+  }
+  
+  return tooltip ? `title="${tooltip}"` : '';
+}
+
 // ==================== DEBOUNCE UTILITY ====================
 function debounce(func, wait) {
   let timeout;
@@ -146,6 +208,7 @@ async function loadEnquiries() {
 
     const search = document.getElementById('searchInput').value.trim();
     const status = document.getElementById('statusFilter').value;
+    const followUpDate = document.getElementById('followUpDateFilter').value;
 
     // For Today Calls tab - fetch both NEW and FOLLOW_UP like today.js does
     if (currentTab === 'today') {
@@ -223,6 +286,7 @@ async function loadEnquiries() {
 
     if (search) params.search = search;
     if (status) params.status = status;
+    if (followUpDate) params.followUpDate = followUpDate;
 
     const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
 
@@ -315,6 +379,10 @@ function renderTable() {
           valueA = (a.assignedTo?.name || a.counselorId?.name || 'Unassigned').toLowerCase();
           valueB = (b.assignedTo?.name || b.counselorId?.name || 'Unassigned').toLowerCase();
           break;
+        case 'followUpDate':
+          valueA = a.followUpDate ? new Date(a.followUpDate) : new Date(0);
+          valueB = b.followUpDate ? new Date(b.followUpDate) : new Date(0);
+          break;
         default:
           return 0;
       }
@@ -328,9 +396,11 @@ function renderTable() {
   tbody.innerHTML = sortedEnquiries.map(enquiry => {
     const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
     const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
+    const followUpDate = enquiry.followUpDate ? formatDate(enquiry.followUpDate) : '-';
+    const followUpTooltip = getFollowUpTooltip(enquiry);
     
     return `
-      <tr class="enquiry-row border-b border-gray-100 last:border-0 cursor-pointer hover:bg-blue-50/50 transition-colors" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'">
+      <tr class="enquiry-row border-b border-gray-100 last:border-0 cursor-pointer hover:bg-blue-50/50 transition-colors" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'" ${followUpTooltip}>
         <td class="px-4 py-3">
           <div class="font-medium text-gray-900">${enquiry.name || '-'}</div>
           <div class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
@@ -345,6 +415,7 @@ function renderTable() {
           </span>
         </td>
         <td class="px-4 py-3 text-center text-sm text-gray-600">${counselor}</td>
+        <td class="px-4 py-3 text-center text-sm text-gray-600">${followUpDate}</td>
         <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
           <button 
             onclick="openUpdateModal('${enquiry._id}', '${enquiry.status}')"
@@ -454,7 +525,7 @@ function renderEmptyState() {
   const tbody = document.getElementById('enquiriesTableBody');
   tbody.innerHTML = `
     <tr>
-      <td colspan="5" class="text-center py-12">
+      <td colspan="6" class="text-center py-12">
         <div class="flex flex-col items-center gap-3">
           <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
             <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
@@ -474,7 +545,7 @@ function showLoadingState() {
   const tbody = document.getElementById('enquiriesTableBody');
   tbody.innerHTML = `
     <tr>
-      <td colspan="5" class="text-center py-12">
+      <td colspan="6" class="text-center py-12">
         <div class="flex flex-col items-center gap-3">
           <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
           <p class="text-gray-500 text-sm">Loading enquiries...</p>
@@ -599,6 +670,7 @@ function switchTab(tab) {
 function resetFilters() {
   document.getElementById('searchInput').value = '';
   document.getElementById('statusFilter').value = currentTab === 'all' ? 'NEW' : '';
+  document.getElementById('followUpDateFilter').value = '';
   currentPage = 1;
   loadEnquiries();
 }
