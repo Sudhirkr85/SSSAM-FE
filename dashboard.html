@@ -127,8 +127,8 @@
             <p id="totalAdmissions" class="text-3xl font-bold text-purple-600">0</p>
           </a>
 
-          <!-- Revenue -->
-          <a href="payments.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+          <!-- Revenue (Admin Only) -->
+          <a href="payments.html" id="revenueCard" class="stat-card bg-white rounded-xl shadow-sm p-5 block hidden">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="wallet" class="w-6 h-6 text-green-600"></i>
@@ -160,7 +160,7 @@
               <p class="text-xs text-gray-500">Students</p>
             </div>
           </a>
-          <a href="reports.html" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all">
+          <a href="reports.html" id="reportsCard" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all hidden">
             <div class="w-10 h-10 bg-indigo-100 rounded-lg flex items-center justify-center">
               <i data-lucide="bar-chart-3" class="w-5 h-5 text-indigo-600"></i>
             </div>
@@ -219,6 +219,8 @@
     // Show reports menu for admin
     if (user.role === 'admin') {
       document.getElementById('reportsMenu')?.classList.remove('hidden');
+      document.getElementById('revenueCard')?.classList.remove('hidden');
+      document.getElementById('reportsCard')?.classList.remove('hidden');
     }
 
     // Logout
