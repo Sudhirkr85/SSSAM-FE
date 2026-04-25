@@ -803,8 +803,7 @@ async function submitRefund() {
       amount: amount,
       paymentMode: mode,
       type: 'refund',
-      refundReason: note,
-      paymentDate: new Date().toISOString().split('T')[0]
+      refundReason: note
     };
     
     await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
