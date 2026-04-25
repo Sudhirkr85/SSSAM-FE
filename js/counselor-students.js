@@ -29,16 +29,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // ==================== LOAD STUDENTS ====================
 async function loadCounselorStudents() {
   try {
-    // TODO: Replace with actual API call when available
-    // const students = await apiGet(`/reports/counselor/${counselorId}/students`);
-    
-    // For now, use mock data
-    const students = getMockStudents();
+    const response = await apiGet(`/reports/counselor/${counselorId}/students`);
+    const students = response.data || [];
     allStudents = students;
-    
+
     renderSummaryCards(students);
     renderStudentsTable(students);
-    
+
     // Show content, hide loading
     document.getElementById('loadingState').classList.add('hidden');
     document.getElementById('summaryCards').classList.remove('hidden');
@@ -46,7 +43,7 @@ async function loadCounselorStudents() {
   } catch (err) {
     console.error('Failed to load counselor students:', err);
     showToast('Error', 'Failed to load students', 'error');
-    
+
     document.getElementById('loadingState').innerHTML = `
       <div class="flex flex-col items-center justify-center py-12">
         <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
