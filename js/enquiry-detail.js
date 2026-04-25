@@ -1453,6 +1453,39 @@ This is ${counselorName} from SSSAM Academy, Gurgaon.
 I'd like to discuss your ${course} enquiry...`
 };
 
+function openWhatsAppModal() {
+    const modal = document.getElementById('whatsappModal');
+    const modalContent = document.getElementById('whatsappModalContent');
+    
+    if (!modal || !modalContent) return;
+    
+    // Generate initial message
+    generateEnquiryWhatsAppMessage();
+    
+    // Show modal
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modalContent.classList.remove('scale-95');
+        modalContent.classList.add('scale-100');
+    }, 10);
+    lucide.createIcons();
+}
+
+function closeWhatsAppModal() {
+    const modal = document.getElementById('whatsappModal');
+    const modalContent = document.getElementById('whatsappModalContent');
+    
+    if (!modal || !modalContent) return;
+    
+    modal.classList.add('opacity-0');
+    modalContent.classList.remove('scale-100');
+    modalContent.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+    }, 300);
+}
+
 function setupWhatsAppForEnquiry() {
     const templateSelect = document.getElementById('whatsappTemplate');
 
@@ -1559,3 +1592,6 @@ window.closeErrorModal = closeErrorModal;
 window.openCancelAdmissionModal = openCancelAdmissionModal;
 window.closeCancelAdmissionModal = closeCancelAdmissionModal;
 window.confirmCancelAdmission = confirmCancelAdmission;
+window.openWhatsAppModal = openWhatsAppModal;
+window.closeWhatsAppModal = closeWhatsAppModal;
+window.openEnquiryWhatsApp = openEnquiryWhatsApp;
