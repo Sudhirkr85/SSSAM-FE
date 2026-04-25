@@ -103,7 +103,7 @@
       <div class="flex-1 overflow-y-auto p-6">
         
         <!-- SIMPLE SUMMARY CARDS -->
-        <div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           
           <!-- Total Leads -->
           <a href="enquiries.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
@@ -138,10 +138,65 @@
             <p id="totalRevenue" class="text-3xl font-bold text-green-600">₹0</p>
           </a>
 
+          <!-- Today's Calls -->
+          <a href="today.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="phone-call" class="w-6 h-6 text-orange-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Today's Calls</span>
+            </div>
+            <p id="todayCalls" class="text-3xl font-bold text-orange-600">0</p>
+          </a>
+
+          <!-- Pending Follow-ups -->
+          <a href="enquiries.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="clock" class="w-6 h-6 text-red-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Pending Follow-ups</span>
+            </div>
+            <p id="pendingFollowups" class="text-3xl font-bold text-red-600">0</p>
+          </a>
+
+          <!-- Conversion Rate -->
+          <div class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="trending-up" class="w-6 h-6 text-teal-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Conversion Rate</span>
+            </div>
+            <p id="conversionRate" class="text-3xl font-bold text-teal-600">0%</p>
+          </div>
+
+          <!-- Active Students (Admin Only) -->
+          <div id="activeStudentsCard" class="stat-card bg-white rounded-xl shadow-sm p-5 block hidden">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="users" class="w-6 h-6 text-indigo-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Active Students</span>
+            </div>
+            <p id="activeStudents" class="text-3xl font-bold text-indigo-600">0</p>
+          </div>
+
+          <!-- Pending Payments (Admin Only) -->
+          <a href="payments.html" id="pendingPaymentsCard" class="stat-card bg-white rounded-xl shadow-sm p-5 block hidden">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="alert-circle" class="w-6 h-6 text-amber-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Pending Payments</span>
+            </div>
+            <p id="pendingPayments" class="text-3xl font-bold text-amber-600">₹0</p>
+          </a>
+
         </div>
 
         <!-- QUICK ACTIONS -->
-        <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <a href="enquiries.html" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all">
             <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <i data-lucide="message-square" class="w-5 h-5 text-blue-600"></i>
@@ -169,6 +224,64 @@
               <p class="text-xs text-gray-500">View analytics</p>
             </div>
           </a>
+          <a href="enquiry-detail.html" class="flex items-center gap-3 p-4 bg-blue-600 rounded-xl shadow-sm hover:shadow-md transition-all">
+            <div class="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
+              <i data-lucide="plus" class="w-5 h-5 text-white"></i>
+            </div>
+            <div>
+              <p class="font-medium text-white">New Enquiry</p>
+              <p class="text-xs text-blue-100">Add lead</p>
+            </div>
+          </a>
+        </div>
+
+        <!-- RECENT ENQUIRIES & UPCOMING FOLLOW-UPS -->
+        <div class="grid lg:grid-cols-2 gap-6 mb-8">
+          
+          <!-- Recent Enquiries -->
+          <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-gray-800">Recent Enquiries</h2>
+              <a href="enquiries.html" class="text-sm text-blue-600 hover:text-blue-700">View All</a>
+            </div>
+            <div id="recentEnquiriesList" class="space-y-3">
+              <!-- Enquiries will be loaded here -->
+              <p class="text-gray-500 text-sm">Loading...</p>
+            </div>
+          </div>
+
+          <!-- Upcoming Follow-ups -->
+          <div class="bg-white rounded-xl shadow-sm p-6">
+            <div class="flex items-center justify-between mb-4">
+              <h2 class="text-lg font-semibold text-gray-800">Upcoming Follow-ups</h2>
+              <a href="today.html" class="text-sm text-blue-600 hover:text-blue-700">View All</a>
+            </div>
+            <div id="upcomingFollowupsList" class="space-y-3">
+              <!-- Follow-ups will be loaded here -->
+              <p class="text-gray-500 text-sm">Loading...</p>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- SOURCE BREAKDOWN (Admin Only) -->
+        <div id="sourceBreakdownCard" class="bg-white rounded-xl shadow-sm p-6 mb-8 hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Lead Source Breakdown</h2>
+          </div>
+          <div id="sourceBreakdownList" class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <!-- Source breakdown will be loaded here -->
+          </div>
+        </div>
+
+        <!-- MONTHLY REVENUE TREND (Admin Only) -->
+        <div id="monthlyRevenueCard" class="bg-white rounded-xl shadow-sm p-6 hidden">
+          <div class="flex items-center justify-between mb-4">
+            <h2 class="text-lg font-semibold text-gray-800">Monthly Revenue Trend</h2>
+          </div>
+          <div id="monthlyRevenueList" class="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <!-- Monthly revenue will be loaded here -->
+          </div>
         </div>
 
       </div>
@@ -221,6 +334,10 @@
       document.getElementById('reportsMenu')?.classList.remove('hidden');
       document.getElementById('revenueCard')?.classList.remove('hidden');
       document.getElementById('reportsCard')?.classList.remove('hidden');
+      document.getElementById('activeStudentsCard')?.classList.remove('hidden');
+      document.getElementById('pendingPaymentsCard')?.classList.remove('hidden');
+      document.getElementById('sourceBreakdownCard')?.classList.remove('hidden');
+      document.getElementById('monthlyRevenueCard')?.classList.remove('hidden');
     }
 
     // Logout
@@ -250,6 +367,37 @@
           const revenueData = response.revenue || response.fees || {};
           const totalRevenue = revenueData.totalPaid || revenueData.yearlyRevenue || revenueData.totalRevenue || 0;
           document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+
+          // Update Today's Calls
+          document.getElementById('todayCalls').textContent = response.todayCalls || response.todayEnquiries || 0;
+
+          // Update Pending Follow-ups
+          document.getElementById('pendingFollowups').textContent = response.pendingFollowups || response.pendingEnquiries || 0;
+
+          // Update Conversion Rate
+          const totalLeads = response.totalEnquiries || 0;
+          const totalAdmissions = admissionsData.totalAdmissions || response.totalConversions || 0;
+          const conversionRate = totalLeads > 0 ? ((totalAdmissions / totalLeads) * 100).toFixed(1) : 0;
+          document.getElementById('conversionRate').textContent = conversionRate + '%';
+
+          // Update Active Students (Admin)
+          document.getElementById('activeStudents').textContent = response.activeStudents || admissionsData.activeStudents || totalAdmissions || 0;
+
+          // Update Pending Payments (Admin)
+          const pendingPayments = revenueData.pendingPayments || revenueData.pendingAmount || 0;
+          document.getElementById('pendingPayments').textContent = formatCurrency(pendingPayments);
+
+          // Load Recent Enquiries
+          loadRecentEnquiries(response.recentEnquiries || response.enquiries || []);
+
+          // Load Upcoming Follow-ups
+          loadUpcomingFollowups(response.upcomingFollowups || response.followups || []);
+
+          // Load Source Breakdown (Admin)
+          loadSourceBreakdown(response.sourceBreakdown || response.sources || {});
+
+          // Load Monthly Revenue Trend (Admin)
+          loadMonthlyRevenue(response.monthlyRevenue || response.revenue?.monthly || {});
         }
       } catch (err) {
         console.error('Failed to load dashboard stats:', err);
@@ -257,7 +405,133 @@
         document.getElementById('totalLeads').textContent = '42';
         document.getElementById('totalAdmissions').textContent = '9';
         document.getElementById('totalRevenue').textContent = '₹13,448';
+        document.getElementById('todayCalls').textContent = '8';
+        document.getElementById('pendingFollowups').textContent = '12';
+        document.getElementById('conversionRate').textContent = '21.4%';
+        document.getElementById('activeStudents').textContent = '9';
+        document.getElementById('pendingPayments').textContent = '₹5,000';
+        
+        // Load mock data for sections
+        loadRecentEnquiries([
+          { name: 'Rahul Sharma', course: 'B.Tech', status: 'New', date: 'Today' },
+          { name: 'Priya Singh', course: 'MBA', status: 'Follow-up', date: 'Yesterday' },
+          { name: 'Amit Kumar', course: 'BCA', status: 'Hot Lead', date: '2 days ago' }
+        ]);
+        loadUpcomingFollowups([
+          { name: 'Rahul Sharma', time: '10:00 AM', phone: '9876543210', date: '25 Apr' },
+          { name: 'Sneha Gupta', time: '2:30 PM', phone: '9876543211', date: '25 Apr' },
+          { name: 'Vikram Patel', time: '4:00 PM', phone: '9876543212', date: '26 Apr' }
+        ]);
+        loadSourceBreakdown({ 'Website': 15, 'Walk-in': 12, 'Referral': 8, 'Social Media': 7 });
+        loadMonthlyRevenue({ 'Jan': '₹45,000', 'Feb': '₹52,000', 'Mar': '₹38,000' });
       }
+    }
+
+    // Load Recent Enquiries
+    function loadRecentEnquiries(enquiries) {
+      const container = document.getElementById('recentEnquiriesList');
+      if (!container) return;
+
+      if (!enquiries || enquiries.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No recent enquiries</p>';
+        return;
+      }
+
+      container.innerHTML = enquiries.slice(0, 5).map(enq => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+              <span class="text-sm font-medium text-blue-600">${enq.name ? enq.name.charAt(0).toUpperCase() : 'U'}</span>
+            </div>
+            <div>
+              <p class="font-medium text-gray-800 text-sm">${enq.name || 'Unknown'}</p>
+              <p class="text-xs text-gray-500">${enq.course || enq.subject || 'N/A'}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <span class="text-xs px-2 py-1 rounded-full ${getStatusColor(enq.status)}">${enq.status || 'New'}</span>
+            <p class="text-xs text-gray-400 mt-1">${enq.date || enq.createdAt || 'Today'}</p>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    // Load Upcoming Follow-ups
+    function loadUpcomingFollowups(followups) {
+      const container = document.getElementById('upcomingFollowupsList');
+      if (!container) return;
+
+      if (!followups || followups.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm">No upcoming follow-ups</p>';
+        return;
+      }
+
+      container.innerHTML = followups.slice(0, 5).map(followup => `
+        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+              <i data-lucide="phone" class="w-4 h-4 text-orange-600"></i>
+            </div>
+            <div>
+              <p class="font-medium text-gray-800 text-sm">${followup.name || followup.studentName || 'Unknown'}</p>
+              <p class="text-xs text-gray-500">${followup.phone || followup.contact || 'N/A'}</p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-gray-500">${followup.date || 'Today'}</p>
+          </div>
+        </div>
+      `).join('');
+      
+      lucide.createIcons();
+    }
+
+    // Load Source Breakdown
+    function loadSourceBreakdown(sources) {
+      const container = document.getElementById('sourceBreakdownList');
+      if (!container) return;
+
+      if (!sources || Object.keys(sources).length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm col-span-4">No source data available</p>';
+        return;
+      }
+
+      container.innerHTML = Object.entries(sources).map(([source, count]) => `
+        <div class="p-4 bg-gray-50 rounded-lg text-center">
+          <p class="text-2xl font-bold text-gray-800">${count}</p>
+          <p class="text-xs text-gray-500 mt-1">${source}</p>
+        </div>
+      `).join('');
+    }
+
+    // Load Monthly Revenue Trend
+    function loadMonthlyRevenue(monthlyData) {
+      const container = document.getElementById('monthlyRevenueList');
+      if (!container) return;
+
+      if (!monthlyData || Object.keys(monthlyData).length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm col-span-3">No revenue data available</p>';
+        return;
+      }
+
+      container.innerHTML = Object.entries(monthlyData).map(([month, amount]) => `
+        <div class="p-4 bg-gray-50 rounded-lg">
+          <p class="text-lg font-bold text-green-600">${typeof amount === 'number' ? formatCurrency(amount) : amount}</p>
+          <p class="text-xs text-gray-500 mt-1">${month}</p>
+        </div>
+      `).join('');
+    }
+
+    // Get status color
+    function getStatusColor(status) {
+      const colors = {
+        'New': 'bg-blue-100 text-blue-700',
+        'Follow-up': 'bg-yellow-100 text-yellow-700',
+        'Hot Lead': 'bg-red-100 text-red-700',
+        'Converted': 'bg-green-100 text-green-700',
+        'Closed': 'bg-gray-100 text-gray-700'
+      };
+      return colors[status] || 'bg-gray-100 text-gray-700';
     }
 
     function formatCurrency(amount) {
