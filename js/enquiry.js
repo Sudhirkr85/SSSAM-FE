@@ -172,17 +172,28 @@ function getFollowUpTooltip(enquiry) {
       status = formatDate(enquiry.followUpDate);
     }
     
-    if (tooltip) tooltip += '&#10;';
+    if (tooltip) tooltip += '\n';
     tooltip += `Follow-up: ${status}`;
   }
   
-  // Add latest note from status history (always show if exists)
+  // Add full timeline from status history (last 3 entries from end)
   if (enquiry.statusHistory && enquiry.statusHistory.length > 0) {
-    const latestEntry = enquiry.statusHistory[0];
-    if (latestEntry.note) {
-      if (tooltip) tooltip += '&#10;';
-      tooltip += `Note: ${latestEntry.note}`;
-    }
+    if (tooltip) tooltip += '\n';
+    tooltip += 'Timeline:';
+    
+    // Show last 3 status history entries (oldest 3)
+    const recentHistory = enquiry.statusHistory.slice(-3);
+    recentHistory.forEach((entry, index) => {
+      const statusInfo = STATUS_MAP[entry.status] || STATUS_MAP['NEW'];
+      const dateStr = formatDate(entry.changedAt);
+      
+      if (tooltip) tooltip += '\n';
+      tooltip += `${dateStr}: ${statusInfo.label}`;
+      
+      if (entry.note) {
+        tooltip += ` - ${entry.note}`;
+      }
+    });
   }
   
   return tooltip ? `title="${tooltip}"` : '';
