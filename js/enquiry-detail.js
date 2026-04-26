@@ -401,17 +401,17 @@ function openStatusUpdateModal() {
     document.getElementById('statusUpdateStatus').value = '';
     document.getElementById('statusUpdateNote').value = '';
     document.getElementById('statusUpdateFollowUpDate').value = '';
-    document.getElementById('followUpDateContainer').classList.add('hidden');
     document.getElementById('followUpRequired').classList.add('hidden');
     document.getElementById('statusUpdateNoteError').classList.add('hidden');
     document.getElementById('followUpDateError').classList.add('hidden');
 
     // Setup status change listener
     const statusSelect = document.getElementById('statusUpdateStatus');
+    const followUpDateInput = document.getElementById('statusUpdateFollowUpDate');
     statusSelect.onchange = function() {
         const isFollowUp = this.value === 'FOLLOW_UP';
-        document.getElementById('followUpDateContainer').classList.toggle('hidden', !isFollowUp);
         document.getElementById('followUpRequired').classList.toggle('hidden', !isFollowUp);
+        followUpDateInput.required = isFollowUp;
     };
 
     // Show modal

@@ -333,7 +333,7 @@ function renderTimeline() {
     title: 'Admission Created',
     description: `Course: ${admissionData?.course || '-'}`,
     date: admissionData?.createdAt,
-    user: 'System'
+    user: admissionData?.createdBy?.name || 'System'
   });
   
   // Add installments setup if exists
@@ -343,7 +343,7 @@ function renderTimeline() {
       title: 'Installment Plan Set',
       description: `${admissionData.installments.length} installments configured`,
       date: admissionData.updatedAt || admissionData.createdAt,
-      user: 'System'
+      user: admissionData?.updatedBy?.name || admissionData?.createdBy?.name || 'System'
     });
   }
   
@@ -361,7 +361,7 @@ function renderTimeline() {
       title: typeLabels[p.type] || 'Payment',
       description: `${formatCurrency(p.amount)} via ${p.paymentMode}`,
       date: p.createdAt,
-      user: 'System'
+      user: p.createdBy?.name || 'System'
     });
   });
   
