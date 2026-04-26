@@ -19,6 +19,9 @@
 
     <script src="https://unpkg.com/lucide@latest"></script>
 
+    <!-- Socket.IO Client -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+
 </head>
 
 <body class="bg-gray-100">
@@ -45,9 +48,6 @@
             </div>
 
             <nav class="flex-1 py-4 space-y-1">
-                <a href="today.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
-                    <i data-lucide="phone"></i> Today Calls
-                </a>
                 <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800">
                     <i data-lucide="layout-dashboard"></i> Dashboard
                 </a>
@@ -303,6 +303,8 @@
             if (e.key === 'Escape') closeMobileMenu();
         });
     </script>
+
+    <script src="js/notifications.js"></script>
 
 </body>
 

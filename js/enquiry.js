@@ -58,8 +58,17 @@ document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   checkAdminFeatures();
   loadStatusCounts();
-  // Set initial active state for "all" button
-  applyQuickFilter('all');
+
+  // Check URL parameters for filter
+  const urlParams = new URLSearchParams(window.location.search);
+  const filterParam = urlParams.get('filter');
+
+  if (filterParam === 'today') {
+    applyQuickFilter('today');
+  } else {
+    // Set initial active state for "all" button
+    applyQuickFilter('all');
+  }
 });
 
 function initUserProfile() {
