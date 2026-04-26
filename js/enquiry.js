@@ -44,6 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initUserProfile();
   initEventListeners();
   checkAdminFeatures();
+  initStatusButtonStates();
   loadEnquiries();
 });
 
@@ -673,6 +674,9 @@ function switchTab(tab) {
     // Clear status filter for Today Calls
     document.getElementById('statusFilter').value = '';
   }
+  
+  // Update status button states
+  initStatusButtonStates();
 
   loadEnquiries();
 }
@@ -683,7 +687,74 @@ function resetFilters() {
   document.getElementById('statusFilter').value = currentTab === 'all' ? 'NEW' : '';
   document.getElementById('followUpDateFilter').value = '';
   currentPage = 1;
+  // Update status button states after reset
+  initStatusButtonStates();
   loadEnquiries();
+}
+
+// ==================== STATUS FILTER BUTTONS ====================
+function setStatusFilter(status) {
+  // Update the dropdown value
+  document.getElementById('statusFilter').value = status;
+  
+  // Update button styles - show active state
+  const statusButtons = [
+    'statusBtn-all', 'statusBtn-NEW', 'statusBtn-CONTACTED', 
+    'statusBtn-NO_RESPONSE', 'statusBtn-FOLLOW_UP', 'statusBtn-INTERESTED',
+    'statusBtn-NOT_INTERESTED', 'statusBtn-CONVERTED'
+  ];
+  
+  // Reset all buttons to inactive state
+  statusButtons.forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      // Remove the "ring" and all ring colors to show inactive
+      btn.classList.remove('ring-2', 'ring-offset-1', 
+        'ring-gray-400', 'ring-blue-400', 'ring-yellow-400', 
+        'ring-purple-400', 'ring-green-400', 'ring-red-400', 
+        'ring-emerald-400');
+    }
+  });
+  
+  // Set active button
+  const activeBtnId = status === '' ? 'statusBtn-all' : `statusBtn-${status}`;
+  const activeBtn = document.getElementById(activeBtnId);
+  if (activeBtn) {
+    // Add ring to show active
+    activeBtn.classList.add('ring-2', 'ring-offset-1');
+    
+    // Set ring color based on button type
+    if (status === '') {
+      activeBtn.classList.add('ring-gray-400');
+    } else if (status === 'NEW') {
+      activeBtn.classList.add('ring-blue-400');
+    } else if (status === 'CONTACTED') {
+      activeBtn.classList.add('ring-yellow-400');
+    } else if (status === 'NO_RESPONSE') {
+      activeBtn.classList.add('ring-gray-400');
+    } else if (status === 'FOLLOW_UP') {
+      activeBtn.classList.add('ring-purple-400');
+    } else if (status === 'INTERESTED') {
+      activeBtn.classList.add('ring-green-400');
+    } else if (status === 'NOT_INTERESTED') {
+      activeBtn.classList.add('ring-red-400');
+    } else if (status === 'CONVERTED') {
+      activeBtn.classList.add('ring-emerald-400');
+    }
+  }
+  
+  // Reload enquiries
+  currentPage = 1;
+  loadEnquiries();
+}
+
+// Initialize status button states on page load
+function initStatusButtonStates() {
+  const statusFilter = document.getElementById('statusFilter');
+  if (statusFilter) {
+    // Set initial active state based on dropdown value
+    setStatusFilter(statusFilter.value);
+  }
 }
 
 // ==================== ADD ENQUIRY MODAL ====================
