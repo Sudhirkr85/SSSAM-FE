@@ -8,13 +8,26 @@ let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
 let totalCount = 0;
-let currentTab = 'all'; // 'all' or 'today'
+let currentQuickFilter = 'all'; // 'all', 'today', or status values
 let enquiries = [];
 let selectedFile = null;
 
 // Sorting state
 let sortColumn = null;
 let sortDirection = 'asc'; // 'asc' or 'desc'
+
+// Status counts cache
+let statusCounts = {
+  all: 0,
+  today: 0,
+  NEW: 0,
+  CONTACTED: 0,
+  NO_RESPONSE: 0,
+  FOLLOW_UP: 0,
+  INTERESTED: 0,
+  NOT_INTERESTED: 0,
+  CONVERTED: 0
+};
 
 // ==================== STATUS MAPPING (Indian CRM Style) ====================
 const STATUS_MAP = {
@@ -44,8 +57,9 @@ document.addEventListener('DOMContentLoaded', () => {
   initUserProfile();
   initEventListeners();
   checkAdminFeatures();
-  initStatusButtonStates();
-  loadEnquiries();
+  loadStatusCounts();
+  // Set initial active state for "all" button
+  applyQuickFilter('all');
 });
 
 function initUserProfile() {
@@ -67,14 +81,13 @@ function initEventListeners() {
     loadEnquiries();
   }, 300));
 
-  // Status filter
-  document.getElementById('statusFilter')?.addEventListener('change', () => {
+  // Date range filters
+  document.getElementById('dateFromFilter')?.addEventListener('change', () => {
     currentPage = 1;
     loadEnquiries();
   });
 
-  // Follow-up date filter
-  document.getElementById('followUpDateFilter')?.addEventListener('change', () => {
+  document.getElementById('dateToFilter')?.addEventListener('change', () => {
     currentPage = 1;
     loadEnquiries();
   });
@@ -131,6 +144,143 @@ function checkAdminFeatures() {
     document.getElementById('bulkUploadBtn')?.classList.remove('hidden');
     document.getElementById('reportsMenu')?.classList.remove('hidden');
   }
+}
+
+// ==================== STATUS COUNTS ====================
+async function loadStatusCounts() {
+  try {
+    console.log('Loading status counts...');
+    // Fetch all enquiries - first page with high limit
+    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { page: 1, limit: 100 });
+    console.log('API Response:', res);
+    
+    const allEnquiries = res.enquiries || [];
+    console.log('All enquiries count:', allEnquiries.length);
+    
+    // Get total count from pagination
+    const pagination = res.pagination || {};
+    const totalCount = pagination.totalCount || allEnquiries.length;
+    console.log('Total count from pagination:', totalCount);
+    
+    // Count by status from available data
+    statusCounts.all = totalCount;
+    statusCounts.NEW = allEnquiries.filter(e => e.status === 'NEW').length;
+    statusCounts.CONTACTED = allEnquiries.filter(e => e.status === 'CONTACTED').length;
+    statusCounts.NO_RESPONSE = allEnquiries.filter(e => e.status === 'NO_RESPONSE').length;
+    statusCounts.FOLLOW_UP = allEnquiries.filter(e => e.status === 'FOLLOW_UP').length;
+    statusCounts.INTERESTED = allEnquiries.filter(e => e.status === 'INTERESTED').length;
+    statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
+    statusCounts.CONVERTED = allEnquiries.filter(e => e.status === 'CONVERTED').length;
+    
+    // Count today calls (NEW + FOLLOW_UP with today's date)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    statusCounts.today = allEnquiries.filter(e => {
+      if (e.status === 'NEW') return true;
+      if (e.status === 'FOLLOW_UP' && e.followUpDate) {
+        const followUpDate = new Date(e.followUpDate);
+        followUpDate.setHours(0, 0, 0, 0);
+        return followUpDate <= today;
+      }
+      return false;
+    }).length;
+    
+    // Update UI
+    updateCountDisplay();
+  } catch (err) {
+    console.error('Failed to load status counts:', err);
+  }
+}
+
+function updateCountDisplay() {
+  console.log('Updating count display with:', statusCounts);
+  
+  const countAll = document.getElementById('count-all');
+  const countToday = document.getElementById('count-today');
+  const countNew = document.getElementById('count-NEW');
+  const countContacted = document.getElementById('count-CONTACTED');
+  const countNoResponse = document.getElementById('count-NO_RESPONSE');
+  const countFollowUp = document.getElementById('count-FOLLOW_UP');
+  const countInterested = document.getElementById('count-INTERESTED');
+  const countNotInterested = document.getElementById('count-NOT_INTERESTED');
+  const countConverted = document.getElementById('count-CONVERTED');
+  const totalDisplay = document.getElementById('totalCountDisplay');
+  
+  console.log('DOM Elements found:', { countAll, countToday, countNew, countContacted, countNoResponse, countFollowUp, countInterested, countNotInterested, countConverted, totalDisplay });
+  
+  if (countAll) countAll.textContent = statusCounts.all;
+  if (countToday) countToday.textContent = statusCounts.today;
+  if (countNew) countNew.textContent = statusCounts.NEW;
+  if (countContacted) countContacted.textContent = statusCounts.CONTACTED;
+  if (countNoResponse) countNoResponse.textContent = statusCounts.NO_RESPONSE;
+  if (countFollowUp) countFollowUp.textContent = statusCounts.FOLLOW_UP;
+  if (countInterested) countInterested.textContent = statusCounts.INTERESTED;
+  if (countNotInterested) countNotInterested.textContent = statusCounts.NOT_INTERESTED;
+  if (countConverted) countConverted.textContent = statusCounts.CONVERTED;
+  if (totalDisplay) totalDisplay.textContent = `Total: ${statusCounts.all}`;
+  
+  console.log('Count display updated');
+}
+
+// ==================== QUICK FILTER FUNCTIONS ====================
+function applyQuickFilter(filter) {
+  currentQuickFilter = filter;
+  currentPage = 1;
+  
+  // Update button active states
+  const buttons = [
+    'quickBtn-all', 'quickBtn-today', 'quickBtn-NEW', 'quickBtn-CONTACTED',
+    'quickBtn-NO_RESPONSE', 'quickBtn-FOLLOW_UP', 'quickBtn-INTERESTED',
+    'quickBtn-NOT_INTERESTED', 'quickBtn-CONVERTED'
+  ];
+  
+  buttons.forEach(btnId => {
+    const btn = document.getElementById(btnId);
+    if (btn) {
+      btn.classList.remove('ring-2', 'ring-offset-1', 'ring-gray-400', 'ring-blue-400', 'ring-yellow-400', 
+        'ring-purple-400', 'ring-green-400', 'ring-red-400', 'ring-emerald-400');
+    }
+  });
+  
+  const activeBtnId = filter === 'all' ? 'quickBtn-all' : 
+                      filter === 'today' ? 'quickBtn-today' : 
+                      `quickBtn-${filter}`;
+  const activeBtn = document.getElementById(activeBtnId);
+  if (activeBtn) {
+    activeBtn.classList.add('ring-2', 'ring-offset-1');
+    
+    // Set ring color based on filter
+    if (filter === 'all' || filter === 'today') {
+      activeBtn.classList.add('ring-gray-400');
+    } else if (filter === 'NEW') {
+      activeBtn.classList.add('ring-blue-400');
+    } else if (filter === 'CONTACTED') {
+      activeBtn.classList.add('ring-yellow-400');
+    } else if (filter === 'NO_RESPONSE') {
+      activeBtn.classList.add('ring-gray-400');
+    } else if (filter === 'FOLLOW_UP') {
+      activeBtn.classList.add('ring-purple-400');
+    } else if (filter === 'INTERESTED') {
+      activeBtn.classList.add('ring-green-400');
+    } else if (filter === 'NOT_INTERESTED') {
+      activeBtn.classList.add('ring-red-400');
+    } else if (filter === 'CONVERTED') {
+      activeBtn.classList.add('ring-emerald-400');
+    }
+  }
+  
+  loadEnquiries();
+}
+
+function resetAllFilters() {
+  document.getElementById('searchInput').value = '';
+  document.getElementById('dateFromFilter').value = '';
+  document.getElementById('dateToFilter').value = '';
+  currentQuickFilter = 'all';
+  currentPage = 1;
+  
+  // Reset button states
+  applyQuickFilter('all');
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -219,20 +369,17 @@ async function loadEnquiries() {
     showLoadingState();
 
     const search = document.getElementById('searchInput').value.trim();
-    const status = document.getElementById('statusFilter').value;
-    const followUpDate = document.getElementById('followUpDateFilter').value;
+    const dateFrom = document.getElementById('dateFromFilter').value;
+    const dateTo = document.getElementById('dateToFilter').value;
 
-    // For Today Calls tab - fetch both NEW and FOLLOW_UP like today.js does
-    if (currentTab === 'today') {
-      // Load both NEW enquiries and FOLLOW_UP enquiries (like today.js)
+    // For Today Calls filter - fetch both NEW and FOLLOW_UP
+    if (currentQuickFilter === 'today') {
       const [newRes, followUpRes] = await Promise.all([
-        // NEW enquiries - fresh leads to call
         apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
           page: 1,
           limit: 100,
           status: 'NEW'
         }),
-        // FOLLOW_UP enquiries - all of them (we'll filter client-side)
         apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
           page: 1,
           limit: 100,
@@ -240,10 +387,7 @@ async function loadEnquiries() {
         })
       ]);
 
-      // Get all NEW enquiries
       const newEnquiries = newRes.enquiries || [];
-
-      // Filter FOLLOW_UP enquiries for today or overdue (client-side filtering)
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
@@ -251,54 +395,80 @@ async function loadEnquiries() {
         if (!e.followUpDate) return false;
         const followUpDate = new Date(e.followUpDate);
         followUpDate.setHours(0, 0, 0, 0);
-        // Show if follow-up date is today or in the past (overdue)
         return followUpDate <= today;
       });
 
-      // Merge and remove duplicates (by _id)
       const combined = [...newEnquiries, ...followUpEnquiries];
       const unique = combined.filter((item, index, self) =>
         index === self.findIndex((t) => t._id === item._id)
       );
 
-      // Sort: NEW first, then by follow-up date (overdue first, then today)
-      let allEnquiries = unique.sort((a, b) => {
-        // NEW status comes first
+      // Apply search filter
+      let filteredEnquiries = unique;
+      if (search) {
+        const searchLower = search.toLowerCase();
+        filteredEnquiries = filteredEnquiries.filter(e => 
+          (e.name && e.name.toLowerCase().includes(searchLower)) ||
+          (e.mobile && e.mobile.includes(search)) ||
+          (e.email && e.email.toLowerCase().includes(searchLower)) ||
+          (e.courseInterested && e.courseInterested.toLowerCase().includes(searchLower))
+        );
+      }
+
+      // Apply date range filter
+      if (dateFrom) {
+        const fromDate = new Date(dateFrom);
+        fromDate.setHours(0, 0, 0, 0);
+        filteredEnquiries = filteredEnquiries.filter(e => {
+          const createdDate = new Date(e.createdAt);
+          createdDate.setHours(0, 0, 0, 0);
+          return createdDate >= fromDate;
+        });
+      }
+      if (dateTo) {
+        const toDate = new Date(dateTo);
+        toDate.setHours(23, 59, 59, 999);
+        filteredEnquiries = filteredEnquiries.filter(e => {
+          const createdDate = new Date(e.createdAt);
+          return createdDate <= toDate;
+        });
+      }
+
+      // Sort: NEW first, then by follow-up date
+      let allEnquiries = filteredEnquiries.sort((a, b) => {
         if (a.status === 'NEW' && b.status !== 'NEW') return -1;
         if (a.status !== 'NEW' && b.status === 'NEW') return 1;
-
-        // Then sort by follow-up date (overdue first, then today)
         const dateA = a.followUpDate ? new Date(a.followUpDate) : new Date(8640000000000000);
         const dateB = b.followUpDate ? new Date(b.followUpDate) : new Date(8640000000000000);
         return dateA - dateB;
       });
 
-      // Simple pagination (client-side since we have all data)
       const totalCount = allEnquiries.length;
       const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
       const endIndex = startIndex + ITEMS_PER_PAGE;
       const paginatedEnquiries = allEnquiries.slice(startIndex, endIndex);
 
       totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-
       enquiries = paginatedEnquiries;
 
       renderTable();
       renderMobileCards();
-      updatePaginationToday(totalCount);
-      updateCountDisplayToday(totalCount);
+      updatePagination(totalCount);
       return;
     }
 
-    // For All Enquiries tab - normal API call
+    // For status filters or all enquiries
     const params = {
       page: currentPage,
       limit: ITEMS_PER_PAGE
     };
 
     if (search) params.search = search;
-    if (status) params.status = status;
-    if (followUpDate) params.followUpDate = followUpDate;
+    if (currentQuickFilter !== 'all' && currentQuickFilter !== 'today') {
+      params.status = currentQuickFilter;
+    }
+    if (dateFrom) params.dateFrom = dateFrom;
+    if (dateTo) params.dateTo = dateTo;
 
     const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
 
@@ -310,7 +480,6 @@ async function loadEnquiries() {
     renderTable();
     renderMobileCards();
     updatePagination();
-    updateCountDisplay();
   } catch (err) {
     console.error('Failed to load enquiries:', err);
     showError('Failed to load enquiries. Please try again.');
@@ -584,24 +753,6 @@ function updatePagination() {
   renderPageNumbers();
 }
 
-// ==================== COUNT DISPLAY ====================
-function updateCountDisplay() {
-  const search = document.getElementById('searchInput').value.trim();
-  const status = document.getElementById('statusFilter').value;
-  const countDisplay = document.getElementById('enquiryCountDisplay');
-
-  // Check if filters are active
-  const hasFilters = search || status;
-
-  if (hasFilters) {
-    // Show filtered count
-    const currentCount = enquiries.length;
-    countDisplay.textContent = `Showing ${currentCount} of ${totalCount} Enquiries`;
-  } else {
-    // Show total count
-    countDisplay.textContent = `Total Enquiries: ${totalCount}`;
-  }
-}
 
 function renderPageNumbers() {
   document.getElementById('lastPage').disabled = currentPage >= totalPages;
@@ -646,115 +797,6 @@ function goToPage(page) {
 function goToLastPage() {
   currentPage = totalPages;
   loadEnquiries();
-}
-
-// ==================== TAB SWITCHING ====================
-function switchTab(tab) {
-  currentTab = tab;
-  currentPage = 1;
-
-  // Update tab styles
-  const tabAll = document.getElementById('tabAll');
-  const tabToday = document.getElementById('tabToday');
-
-  if (tab === 'all') {
-    tabAll.classList.add('bg-blue-600', 'text-white');
-    tabAll.classList.remove('text-gray-600', 'hover:bg-gray-100');
-    tabToday.classList.remove('bg-blue-600', 'text-white');
-    tabToday.classList.add('text-gray-600', 'hover:bg-gray-100');
-    
-    // Reset status filter to NEW for All Enquiries
-    document.getElementById('statusFilter').value = 'NEW';
-  } else {
-    tabToday.classList.add('bg-blue-600', 'text-white');
-    tabToday.classList.remove('text-gray-600', 'hover:bg-gray-100');
-    tabAll.classList.remove('bg-blue-600', 'text-white');
-    tabAll.classList.add('text-gray-600', 'hover:bg-gray-100');
-    
-    // Clear status filter for Today Calls
-    document.getElementById('statusFilter').value = '';
-  }
-  
-  // Update status button states
-  initStatusButtonStates();
-
-  loadEnquiries();
-}
-
-// ==================== FILTER FUNCTIONS ====================
-function resetFilters() {
-  document.getElementById('searchInput').value = '';
-  document.getElementById('statusFilter').value = currentTab === 'all' ? 'NEW' : '';
-  document.getElementById('followUpDateFilter').value = '';
-  currentPage = 1;
-  // Update status button states after reset
-  initStatusButtonStates();
-  loadEnquiries();
-}
-
-// ==================== STATUS FILTER BUTTONS ====================
-function setStatusFilter(status) {
-  // Update the dropdown value
-  document.getElementById('statusFilter').value = status;
-  
-  // Update button styles - show active state
-  const statusButtons = [
-    'statusBtn-all', 'statusBtn-NEW', 'statusBtn-CONTACTED', 
-    'statusBtn-NO_RESPONSE', 'statusBtn-FOLLOW_UP', 'statusBtn-INTERESTED',
-    'statusBtn-NOT_INTERESTED', 'statusBtn-CONVERTED'
-  ];
-  
-  // Reset all buttons to inactive state
-  statusButtons.forEach(btnId => {
-    const btn = document.getElementById(btnId);
-    if (btn) {
-      // Remove the "ring" and all ring colors to show inactive
-      btn.classList.remove('ring-2', 'ring-offset-1', 
-        'ring-gray-400', 'ring-blue-400', 'ring-yellow-400', 
-        'ring-purple-400', 'ring-green-400', 'ring-red-400', 
-        'ring-emerald-400');
-    }
-  });
-  
-  // Set active button
-  const activeBtnId = status === '' ? 'statusBtn-all' : `statusBtn-${status}`;
-  const activeBtn = document.getElementById(activeBtnId);
-  if (activeBtn) {
-    // Add ring to show active
-    activeBtn.classList.add('ring-2', 'ring-offset-1');
-    
-    // Set ring color based on button type
-    if (status === '') {
-      activeBtn.classList.add('ring-gray-400');
-    } else if (status === 'NEW') {
-      activeBtn.classList.add('ring-blue-400');
-    } else if (status === 'CONTACTED') {
-      activeBtn.classList.add('ring-yellow-400');
-    } else if (status === 'NO_RESPONSE') {
-      activeBtn.classList.add('ring-gray-400');
-    } else if (status === 'FOLLOW_UP') {
-      activeBtn.classList.add('ring-purple-400');
-    } else if (status === 'INTERESTED') {
-      activeBtn.classList.add('ring-green-400');
-    } else if (status === 'NOT_INTERESTED') {
-      activeBtn.classList.add('ring-red-400');
-    } else if (status === 'CONVERTED') {
-      activeBtn.classList.add('ring-emerald-400');
-    }
-  }
-  
-  // Reload enquiries
-  currentPage = 1;
-  loadEnquiries();
-}
-
-// Initialize status button states on page load
-function initStatusButtonStates() {
-  const statusFilter = document.getElementById('statusFilter');
-  if (statusFilter) {
-    // Set initial active state based on dropdown value
-    setStatusFilter(statusFilter.value);
-  }
 }
 
 // ==================== ADD ENQUIRY MODAL ====================
@@ -1069,6 +1111,7 @@ async function submitAddEnquiry() {
     
     closeAddModal();
     showToast('Success', 'Enquiry added successfully', 'success');
+    loadStatusCounts(); // Refresh counts after adding new enquiry
     loadEnquiries();
   } catch (err) {
     console.error('Failed to create enquiry:', err);
