@@ -19,6 +19,10 @@
 
   <script src="https://unpkg.com/lucide@latest"></script>
 
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
+
 </head>
 
 <body
@@ -99,6 +103,44 @@
       const input = document.getElementById('password');
       input.type = input.type === 'password' ? 'text' : 'password';
     });
+
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBWB0wBK0azqsjPrr6FT1sG3BYroM8jeZ4",
+      authDomain: "sudhir-b1f77.firebaseapp.com",
+      projectId: "sudhir-b1f77",
+      storageBucket: "sudhir-b1f77.firebasestorage.app",
+      messagingSenderId: "894623128679",
+      appId: "1:894623128679:web:585124cd50224f00ea08c2"
+    };
+
+    const VAPID_KEY = "BFs0D0iJaKgkIZwLCCT7MIqfTXsD-PaKuM1pHEaVTPbpATnDQyQfO0sB85x9wgoIVBQMuT42ChfIFgysuNxtqGo";
+
+    // Initialize Firebase on login page
+    if (typeof firebase !== 'undefined') {
+      try {
+        if (!firebase.apps.length) {
+          firebase.initializeApp(firebaseConfig);
+        }
+        const messaging = firebase.messaging();
+
+        // Request permission and get FCM token
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            messaging.getToken({ vapidKey: VAPID_KEY }).then(token => {
+              if (token) {
+                localStorage.setItem('fcmToken', token);
+                console.log('FCM Token saved for login');
+              }
+            }).catch(err => {
+              console.log('FCM token error:', err);
+            });
+          }
+        });
+      } catch (error) {
+        console.log('Firebase init error:', error);
+      }
+    }
   </script>
 
 </body>

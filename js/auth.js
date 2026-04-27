@@ -7,9 +7,15 @@ if (loginForm) {
 
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
+        const fcmToken = localStorage.getItem('fcmToken') || null;
 
         try {
-            const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, { email, password });
+            const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, {
+                email,
+                password,
+                fcmToken,
+                deviceInfo: 'web'
+            });
 
             // Handle different response structures
             const token = res.token || res.data?.token || res.accessToken;
@@ -125,7 +131,19 @@ function applyRoleBasedUI() {
 /* ======================
 LOGOUT
 ====================== */
-document.getElementById('logoutBtn')?.addEventListener('click', () => {
+document.getElementById('logoutBtn')?.addEventListener('click', async () => {
+    const fcmToken = localStorage.getItem('fcmToken') || null;
+
+    try {
+        // Call logout API with FCM token
+        await apiPost(API_ENDPOINTS.AUTH.LOGOUT, {
+            fcmToken,
+            deviceInfo: 'web'
+        });
+    } catch (err) {
+        console.log('Logout API error:', err);
+    }
+
     localStorage.clear();
     window.location.href = 'index.html';
 });
