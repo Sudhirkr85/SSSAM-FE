@@ -7,15 +7,21 @@ if (loginForm) {
 
         const email = document.getElementById('email').value;
         const password = document.getElementById('password').value;
-        const fcmToken = localStorage.getItem('fcmToken') || null;
+        const fcmToken = localStorage.getItem('fcmToken');
+
+        const loginData = {
+            email,
+            password
+        };
+
+        // Only send fcmToken if it exists
+        if (fcmToken) {
+            loginData.fcmToken = fcmToken;
+            loginData.deviceInfo = 'web';
+        }
 
         try {
-            const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, {
-                email,
-                password,
-                fcmToken,
-                deviceInfo: 'web'
-            });
+            const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, loginData);
 
             // Handle different response structures
             const token = res.token || res.data?.token || res.accessToken;
@@ -132,14 +138,21 @@ function applyRoleBasedUI() {
 LOGOUT
 ====================== */
 document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-    const fcmToken = localStorage.getItem('fcmToken') || null;
+    const fcmToken = localStorage.getItem('fcmToken');
+
+    const logoutData = {};
+
+    // Only send fcmToken if it exists
+    if (fcmToken) {
+        logoutData.fcmToken = fcmToken;
+        logoutData.deviceInfo = 'web';
+    }
 
     try {
-        // Call logout API with FCM token
-        await apiPost(API_ENDPOINTS.AUTH.LOGOUT, {
-            fcmToken,
-            deviceInfo: 'web'
-        });
+        // Call logout API with FCM token if available
+        if (fcmToken) {
+            await apiPost(API_ENDPOINTS.AUTH.LOGOUT, logoutData);
+        }
     } catch (err) {
         console.log('Logout API error:', err);
     }
