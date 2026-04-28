@@ -11,6 +11,8 @@
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
@@ -103,10 +105,10 @@
       </header>
 
       <!-- CONTENT -->
-      <div class="flex-1 overflow-y-auto p-6">
+      <div class="flex-1 overflow-y-auto p-6 space-y-6">
         
-        <!-- SIMPLE SUMMARY CARDS -->
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <!-- SUMMARY CARDS -->
+        <div id="statsCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           
           <!-- Total Leads -->
           <a href="enquiries.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
@@ -114,7 +116,7 @@
               <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="message-square" class="w-6 h-6 text-blue-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Total Leads</span>
+              <span class="text-sm text-gray-500" id="leadsLabel">Total Leads</span>
             </div>
             <p id="totalLeads" class="text-3xl font-bold text-gray-800">0</p>
           </a>
@@ -125,7 +127,7 @@
               <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="user-check" class="w-6 h-6 text-purple-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Admissions</span>
+              <span class="text-sm text-gray-500" id="admissionsLabel">Admissions</span>
             </div>
             <p id="totalAdmissions" class="text-3xl font-bold text-purple-600">0</p>
           </a>
@@ -158,7 +160,7 @@
               <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="clock" class="w-6 h-6 text-red-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Pending Follow-ups</span>
+              <span class="text-sm text-gray-500" id="followupsLabel">Pending Follow-ups</span>
             </div>
             <p id="pendingFollowups" class="text-3xl font-bold text-red-600">0</p>
           </a>
@@ -169,7 +171,7 @@
               <div class="w-12 h-12 bg-teal-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="trending-up" class="w-6 h-6 text-teal-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Conversion Rate</span>
+              <span class="text-sm text-gray-500" id="conversionLabel">Conversion Rate</span>
             </div>
             <p id="conversionRate" class="text-3xl font-bold text-teal-600">0%</p>
           </div>
@@ -199,7 +201,7 @@
         </div>
 
         <!-- QUICK ACTIONS -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
           <a href="enquiries.html" class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-all">
             <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
               <i data-lucide="message-square" class="w-5 h-5 text-blue-600"></i>
@@ -238,17 +240,102 @@
           </a>
         </div>
 
+        <!-- CONVERSION FUNNEL -->
+        <div class="bg-white rounded-xl shadow-sm p-6">
+          <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+            <i data-lucide="filter" class="w-5 h-5 text-blue-600"></i>
+            <span id="funnelTitle">Conversion Funnel</span>
+          </h2>
+          <div id="funnelContainer" class="flex flex-col md:flex-row items-center justify-center gap-3 md:gap-0">
+            <div class="funnel-step w-full md:w-auto flex-1 text-center py-4 px-6 bg-blue-50 rounded-l-xl border-r-4 border-blue-200">
+              <p class="text-2xl font-bold text-blue-600" id="funnelEnquiries">0</p>
+              <p class="text-xs text-blue-500 mt-1" id="funnelEnquiriesLabel">Enquiries</p>
+            </div>
+            <div class="text-gray-300 text-2xl hidden md:block">→</div>
+            <div class="funnel-step w-full md:w-auto flex-1 text-center py-4 px-6 bg-yellow-50 border-r-4 border-yellow-200">
+              <p class="text-2xl font-bold text-yellow-600" id="funnelFollowups">0</p>
+              <p class="text-xs text-yellow-500 mt-1" id="funnelFollowupsLabel">Follow-ups</p>
+            </div>
+            <div class="text-gray-300 text-2xl hidden md:block">→</div>
+            <div class="funnel-step w-full md:w-auto flex-1 text-center py-4 px-6 bg-red-50 border-r-4 border-red-200">
+              <p class="text-2xl font-bold text-red-600" id="funnelHotLeads">0</p>
+              <p class="text-xs text-red-500 mt-1">Hot Leads</p>
+            </div>
+            <div class="text-gray-300 text-2xl hidden md:block">→</div>
+            <div class="funnel-step w-full md:w-auto flex-1 text-center py-4 px-6 bg-green-50 rounded-r-xl">
+              <p class="text-2xl font-bold text-green-600" id="funnelConverted">0</p>
+              <p class="text-xs text-green-500 mt-1" id="funnelConvertedLabel">Admissions</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- CHARTS ROW (Admin Only) -->
+        <div id="chartsRow" class="grid grid-cols-1 lg:grid-cols-2 gap-6 hidden">
+          
+          <!-- Monthly Revenue Chart -->
+          <div class="bg-white rounded-xl shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+              <i data-lucide="bar-chart-3" class="w-5 h-5 text-green-600"></i>
+              Monthly Revenue Trend
+            </h2>
+            <div class="relative" style="height: 250px;">
+              <canvas id="revenueChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Source Breakdown Chart -->
+          <div class="bg-white rounded-xl shadow-sm p-6">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2 mb-4">
+              <i data-lucide="pie-chart" class="w-5 h-5 text-purple-600"></i>
+              Lead Source Breakdown
+            </h2>
+            <div class="relative" style="height: 250px;">
+              <canvas id="sourceChart"></canvas>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- COURSE/SUBJECT-WISE SUMMARY -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <i data-lucide="book-open" class="w-5 h-5 text-blue-600"></i>
+              <span id="courseWiseTitle">Course-wise Summary</span>
+            </h2>
+          </div>
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                  <th class="px-4 py-3 text-left">Course</th>
+                  <th class="px-4 py-3 text-center" id="courseEnquiriesHeader">Enquiries</th>
+                  <th class="px-4 py-3 text-center" id="courseAdmissionsHeader">Admissions</th>
+                  <th class="px-4 py-3 text-right admin-only-col">Revenue</th>
+                  <th class="px-4 py-3 text-right">Conversion %</th>
+                </tr>
+              </thead>
+              <tbody id="courseWiseTable" class="divide-y divide-gray-100">
+                <tr>
+                  <td colspan="5" class="px-4 py-8 text-center text-gray-500">
+                    No data available
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- RECENT ENQUIRIES & UPCOMING FOLLOW-UPS -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           
           <!-- Recent Enquiries -->
           <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-gray-800">Recent Enquiries</h2>
+              <h2 class="text-lg font-semibold text-gray-800" id="recentEnquiriesTitle">Recent Enquiries</h2>
               <a href="enquiries.html" class="text-sm text-blue-600 hover:text-blue-700">View All</a>
             </div>
             <div id="recentEnquiriesList" class="space-y-3">
-              <!-- Enquiries will be loaded here -->
               <p class="text-gray-500 text-sm">Loading...</p>
             </div>
           </div>
@@ -256,35 +343,14 @@
           <!-- Upcoming Follow-ups -->
           <div class="bg-white rounded-xl shadow-sm p-6">
             <div class="flex items-center justify-between mb-4">
-              <h2 class="text-lg font-semibold text-gray-800">Upcoming Follow-ups</h2>
+              <h2 class="text-lg font-semibold text-gray-800" id="upcomingFollowupsTitle">Upcoming Follow-ups</h2>
               <a href="enquiries.html?filter=today" class="text-sm text-blue-600 hover:text-blue-700">View All</a>
             </div>
             <div id="upcomingFollowupsList" class="space-y-3">
-              <!-- Follow-ups will be loaded here -->
               <p class="text-gray-500 text-sm">Loading...</p>
             </div>
           </div>
 
-        </div>
-
-        <!-- SOURCE BREAKDOWN (Admin Only) -->
-        <div id="sourceBreakdownCard" class="bg-white rounded-xl shadow-sm p-6 mb-8 hidden">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-800">Lead Source Breakdown</h2>
-          </div>
-          <div id="sourceBreakdownList" class="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <!-- Source breakdown will be loaded here -->
-          </div>
-        </div>
-
-        <!-- MONTHLY REVENUE TREND (Admin Only) -->
-        <div id="monthlyRevenueCard" class="bg-white rounded-xl shadow-sm p-6 hidden">
-          <div class="flex items-center justify-between mb-4">
-            <h2 class="text-lg font-semibold text-gray-800">Monthly Revenue Trend</h2>
-          </div>
-          <div id="monthlyRevenueList" class="grid grid-cols-2 md:grid-cols-3 gap-4">
-            <!-- Monthly revenue will be loaded here -->
-          </div>
         </div>
 
       </div>
@@ -327,21 +393,53 @@
 
     // Update user info
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isAdmin = user.role === 'admin';
     const userNameEl = document.getElementById('userName');
     const userRoleEl = document.getElementById('userRole');
     if (userNameEl) userNameEl.textContent = user.name || 'User';
-    if (userRoleEl) userRoleEl.textContent = user.role === 'admin' ? 'Administrator' : 'Counselor';
+    if (userRoleEl) userRoleEl.textContent = isAdmin ? 'Administrator' : 'Counselor';
 
-    // Show reports menu for admin
-    if (user.role === 'admin') {
-      document.getElementById('reportsMenu')?.classList.remove('hidden');
-      document.getElementById('revenueCard')?.classList.remove('hidden');
-      document.getElementById('reportsCard')?.classList.remove('hidden');
-      document.getElementById('activeStudentsCard')?.classList.remove('hidden');
-      document.getElementById('pendingPaymentsCard')?.classList.remove('hidden');
-      document.getElementById('sourceBreakdownCard')?.classList.remove('hidden');
-      document.getElementById('monthlyRevenueCard')?.classList.remove('hidden');
+    // ==================== ROLE-BASED VISIBILITY ====================
+    function applyRoleVisibility() {
+      if (isAdmin) {
+        document.getElementById('reportsMenu')?.classList.remove('hidden');
+        document.getElementById('revenueCard')?.classList.remove('hidden');
+        document.getElementById('reportsCard')?.classList.remove('hidden');
+        document.getElementById('activeStudentsCard')?.classList.remove('hidden');
+        document.getElementById('pendingPaymentsCard')?.classList.remove('hidden');
+        document.getElementById('chartsRow')?.classList.remove('hidden');
+        // Admin labels
+        document.getElementById('leadsLabel').textContent = 'Total Leads';
+        document.getElementById('admissionsLabel').textContent = 'Admissions';
+        document.getElementById('followupsLabel').textContent = 'Pending Follow-ups';
+        document.getElementById('conversionLabel').textContent = 'Conversion Rate';
+        document.getElementById('funnelTitle').textContent = 'Conversion Funnel';
+        document.getElementById('funnelEnquiriesLabel').textContent = 'Enquiries';
+        document.getElementById('funnelFollowupsLabel').textContent = 'Follow-ups';
+        document.getElementById('funnelConvertedLabel').textContent = 'Admissions';
+        document.getElementById('courseWiseTitle').textContent = 'Course-wise Summary';
+        document.getElementById('recentEnquiriesTitle').textContent = 'Recent Enquiries';
+        document.getElementById('upcomingFollowupsTitle').textContent = 'Upcoming Follow-ups';
+      } else {
+        // Counselor labels
+        document.getElementById('leadsLabel').textContent = 'My Leads';
+        document.getElementById('admissionsLabel').textContent = 'My Converted';
+        document.getElementById('followupsLabel').textContent = 'My Follow-ups';
+        document.getElementById('conversionLabel').textContent = 'My Conversion';
+        document.getElementById('funnelTitle').textContent = 'My Conversion Funnel';
+        document.getElementById('funnelEnquiriesLabel').textContent = 'My Leads';
+        document.getElementById('funnelFollowupsLabel').textContent = 'My Follow-ups';
+        document.getElementById('funnelConvertedLabel').textContent = 'My Converted';
+        document.getElementById('courseWiseTitle').textContent = 'My Course-wise Summary';
+        document.getElementById('courseEnquiriesHeader').textContent = 'My Leads';
+        document.getElementById('courseAdmissionsHeader').textContent = 'My Converted';
+        document.getElementById('recentEnquiriesTitle').textContent = 'My Recent Enquiries';
+        document.getElementById('upcomingFollowupsTitle').textContent = 'My Follow-ups';
+        // Hide Revenue column for counselor
+        document.querySelectorAll('.admin-only-col').forEach(el => el.style.display = 'none');
+      }
     }
+    applyRoleVisibility();
 
     // Logout
     document.getElementById('logoutBtn')?.addEventListener('click', () => {
@@ -349,62 +447,79 @@
       window.location.href = 'index.html';
     });
 
-    // Load Dashboard Stats
+    // ==================== CHART INSTANCES ====================
+    let revenueChartInstance = null;
+    let sourceChartInstance = null;
+
+    // ==================== FORMAT HELPERS ====================
+    function formatCurrency(amount) {
+      if (!amount || amount === 0) return '₹0';
+      if (typeof amount === 'string') return amount;
+      return '₹' + amount.toLocaleString('en-IN');
+    }
+
+    function getStatusColor(status) {
+      const colors = {
+        'New': 'bg-blue-100 text-blue-700',
+        'Follow-up': 'bg-yellow-100 text-yellow-700',
+        'Hot Lead': 'bg-red-100 text-red-700',
+        'Converted': 'bg-green-100 text-green-700',
+        'Closed': 'bg-gray-100 text-gray-700'
+      };
+      return colors[status] || 'bg-gray-100 text-gray-700';
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // ==================== LOAD DASHBOARD ====================
     async function loadDashboardStats() {
       try {
-        // Load dashboard data from API
-        const res = await apiGet(API_ENDPOINTS.DASHBOARD.GET);
+        const endpoint = getDashboardEndpoint();
+        const res = await apiGet(endpoint);
+        const data = res.data || res;
 
-        // Handle API response structure: { success, message, data }
-        const response = res.data || res;
-
-        if (response) {
-          // Update Total Leads
-          document.getElementById('totalLeads').textContent = response.totalEnquiries || 0;
-
-          // Update Total Admissions
-          const admissionsData = response.admissions || {};
-          document.getElementById('totalAdmissions').textContent = admissionsData.totalAdmissions || response.totalConversions || 0;
-
-          // Update Revenue - use totalPaid from fees summary or revenue data
-          const revenueData = response.revenue || response.fees || {};
+        if (data) {
+          // Stats cards
+          document.getElementById('totalLeads').textContent = data.totalEnquiries || data.enquiries?.totalAssigned || 0;
+          const admissionsData = data.admissions || {};
+          const totalAdmissions = admissionsData.totalAdmissions || data.totalConversions || data.conversions || 0;
+          document.getElementById('totalAdmissions').textContent = totalAdmissions;
+          const revenueData = data.revenue || data.fees || {};
           const totalRevenue = revenueData.totalPaid || revenueData.yearlyRevenue || revenueData.totalRevenue || 0;
           document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
-
-          // Update Today's Calls
-          document.getElementById('todayCalls').textContent = response.todayCalls || response.todayEnquiries || 0;
-
-          // Update Pending Follow-ups
-          document.getElementById('pendingFollowups').textContent = response.pendingFollowups || response.pendingEnquiries || 0;
-
-          // Update Conversion Rate
-          const totalLeads = response.totalEnquiries || 0;
-          const totalAdmissions = admissionsData.totalAdmissions || response.totalConversions || 0;
-          const conversionRate = totalLeads > 0 ? ((totalAdmissions / totalLeads) * 100).toFixed(1) : 0;
-          document.getElementById('conversionRate').textContent = conversionRate + '%';
-
-          // Update Active Students (Admin)
-          document.getElementById('activeStudents').textContent = response.activeStudents || admissionsData.activeStudents || totalAdmissions || 0;
-
-          // Update Pending Payments (Admin)
+          document.getElementById('todayCalls').textContent = data.todayCalls || data.enquiries?.today || 0;
+          document.getElementById('pendingFollowups').textContent = data.pendingFollowups || data.followUps?.overdue || 0;
+          const totalLeads = data.totalEnquiries || data.enquiries?.totalAssigned || 0;
+          const convRate = totalLeads > 0 ? ((totalAdmissions / totalLeads) * 100).toFixed(1) : 0;
+          document.getElementById('conversionRate').textContent = convRate + '%';
+          document.getElementById('activeStudents').textContent = data.activeStudents || admissionsData.activeStudents || totalAdmissions || 0;
           const pendingPayments = revenueData.pendingPayments || revenueData.pendingAmount || 0;
           document.getElementById('pendingPayments').textContent = formatCurrency(pendingPayments);
 
-          // Load Recent Enquiries
-          loadRecentEnquiries(response.recentEnquiries || response.enquiries || []);
+          // Conversion Funnel - use funnel object from backend
+          updateFunnel(data);
 
-          // Load Upcoming Follow-ups
-          loadUpcomingFollowups(response.upcomingFollowups || response.followups || []);
+          // Lists
+          loadRecentEnquiries(data.recentEnquiries || data.enquiries || []);
+          loadUpcomingFollowups(data.upcomingFollowups || data.followups || []);
 
-          // Load Source Breakdown (Admin)
-          loadSourceBreakdown(response.sourceBreakdown || response.sources || {});
-
-          // Load Monthly Revenue Trend (Admin)
-          loadMonthlyRevenue(response.monthlyRevenue || response.revenue?.monthly || {});
+          // Admin-only: Charts & Course-wise
+          if (isAdmin) {
+            renderRevenueChart(data.revenue?.monthly || data.monthlyRevenue || {});
+            renderSourceChart(data.sourceBreakdown || data.sources || {});
+            loadCourseWiseFromData(data.courseBreakdown || []);
+          } else {
+            loadCounselorCourseWiseFromData(data.courseBreakdown || []);
+          }
         }
       } catch (err) {
         console.error('Failed to load dashboard stats:', err);
-        // Use mock data for demo
+        // Mock data fallback
         document.getElementById('totalLeads').textContent = '42';
         document.getElementById('totalAdmissions').textContent = '9';
         document.getElementById('totalRevenue').textContent = '₹13,448';
@@ -413,8 +528,8 @@
         document.getElementById('conversionRate').textContent = '21.4%';
         document.getElementById('activeStudents').textContent = '9';
         document.getElementById('pendingPayments').textContent = '₹5,000';
-        
-        // Load mock data for sections
+
+        updateFunnel({ funnel: { enquiries: 42, followUps: 12, hotLeads: 6, admissions: 9 } });
         loadRecentEnquiries([
           { name: 'Rahul Sharma', course: 'B.Tech', status: 'New', date: 'Today' },
           { name: 'Priya Singh', course: 'MBA', status: 'Follow-up', date: 'Yesterday' },
@@ -425,12 +540,200 @@
           { name: 'Sneha Gupta', time: '2:30 PM', phone: '9876543211', date: '25 Apr' },
           { name: 'Vikram Patel', time: '4:00 PM', phone: '9876543212', date: '26 Apr' }
         ]);
-        loadSourceBreakdown({ 'Website': 15, 'Walk-in': 12, 'Referral': 8, 'Social Media': 7 });
-        loadMonthlyRevenue({ 'Jan': '₹45,000', 'Feb': '₹52,000', 'Mar': '₹38,000' });
+
+        if (isAdmin) {
+          renderRevenueChart({ 'Nov': '₹80,000', 'Dec': '₹90,000', 'Jan': '₹85,000', 'Feb': '₹95,000' });
+          renderSourceChart({ 'Website': 30, 'Walk-in': 25, 'Referral': 20, 'Social Media': 15 });
+          loadCourseWiseFromData([
+            { course: 'PHP Development', enquiries: 30, admissions: 10, revenue: 150000, conversionRate: '33.3' }
+          ]);
+        } else {
+          loadCounselorCourseWiseFromData([
+            { course: 'PHP Development', enquiries: 10, converted: 3, conversionRate: '30.0' }
+          ]);
+        }
       }
     }
 
-    // Load Recent Enquiries
+    // ==================== CONVERSION FUNNEL ====================
+    function updateFunnel(data) {
+      // Use funnel object from backend, or fallback to individual fields
+      const funnel = data.funnel || {};
+      const enquiries = funnel.enquiries || data.totalEnquiries || data.enquiries?.totalAssigned || 0;
+      const followups = funnel.followUps || data.pendingFollowups || data.followUps?.overdue || 0;
+      const hotLeads = funnel.hotLeads || data.hotLeads || Math.round(followups * 0.5);
+      const converted = funnel.admissions || data.totalConversions || data.admissions?.totalAdmissions || data.conversions || 0;
+
+      document.getElementById('funnelEnquiries').textContent = enquiries;
+      document.getElementById('funnelFollowups').textContent = followups;
+      document.getElementById('funnelHotLeads').textContent = hotLeads;
+      document.getElementById('funnelConverted').textContent = converted;
+    }
+
+    // ==================== REVENUE CHART (Admin) ====================
+    function renderRevenueChart(monthlyData) {
+      const canvas = document.getElementById('revenueChart');
+      if (!canvas) return;
+
+      if (revenueChartInstance) revenueChartInstance.destroy();
+
+      if (!monthlyData || Object.keys(monthlyData).length === 0) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      const labels = Object.keys(monthlyData);
+      const values = Object.values(monthlyData).map(v => typeof v === 'number' ? v : parseInt(String(v).replace(/[₹,]/g, '')) || 0);
+
+      revenueChartInstance = new Chart(canvas, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: 'Revenue (₹)',
+            data: values,
+            backgroundColor: 'rgba(34, 197, 94, 0.6)',
+            borderColor: 'rgba(34, 197, 94, 1)',
+            borderWidth: 2,
+            borderRadius: 6,
+            barThickness: 32
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return '₹' + (ctx.raw || 0).toLocaleString('en-IN');
+                }
+              }
+            }
+          },
+          scales: {
+            y: {
+              beginAtZero: true,
+              ticks: {
+                callback: function(val) { return '₹' + (val / 1000).toFixed(0) + 'K'; }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ==================== SOURCE CHART (Admin) ====================
+    function renderSourceChart(sources) {
+      const canvas = document.getElementById('sourceChart');
+      if (!canvas) return;
+
+      if (sourceChartInstance) sourceChartInstance.destroy();
+
+      if (!sources || Object.keys(sources).length === 0) {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        return;
+      }
+
+      const sourceColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#6b7280'];
+      const labels = Object.keys(sources);
+      const values = Object.values(sources);
+      const colors = labels.map((_, i) => sourceColors[i % sourceColors.length]);
+
+      sourceChartInstance = new Chart(canvas, {
+        type: 'doughnut',
+        data: {
+          labels: labels,
+          datasets: [{
+            data: values,
+            backgroundColor: colors,
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              position: 'bottom',
+              labels: {
+                padding: 12,
+                usePointStyle: true,
+                pointStyleWidth: 10,
+                font: { size: 11 }
+              }
+            },
+            tooltip: {
+              callbacks: {
+                label: function(ctx) {
+                  return ctx.label + ': ' + (ctx.raw || 0) + ' leads';
+                }
+              }
+            }
+          }
+        }
+      });
+    }
+
+    // ==================== COURSE-WISE TABLE (Admin) ====================
+    function loadCourseWiseFromData(courseBreakdown) {
+      const table = document.getElementById('courseWiseTable');
+
+      if (!courseBreakdown || courseBreakdown.length === 0) {
+        table.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No data available</td></tr>';
+        return;
+      }
+
+      table.innerHTML = courseBreakdown.map(c => {
+        // Backend provides conversionRate as string, but we calculate for consistency
+        const conv = c.conversionRate || (c.enquiries > 0 ? ((c.admissions / c.enquiries) * 100).toFixed(1) : 0);
+        return `
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.course)}</td>
+            <td class="px-4 py-3 text-center text-gray-600">${c.enquiries || 0}</td>
+            <td class="px-4 py-3 text-center text-gray-600">${c.admissions || 0}</td>
+            <td class="px-4 py-3 text-right font-medium text-gray-800 admin-only-col">${formatCurrency(c.revenue || 0)}</td>
+            <td class="px-4 py-3 text-right">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${parseFloat(conv) > 30 ? 'bg-green-100 text-green-700' : parseFloat(conv) > 15 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}">
+                ${conv}%
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==================== COURSE-WISE TABLE (Counselor) ====================
+    function loadCounselorCourseWiseFromData(courseBreakdown) {
+      const table = document.getElementById('courseWiseTable');
+
+      if (!courseBreakdown || courseBreakdown.length === 0) {
+        table.innerHTML = '<tr><td colspan="4" class="px-4 py-8 text-center text-gray-500">No data available</td></tr>';
+        return;
+      }
+
+      table.innerHTML = courseBreakdown.map(c => {
+        const conv = c.conversionRate || (c.enquiries > 0 ? ((c.converted / c.enquiries) * 100).toFixed(1) : 0);
+        return `
+          <tr class="hover:bg-gray-50 transition-colors">
+            <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.course)}</td>
+            <td class="px-4 py-3 text-center text-gray-600">${c.enquiries || 0}</td>
+            <td class="px-4 py-3 text-center text-gray-600">${c.converted || 0}</td>
+            <td class="px-4 py-3 text-right">
+              <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium ${parseFloat(conv) > 30 ? 'bg-green-100 text-green-700' : parseFloat(conv) > 15 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-700'}">
+                ${conv}%
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // ==================== RECENT ENQUIRIES ====================
     function loadRecentEnquiries(enquiries) {
       const container = document.getElementById('recentEnquiriesList');
       if (!container) return;
@@ -459,7 +762,7 @@
       `).join('');
     }
 
-    // Load Upcoming Follow-ups
+    // ==================== UPCOMING FOLLOW-UPS ====================
     function loadUpcomingFollowups(followups) {
       const container = document.getElementById('upcomingFollowupsList');
       if (!container) return;
@@ -489,61 +792,7 @@
       lucide.createIcons();
     }
 
-    // Load Source Breakdown
-    function loadSourceBreakdown(sources) {
-      const container = document.getElementById('sourceBreakdownList');
-      if (!container) return;
-
-      if (!sources || Object.keys(sources).length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-sm col-span-4">No source data available</p>';
-        return;
-      }
-
-      container.innerHTML = Object.entries(sources).map(([source, count]) => `
-        <div class="p-4 bg-gray-50 rounded-lg text-center">
-          <p class="text-2xl font-bold text-gray-800">${count}</p>
-          <p class="text-xs text-gray-500 mt-1">${source}</p>
-        </div>
-      `).join('');
-    }
-
-    // Load Monthly Revenue Trend
-    function loadMonthlyRevenue(monthlyData) {
-      const container = document.getElementById('monthlyRevenueList');
-      if (!container) return;
-
-      if (!monthlyData || Object.keys(monthlyData).length === 0) {
-        container.innerHTML = '<p class="text-gray-500 text-sm col-span-3">No revenue data available</p>';
-        return;
-      }
-
-      container.innerHTML = Object.entries(monthlyData).map(([month, amount]) => `
-        <div class="p-4 bg-gray-50 rounded-lg">
-          <p class="text-lg font-bold text-green-600">${typeof amount === 'number' ? formatCurrency(amount) : amount}</p>
-          <p class="text-xs text-gray-500 mt-1">${month}</p>
-        </div>
-      `).join('');
-    }
-
-    // Get status color
-    function getStatusColor(status) {
-      const colors = {
-        'New': 'bg-blue-100 text-blue-700',
-        'Follow-up': 'bg-yellow-100 text-yellow-700',
-        'Hot Lead': 'bg-red-100 text-red-700',
-        'Converted': 'bg-green-100 text-green-700',
-        'Closed': 'bg-gray-100 text-gray-700'
-      };
-      return colors[status] || 'bg-gray-100 text-gray-700';
-    }
-
-    function formatCurrency(amount) {
-      if (!amount || amount === 0) return '₹0';
-      if (typeof amount === 'string') return amount;
-      return '₹' + amount.toLocaleString('en-IN');
-    }
-
-    // Load stats on page load
+    // ==================== INIT ====================
     loadDashboardStats();
   </script>
 
