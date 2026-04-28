@@ -9,6 +9,10 @@ let totalPages = 1;
 let sortColumn = null;
 let sortDirection = 'asc'; // 'asc' or 'desc'
 
+// Date filter state
+let currentFilter = 'currentMonth'; // 'today', '7days', 'currentMonth', 'all', 'month'
+let selectedMonth = null; // For month filter: { year: 2026, month: 3 } (0-indexed)
+
 // Payment mode badge styles (match API uppercase format)
 const paymentModeStyles = {
     'CASH': { bg: 'bg-green-100', text: 'text-green-700', icon: '💵' },
@@ -22,6 +26,7 @@ const paymentModeStyles = {
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
+    populateMonthDropdown();
     loadPayments();
     initSearchListener();
 });
@@ -38,6 +43,122 @@ function initSearchListener() {
 }
 
 /* ======================
+DATE FILTER FUNCTIONS
+====================== */
+function populateMonthDropdown() {
+    const select = document.getElementById('monthSelector');
+    const now = new Date();
+    const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                        'July', 'August', 'September', 'October', 'November', 'December'];
+
+    for (let i = 0; i < 12; i++) {
+        const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        const year = date.getFullYear();
+        const month = date.getMonth();
+        const value = `${year}-${String(month + 1).padStart(2, '0')}`;
+        const label = `${monthNames[month]} ${year}`;
+
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = label;
+        select.appendChild(option);
+    }
+}
+
+function getStartDateForFilter(filterType) {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+
+    switch (filterType) {
+        case 'today':
+            return now;
+        case '7days':
+            const sevenDaysAgo = new Date(now);
+            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+            return sevenDaysAgo;
+        case 'currentMonth':
+            return new Date(now.getFullYear(), now.getMonth(), 1);
+        case 'month':
+            if (selectedMonth) {
+                return new Date(selectedMonth.year, selectedMonth.month, 1);
+            }
+            return null;
+        case 'all':
+        default:
+            return null;
+    }
+}
+
+function getEndDateForFilter(filterType) {
+    const now = new Date();
+    now.setHours(23, 59, 59, 999);
+
+    switch (filterType) {
+        case 'today':
+            return now;
+        case '7days':
+            return now;
+        case 'currentMonth':
+            return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        case 'month':
+            if (selectedMonth) {
+                return new Date(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59, 999);
+            }
+            return null;
+        case 'all':
+        default:
+            return null;
+    }
+}
+
+function formatDateForAPI(date) {
+    if (!date) return null;
+    return date.toISOString().split('T')[0]; // YYYY-MM-DD
+}
+
+function setFilter(filterType) {
+    currentFilter = filterType;
+
+    if (filterType === 'month') {
+        const select = document.getElementById('monthSelector');
+        const value = select.value;
+        if (value) {
+            const [year, month] = value.split('-').map(Number);
+            selectedMonth = { year, month: month - 1 }; // Convert to 0-indexed
+        } else {
+            selectedMonth = null;
+            currentFilter = 'currentMonth'; // Fallback to current month
+        }
+    } else {
+        selectedMonth = null;
+        document.getElementById('monthSelector').value = '';
+    }
+
+    updateFilterUI();
+    currentPage = 1;
+    loadPayments();
+}
+
+function updateFilterUI() {
+    const buttons = ['today', '7days', 'currentMonth', 'all'];
+    buttons.forEach(btn => {
+        const el = document.getElementById(`filter-${btn}`);
+        if (el) {
+            if (btn === currentFilter) {
+                el.className = 'px-4 py-2 text-sm rounded-lg bg-blue-600 text-white border border-blue-600 transition-colors';
+            } else {
+                el.className = 'px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors';
+            }
+        }
+    });
+
+    // Reset month selector if not using month filter
+    if (currentFilter !== 'month') {
+        document.getElementById('monthSelector').value = '';
+    }
+}
+
+/* ======================
 LOAD DATA
 ====================== */
 async function loadPayments(search = '') {
@@ -46,9 +167,18 @@ async function loadPayments(search = '') {
             page: currentPage,
             limit: ITEMS_PER_PAGE
         };
-        
+
         if (search) {
             params.search = search;
+        }
+
+        // Add date filter parameters
+        const startDate = getStartDateForFilter(currentFilter);
+        const endDate = getEndDateForFilter(currentFilter);
+
+        if (startDate && endDate) {
+            params.startDate = formatDateForAPI(startDate);
+            params.endDate = formatDateForAPI(endDate);
         }
 
         // Use the correct endpoint: GET /api/payments with pagination
@@ -353,3 +483,4 @@ EXPORT
 window.changePage = changePage;
 window.goToPage = goToPage;
 window.goToLastPage = goToLastPage;
+window.setFilter = setFilter;

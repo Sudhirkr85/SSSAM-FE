@@ -1,5 +1,5 @@
-// const BASE_URL = 'http://localhost:5000/api';
-const BASE_URL = 'https://sssam-r3pz.onrender.com/api'
+const BASE_URL = 'http://localhost:5000/api';
+// const BASE_URL = 'https://sssam-r3pz.onrender.com/api'
 
 /* ======================
 ENDPOINTS
@@ -10,6 +10,7 @@ const API_ENDPOINTS = {
         GET_ALL_ADMIN: '/enquiries/all',                 // Admin: all enquiries (read-only for counselor)
         GET_BY_ID: (id) => `/enquiries/${id}`,
         CREATE: '/enquiries',
+        
         UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
         DELETE: (id) => `/enquiries/${id}`,               // Admin only
         BULK_UPLOAD: '/bulk-upload/enquiries'            // Admin & Counselor

@@ -110,6 +110,27 @@
             <!-- CONTENT -->
             <main class="p-6 space-y-6 overflow-y-auto">
 
+                <!-- DATE FILTER -->
+                <div class="bg-white p-4 rounded-xl shadow-sm">
+                    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div class="flex items-center gap-2">
+                            <i data-lucide="calendar" class="w-5 h-5 text-gray-600"></i>
+                            <span class="font-medium text-gray-800">Date Filter</span>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <button onclick="setFilter('today')" id="filter-today" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Today</button>
+                            <button onclick="setFilter('7days')" id="filter-7days" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">7 Days</button>
+                            <button onclick="setFilter('currentMonth')" id="filter-currentMonth" class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white border border-blue-600 transition-colors">Current Month</button>
+                            <button onclick="setFilter('all')" id="filter-all" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">All</button>
+                            <div class="flex items-center gap-2 ml-2">
+                                <select id="monthSelector" onchange="setFilter('month')" class="px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-blue-500">
+                                    <option value="">Select Month</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- STATS -->
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
 
