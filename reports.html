@@ -11,6 +11,8 @@
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
   <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
   <!-- Firebase SDK -->
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.7.0/firebase-messaging-compat.js"></script>
@@ -252,23 +254,28 @@
                 Payment Summary
               </h3>
             </div>
-            <div class="overflow-x-auto">
-              <table class="w-full text-sm">
-                <thead class="bg-gray-50 text-gray-600">
-                  <tr>
-                    <th class="px-4 py-3 text-left">Mode</th>
-                    <th class="px-4 py-3 text-center">Count</th>
-                    <th class="px-4 py-3 text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody id="paymentTable" class="divide-y divide-gray-100">
-                  <tr>
-                    <td colspan="3" class="px-4 py-8 text-center text-gray-500">
-                      No data available
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="flex flex-col lg:flex-row items-center">
+              <div class="w-full lg:w-1/2 p-4 flex items-center justify-center">
+                <canvas id="paymentChart" width="220" height="220"></canvas>
+              </div>
+              <div class="w-full lg:w-1/2 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th class="px-4 py-3 text-left">Mode</th>
+                      <th class="px-4 py-3 text-center">Count</th>
+                      <th class="px-4 py-3 text-right">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody id="paymentTable" class="divide-y divide-gray-100">
+                    <tr>
+                      <td colspan="3" class="px-4 py-8 text-center text-gray-500">
+                        No data available
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
@@ -282,25 +289,30 @@
               Source-wise Enquiries
             </h3>
           </div>
-          <div class="overflow-x-auto">
-            <table class="w-full text-sm">
-              <thead class="bg-gray-50 text-gray-600">
-                <tr>
-                  <th class="px-4 py-3 text-left">Source</th>
-                  <th class="px-4 py-3 text-center">Enquiries</th>
-                  <th class="px-4 py-3 text-center">Converted</th>
-                  <th class="px-4 py-3 text-right">Conversion %</th>
-                </tr>
-              </thead>
-              <tbody id="sourceTable" class="divide-y divide-gray-100">
-                <tr>
-                  <td colspan="4" class="px-4 py-8 text-center text-gray-500">
-                    No data available
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+          <div class="flex flex-col lg:flex-row items-center">
+              <div class="w-full lg:w-1/2 p-4 flex items-center justify-center">
+                <canvas id="sourceChart" width="220" height="220"></canvas>
+              </div>
+              <div class="w-full lg:w-1/2 overflow-x-auto">
+                <table class="w-full text-sm">
+                  <thead class="bg-gray-50 text-gray-600">
+                    <tr>
+                      <th class="px-4 py-3 text-left">Source</th>
+                      <th class="px-4 py-3 text-center">Enquiries</th>
+                      <th class="px-4 py-3 text-center">Converted</th>
+                      <th class="px-4 py-3 text-right">Conversion %</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sourceTable" class="divide-y divide-gray-100">
+                    <tr>
+                      <td colspan="4" class="px-4 py-8 text-center text-gray-500">
+                        No data available
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
         </div>
 
         <!-- COUNSELOR PERFORMANCE -->

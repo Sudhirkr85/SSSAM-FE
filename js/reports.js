@@ -82,23 +82,16 @@ function getDateRangeForFilter(filterType) {
 async function loadReports() {
   showLoadingState();
 
-  // Map filter to API range parameter
-  const rangeMap = {
-    'today': 'daily',
-    'last7days': 'weekly',
-    'thisMonth': 'monthly',
-    'thisYear': 'yearly',
-    'allTime': 'all'
-  };
-  const range = rangeMap[currentFilter] || 'monthly';
+  // Get date range for the selected filter
+  const dateRange = getDateRangeForFilter(currentFilter);
 
   try {
-    // Fetch all reports in parallel using correct API endpoints
+    // Fetch all reports in parallel using date range parameters
     const [admissionsRes, feesRes, courseRes, counselorRes] = await Promise.all([
-      apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, { range }).catch(() => null),
-      apiGet(API_ENDPOINTS.REPORTS.FEES, { range }).catch(() => null),
-      apiGet(API_ENDPOINTS.REPORTS.COURSE_PERFORMANCE).catch(() => null),
-      apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, { range }).catch(() => null)
+      apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, dateRange).catch(() => null),
+      apiGet(API_ENDPOINTS.REPORTS.FEES, dateRange).catch(() => null),
+      apiGet(API_ENDPOINTS.REPORTS.COURSE_PERFORMANCE, dateRange).catch(() => null),
+      apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, dateRange).catch(() => null)
     ]);
 
     // Build summary data from API responses
@@ -205,7 +198,10 @@ function renderSummaryCards(data) {
 function renderCourseTable(courses) {
   const table = document.getElementById('courseTable');
   
-  if (courses.length === 0) {
+  // Filter out courses with 0 revenue
+  const filteredCourses = courses.filter(c => (c.revenue || 0) > 0);
+
+  if (filteredCourses.length === 0) {
     table.innerHTML = `
       <tr>
         <td colspan="4" class="px-4 py-8 text-center text-gray-500">
@@ -216,7 +212,7 @@ function renderCourseTable(courses) {
     return;
   }
   
-  table.innerHTML = courses.map(c => `
+  table.innerHTML = filteredCourses.map(c => `
     <tr class="hover:bg-gray-50 transition-colors">
       <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.course)}</td>
       <td class="px-4 py-3 text-center text-gray-600">${c.enquiries || 0}</td>
@@ -237,6 +233,7 @@ function renderPaymentTable(payments) {
         </td>
       </tr>
     `;
+    renderPaymentChart([]);
     return;
   }
   
@@ -259,6 +256,8 @@ function renderPaymentTable(payments) {
       <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(p.amount || 0)}</td>
     </tr>
   `).join('');
+
+  renderPaymentChart(payments);
 }
 
 function renderSourceTable(sources) {
@@ -272,6 +271,7 @@ function renderSourceTable(sources) {
         </td>
       </tr>
     `;
+    renderSourceChart([]);
     return;
   }
 
@@ -300,6 +300,144 @@ function renderSourceTable(sources) {
       </tr>
     `;
   }).join('');
+
+  renderSourceChart(sources);
+}
+
+
+// ==================== CHART FUNCTIONS ====================
+let paymentChartInstance = null;
+let sourceChartInstance = null;
+
+function renderPaymentChart(payments) {
+  const canvas = document.getElementById('paymentChart');
+  if (!canvas) return;
+
+  if (paymentChartInstance) {
+    paymentChartInstance.destroy();
+  }
+
+  if (payments.length === 0) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  const modeColors = {
+    'CASH': '#22c55e',
+    'UPI': '#a855f7',
+    'CARD': '#f59e0b',
+    'ONLINE': '#3b82f6',
+    'CHEQUE': '#6b7280',
+    'BANK_TRANSFER': '#6366f1'
+  };
+
+  const labels = payments.map(p => p.mode);
+  const data = payments.map(p => p.amount || 0);
+  const colors = payments.map(p => modeColors[p.mode] || '#94a3b8');
+
+  paymentChartInstance = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 12,
+            usePointStyle: true,
+            pointStyleWidth: 10,
+            font: { size: 11 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ': ₹' + (context.raw || 0).toLocaleString('en-IN');
+            }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderSourceChart(sources) {
+  const canvas = document.getElementById('sourceChart');
+  if (!canvas) return;
+
+  if (sourceChartInstance) {
+    sourceChartInstance.destroy();
+  }
+
+  if (sources.length === 0) {
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    return;
+  }
+
+  const sourceLabels = {
+    'website': 'Website',
+    'walk_in': 'Walk In',
+    'referral': 'Referral',
+    'phone_call': 'Phone Call',
+    'social_media': 'Social Media',
+    'advertisement': 'Advertisement',
+    'other': 'Other'
+  };
+
+  const sourceColors = [
+    '#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#6b7280'
+  ];
+
+  const labels = sources.map(s => sourceLabels[s.source] || s.source);
+  const data = sources.map(s => s.enquiries || 0);
+  const colors = sources.map((_, i) => sourceColors[i % sourceColors.length]);
+
+  sourceChartInstance = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors,
+        borderWidth: 2,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 12,
+            usePointStyle: true,
+            pointStyleWidth: 10,
+            font: { size: 11 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              return context.label + ': ' + (context.raw || 0) + ' enquiries';
+            }
+          }
+        }
+      }
+    }
+  });
 }
 
 
