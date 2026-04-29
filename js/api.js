@@ -13,7 +13,8 @@ const API_ENDPOINTS = {
         
         UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
         DELETE: (id) => `/enquiries/${id}`,               // Admin only
-        BULK_UPLOAD: '/bulk-upload/enquiries'            // Admin & Counselor
+        BULK_UPLOAD: '/bulk-upload/enquiries',            // Admin & Counselor
+        ASSIGN: (id) => `/enquiries/${id}/assign`         // Admin only
     },
     ADMISSIONS: {
         GET_ALL: '/admissions',
@@ -53,6 +54,10 @@ const API_ENDPOINTS = {
     AUTH: {
         LOGIN: '/auth/login',
         REGISTER: '/auth/register'
+    },
+    USERS: {
+        GET_ALL: '/users',
+        GET_COUNSELORS: '/users/counselors'
     }
 };
 

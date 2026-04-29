@@ -583,12 +583,16 @@ function renderTable() {
     });
   }
 
+  const isUserAdmin = isAdmin();
+
   tbody.innerHTML = sortedEnquiries.map(enquiry => {
     const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
     const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
     const followUpDate = enquiry.followUpDate ? formatDate(enquiry.followUpDate) : '-';
     const followUpTooltip = getFollowUpTooltip(enquiry);
-    
+    const isUnassigned = !enquiry.assignedTo && !enquiry.counselorId;
+    const showAssignButton = isUserAdmin && isUnassigned;
+
     return `
       <tr class="enquiry-row border-b border-gray-100 last:border-0 cursor-pointer hover:bg-blue-50/50 transition-colors" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'" ${followUpTooltip}>
         <td class="px-4 py-3">
@@ -607,13 +611,25 @@ function renderTable() {
         <td class="px-4 py-3 text-center text-sm text-gray-600">${counselor}</td>
         <td class="px-4 py-3 text-center text-sm text-gray-600">${followUpDate}</td>
         <td class="px-4 py-3 text-center" onclick="event.stopPropagation()">
-          <button 
-            onclick="openUpdateModal('${enquiry._id}', '${enquiry.status}')"
-            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors"
-          >
-            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
-            Action
-          </button>
+          <div class="flex items-center justify-center gap-1">
+            <button
+              onclick="openUpdateModal('${enquiry._id}', '${enquiry.status}')"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+              Action
+            </button>
+            ${showAssignButton ? `
+            <button
+              onclick="openAssignModal('${enquiry._id}')"
+              class="inline-flex items-center gap-1 px-2.5 py-1.5 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded-lg text-xs font-medium transition-colors"
+              title="Assign to Counselor"
+            >
+              <i data-lucide="user-check" class="w-3.5 h-3.5"></i>
+              Assign
+            </button>
+            ` : ''}
+          </div>
         </td>
       </tr>
     `;
@@ -639,9 +655,13 @@ function renderMobileCards() {
     return;
   }
 
+  const isUserAdmin = isAdmin();
+
   container.innerHTML = enquiries.map(enquiry => {
     const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
-    
+    const isUnassigned = !enquiry.assignedTo && !enquiry.counselorId;
+    const showAssignButton = isUserAdmin && isUnassigned;
+
     return `
       <div class="enquiry-card bg-white rounded-xl shadow-sm p-4 border border-gray-100 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'">
         <div class="flex items-start justify-between mb-3">
@@ -653,14 +673,19 @@ function renderMobileCards() {
             ${statusInfo.label}
           </span>
         </div>
-        
+
         <div class="text-sm text-gray-600 mb-3">
           <span class="text-gray-400">Course:</span> ${enquiry.courseInterested || '-'}
         </div>
-        
+
         <div class="flex items-center justify-between pt-3 border-t border-gray-100" onclick="event.stopPropagation();">
           <span class="text-xs text-gray-400">${enquiry.assignedTo?.name || 'Unassigned'}</span>
           <div class="flex items-center gap-2">
+            ${showAssignButton ? `
+            <button onclick="event.stopPropagation(); openAssignModal('${enquiry._id}')" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Assign">
+              <i data-lucide="user-check" class="w-4 h-4"></i>
+            </button>
+            ` : ''}
             <button onclick="event.stopPropagation(); openUpdateModal('${enquiry._id}', '${enquiry.status}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
               <i data-lucide="refresh-cw" class="w-4 h-4"></i>
             </button>
@@ -1552,4 +1577,120 @@ function showError(message) {
   `;
   document.body.appendChild(modal);
   lucide.createIcons();
+}
+
+// ==================== ASSIGN ENQUIRY MODAL ====================
+let counselorsList = [];
+
+function isAdmin() {
+  const user = safeParseLocalStorage('user', {});
+  return user.role === 'admin';
+}
+
+async function loadCounselors() {
+  try {
+    // Get counselors from the dedicated endpoint
+    const res = await apiGet(API_ENDPOINTS.USERS.GET_COUNSELORS);
+    counselorsList = res.users || res.data?.users || res.data || [];
+
+    // Populate dropdown
+    const select = document.getElementById('counselorSelect');
+    // Keep the first option
+    select.innerHTML = '<option value="">Select Counselor</option>';
+
+    counselorsList.forEach(counselor => {
+      const option = document.createElement('option');
+      option.value = counselor._id;
+      option.textContent = counselor.name || counselor.fullName || counselor.email;
+      select.appendChild(option);
+    });
+  } catch (err) {
+    console.error('Failed to load counselors:', err);
+    // Fallback: show error in dropdown
+    const select = document.getElementById('counselorSelect');
+    select.innerHTML = '<option value="">Failed to load counselors</option>';
+  }
+}
+
+function openAssignModal(enquiryId) {
+  // Set enquiry ID
+  document.getElementById('assignEnquiryId').value = enquiryId;
+
+  // Reset form
+  document.getElementById('counselorSelect').value = '';
+  document.getElementById('counselorError').classList.add('hidden');
+  document.getElementById('assignCurrentStatus').textContent = 'Unassigned';
+
+  // Load counselors
+  loadCounselors();
+
+  // Show modal
+  const modal = document.getElementById('assignModal');
+  const modalContent = document.getElementById('assignModalContent');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    modalContent.classList.remove('scale-95');
+    modalContent.classList.add('scale-100');
+  }, 10);
+  lucide.createIcons();
+}
+
+function closeAssignModal() {
+  const modal = document.getElementById('assignModal');
+  const modalContent = document.getElementById('assignModalContent');
+  modal.classList.add('opacity-0');
+  modalContent.classList.remove('scale-100');
+  modalContent.classList.add('scale-95');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+let isAssigning = false;
+
+async function submitAssign() {
+  // Prevent duplicate calls
+  if (isAssigning) return;
+
+  const enquiryId = document.getElementById('assignEnquiryId').value;
+  const counselorId = document.getElementById('counselorSelect').value;
+
+  // Validate
+  if (!counselorId) {
+    document.getElementById('counselorError').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('counselorError').classList.add('hidden');
+
+  isAssigning = true;
+
+  // Get button and disable it
+  const assignBtn = document.querySelector('#assignModal button[onclick="submitAssign()"]');
+  const originalBtnText = assignBtn ? assignBtn.innerHTML : null;
+  if (assignBtn) {
+    assignBtn.disabled = true;
+    assignBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Assigning...';
+    lucide.createIcons();
+  }
+
+  try {
+    await apiPut(API_ENDPOINTS.ENQUIRIES.ASSIGN(enquiryId), { counselorId });
+    showToast('Success', 'Enquiry assigned successfully');
+    closeAssignModal();
+    // Reload enquiries to show updated assignment
+    loadEnquiries();
+  } catch (err) {
+    console.error('Failed to assign enquiry:', err);
+    showToast('Error', err.response?.data?.message || 'Failed to assign enquiry');
+  } finally {
+    isAssigning = false;
+    if (assignBtn) {
+      assignBtn.disabled = false;
+      assignBtn.innerHTML = originalBtnText;
+      lucide.createIcons();
+    }
+  }
 }

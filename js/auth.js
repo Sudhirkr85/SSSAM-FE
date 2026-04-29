@@ -1,53 +1,124 @@
 // LOGIN
 const loginForm = document.getElementById('loginForm');
 
+// Show login field errors (red border on both, one message)
+function showLoginError() {
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const emailError = document.getElementById('emailError');
+
+    // Add red border to BOTH inputs
+    emailInput.classList.remove('border-white/20', 'focus:ring-blue-500');
+    emailInput.classList.add('border-red-500', 'focus:ring-red-500');
+
+    passwordInput.classList.remove('border-white/20', 'focus:ring-blue-500');
+    passwordInput.classList.add('border-red-500', 'focus:ring-red-500');
+
+    // Show ONE error message (under email only)
+    emailError.classList.remove('hidden');
+
+    // Refresh icons
+    lucide.createIcons();
+}
+
+// Clear login field errors
+function clearLoginError() {
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const emailError = document.getElementById('emailError');
+
+    // Remove red border from BOTH inputs, restore original styling
+    emailInput.classList.remove('border-red-500', 'focus:ring-red-500');
+    emailInput.classList.add('border-white/20', 'focus:ring-blue-500');
+
+    passwordInput.classList.remove('border-red-500', 'focus:ring-red-500');
+    passwordInput.classList.add('border-white/20', 'focus:ring-blue-500');
+
+    // Hide ONE error message
+    emailError.classList.add('hidden');
+}
+
+// Login handler function
+async function handleLogin() {
+    // Clear previous errors
+    clearLoginError();
+
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const fcmToken = localStorage.getItem('fcmToken');
+
+    // Basic validation
+    if (!email || !password) {
+        showLoginError();
+        showToast('error', 'Please enter email and password');
+        return;
+    }
+
+    const loginData = {
+        email,
+        password
+    };
+
+    // Only send fcmToken if it exists
+    if (fcmToken) {
+        loginData.fcmToken = fcmToken;
+        loginData.deviceInfo = 'web';
+    }
+
+    // Show loading state
+    const loginBtn = document.getElementById('loginBtn');
+    const originalBtnText = loginBtn.innerHTML;
+    loginBtn.disabled = true;
+    loginBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Signing in...';
+    lucide.createIcons();
+
+    try {
+        const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, loginData);
+
+        // Handle different response structures
+        const token = res.token || res.data?.token || res.accessToken;
+        const user = res.user || res.data?.user || res.data;
+
+        if (!token) {
+            showToast('error', 'Login failed: No token received');
+            return;
+        }
+
+        if (!user) {
+            showToast('error', 'Login failed: No user data received');
+            return;
+        }
+
+        // Use safe storage utility
+        localStorage.setItem('token', token);
+        safeSetLocalStorage('user', user);
+
+        window.location.href = 'dashboard.html';
+
+    } catch (err) {
+        // Show field-level error (red border + message)
+        showLoginError();
+
+        // Also show toast for additional feedback
+        const message = err.response?.data?.message || 'Invalid email or password';
+        showToast('error', message);
+
+        // Reset button
+        loginBtn.disabled = false;
+        loginBtn.innerHTML = originalBtnText;
+        lucide.createIcons();
+    }
+}
+
 if (loginForm) {
-    loginForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
+    // Clear errors on input
+    document.getElementById('email')?.addEventListener('input', clearLoginError);
+    document.getElementById('password')?.addEventListener('input', clearLoginError);
 
-        const email = document.getElementById('email').value;
-        const password = document.getElementById('password').value;
-        const fcmToken = localStorage.getItem('fcmToken');
-
-        const loginData = {
-            email,
-            password
-        };
-
-        // Only send fcmToken if it exists
-        if (fcmToken) {
-            loginData.fcmToken = fcmToken;
-            loginData.deviceInfo = 'web';
-        }
-
-        try {
-            const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, loginData);
-
-            // Handle different response structures
-            const token = res.token || res.data?.token || res.accessToken;
-            const user = res.user || res.data?.user || res.data;
-
-            if (!token) {
-                showToast('error', 'Login failed: No token received');
-                return;
-            }
-
-            if (!user) {
-                showToast('error', 'Login failed: No user data received');
-                return;
-            }
-
-            // Use safe storage utility
-            localStorage.setItem('token', token);
-            safeSetLocalStorage('user', user);
-
-            window.location.href = 'dashboard.html';
-
-        } catch (err) {
-            const message = err.response?.data?.message || err.message || 'Login failed';
-            showToast('error', message);
-        }
-
+    // Handle form submit (covers button click + Enter key)
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault(); // 🔥 Stop page refresh
+        handleLogin();
     });
 }
 
