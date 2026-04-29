@@ -20,6 +20,7 @@ let currentFilter = 'thisMonth';
 
 function setDateFilter(filterType) {
   currentFilter = filterType;
+  console.log('[Reports] Filter changed to:', filterType);
 
   // Update tab styles
   document.querySelectorAll('.filter-tab').forEach(tab => {
@@ -72,9 +73,17 @@ function getDateRangeForFilter(filterType) {
       endDate.setHours(23, 59, 59, 999);
   }
 
+  // Format dates as YYYY-MM-DD in local timezone (not UTC)
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   return {
-    startDate: startDate.toISOString().split('T')[0],
-    endDate: endDate.toISOString().split('T')[0]
+    dateFrom: formatDateLocal(startDate),
+    dateTo: formatDateLocal(endDate)
   };
 }
 
@@ -84,22 +93,42 @@ async function loadReports() {
 
   // Get date range for the selected filter
   const dateRange = getDateRangeForFilter(currentFilter);
+  console.log('[Reports] Loading with dateRange:', dateRange);
 
   try {
     // Fetch all reports in parallel using date range parameters
+    console.log('[Reports] Calling APIs with params:', dateRange);
+    const admissionsUrl = BASE_URL + API_ENDPOINTS.REPORTS.ADMISSIONS;
+    console.log('[Reports] Admissions URL:', admissionsUrl);
+    
     const [admissionsRes, feesRes, courseRes, counselorRes] = await Promise.all([
-      apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, dateRange).catch(() => null),
-      apiGet(API_ENDPOINTS.REPORTS.FEES, dateRange).catch(() => null),
-      apiGet(API_ENDPOINTS.REPORTS.COURSE_PERFORMANCE, dateRange).catch(() => null),
-      apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, dateRange).catch(() => null)
+      apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, dateRange).catch(err => {
+        console.error('[Reports] Admissions API error:', err?.response?.status, err?.response?.data);
+        return null;
+      }),
+      apiGet(API_ENDPOINTS.REPORTS.FEES, dateRange).catch(err => {
+        console.error('[Reports] Fees API error:', err?.response?.status, err?.response?.data);
+        return null;
+      }),
+      apiGet(API_ENDPOINTS.REPORTS.COURSE_PERFORMANCE, dateRange).catch(err => {
+        console.error('[Reports] Course API error:', err?.response?.status, err?.response?.data);
+        return null;
+      }),
+      apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, dateRange).catch(err => {
+        console.error('[Reports] Counselor API error:', err?.response?.status, err?.response?.data);
+        return null;
+      })
     ]);
 
+    console.log('[Reports] API responses:', { admissionsRes, feesRes, courseRes, counselorRes });
+
+    // apiGet flattens response.data, so access fields directly (not .data.data)
     // Build summary data from API responses
     const summaryData = buildSummaryData(admissionsRes, feesRes);
     renderSummaryCards(summaryData);
 
     // Course performance table
-    const courseStats = courseRes?.data?.courseStats || [];
+    const courseStats = courseRes?.courseStats || courseRes?.data?.courseStats || [];
     renderCourseTable(courseStats);
 
     // Payment summary from fees report
@@ -111,7 +140,7 @@ async function loadReports() {
     renderSourceTable(sourceStats);
 
     // Counselor performance table
-    const counselorStats = counselorRes?.data?.counselorStats || [];
+    const counselorStats = counselorRes?.counselorStats || counselorRes?.data?.counselorStats || [];
     renderCounselorTable(counselorStats);
 
     hideLoadingState();
@@ -124,8 +153,9 @@ async function loadReports() {
 
 // Build summary data from admissions and fees responses
 function buildSummaryData(admissionsRes, feesRes) {
-  const admissionsData = admissionsRes?.data || {};
-  const feesData = feesRes?.data || {};
+  // apiGet flattens .data, so fields are at top level
+  const admissionsData = admissionsRes?.data || admissionsRes || {};
+  const feesData = feesRes?.data || feesRes || {};
   const summary = admissionsData.summary || {};
   const feeSummary = feesData.summary || {};
   const periodPayments = feesData.periodPayments || [];
@@ -154,7 +184,7 @@ function buildSummaryData(admissionsRes, feesRes) {
 
 // Build payment stats from fees report data
 function buildPaymentStats(feesRes) {
-  const periodPayments = feesRes?.data?.periodPayments || [];
+  const periodPayments = feesRes?.periodPayments || feesRes?.data?.periodPayments || [];
 
   // Group by payment mode
   const modeStats = {};
@@ -177,7 +207,7 @@ function buildPaymentStats(feesRes) {
 // Build source stats from admissions/enquiries data
 function buildSourceStats(admissionsRes) {
   // If API provides source stats directly, use them
-  const sourceStats = admissionsRes?.data?.sourceStats;
+  const sourceStats = admissionsRes?.sourceStats || admissionsRes?.data?.sourceStats;
   if (sourceStats && Array.isArray(sourceStats)) {
     return sourceStats;
   }
@@ -541,3 +571,6 @@ function showToast(title, message, type = 'success') {
     setTimeout(() => toast.remove(), 300);
   }, duration);
 }
+
+// ==================== EXPOSE TO WINDOW ====================
+window.setDateFilter = setDateFilter;

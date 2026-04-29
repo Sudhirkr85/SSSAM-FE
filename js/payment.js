@@ -177,8 +177,8 @@ async function loadPayments(search = '') {
         const endDate = getEndDateForFilter(currentFilter);
 
         if (startDate && endDate) {
-            params.startDate = formatDateForAPI(startDate);
-            params.endDate = formatDateForAPI(endDate);
+            params.dateFrom = formatDateForAPI(startDate);
+            params.dateTo = formatDateForAPI(endDate);
         }
 
         // Use the correct endpoint: GET /api/payments with pagination
