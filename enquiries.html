@@ -498,6 +498,20 @@
           </div>
         </div>
 
+        <!-- Walk In Brought By (hidden by default, shown when source = walk_in) -->
+        <div id="walkInContainer" class="hidden border-t border-gray-100 pt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Brought By <span class="text-gray-400 text-xs">(Who brought this student?)</span>
+          </label>
+          <input 
+            type="text" 
+            id="addWalkInBroughtBy" 
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+            placeholder="Enter name of the person who brought them"
+            oninput="this.value = this.value.replace(/\b\w/g, l => l.toUpperCase())"
+          >
+        </div>
+
       </div>
 
       <!-- Footer -->

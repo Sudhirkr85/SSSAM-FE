@@ -150,6 +150,15 @@ function renderEnquiry(e) {
         referralSection.classList.add('hidden');
     }
     
+    // Walk In Brought By - show section only if data exists
+    const walkInSection = document.getElementById('walkInSection');
+    if (e.walkInBroughtBy) {
+        walkInSection.classList.remove('hidden');
+        document.getElementById('infoWalkInBroughtBy').textContent = e.walkInBroughtBy;
+    } else {
+        walkInSection.classList.add('hidden');
+    }
+    
     // Created By
     document.getElementById('infoCreatedBy').textContent = e.createdBy?.name || '-';
     

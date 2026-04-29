@@ -894,11 +894,18 @@ function handleCourseChange(e) {
 }
 
 function handleSourceChange(e) {
-  const container = document.getElementById('referralContainer');
+  const referralContainer = document.getElementById('referralContainer');
+  const walkInContainer = document.getElementById('walkInContainer');
+  
   if (e.target.value === 'referral') {
-    container.classList.remove('hidden');
+    referralContainer.classList.remove('hidden');
+    walkInContainer.classList.add('hidden');
+  } else if (e.target.value === 'walk_in') {
+    walkInContainer.classList.remove('hidden');
+    referralContainer.classList.add('hidden');
   } else {
-    container.classList.add('hidden');
+    referralContainer.classList.add('hidden');
+    walkInContainer.classList.add('hidden');
   }
 }
 
@@ -1128,6 +1135,14 @@ async function submitAddEnquiry() {
       payload.referenceContact = document.getElementById('addRefContact').value.trim();
     }
 
+    // Only add walkInBroughtBy if source is walk_in
+    if (source === 'walk_in') {
+      const broughtBy = document.getElementById('addWalkInBroughtBy').value.trim();
+      if (broughtBy) {
+        payload.walkInBroughtBy = broughtBy;
+      }
+    }
+
     await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
     
     // Reset form
@@ -1139,8 +1154,10 @@ async function submitAddEnquiry() {
     document.getElementById('addCustomCourse').value = '';
     document.getElementById('addRefName').value = '';
     document.getElementById('addRefContact').value = '';
+    document.getElementById('addWalkInBroughtBy').value = '';
     document.getElementById('customCourseContainer').classList.add('hidden');
     document.getElementById('referralContainer').classList.add('hidden');
+    document.getElementById('walkInContainer').classList.add('hidden');
     clearFieldErrors();
     
     closeAddModal();
