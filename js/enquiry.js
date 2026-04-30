@@ -52,6 +52,20 @@ const SOURCE_MAP = {
   'other': 'Other'
 };
 
+// ==================== UTILITY FUNCTIONS ====================
+/**
+ * Format courses for display - handles both array and string formats
+ * @param {string|string[]} courses - Course or array of courses
+ * @returns {string} Formatted course string
+ */
+function formatCourses(courses) {
+  if (!courses) return '-';
+  if (Array.isArray(courses)) {
+    return courses.length > 0 ? courses.join(', ') : '-';
+  }
+  return courses; // It's already a string
+}
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   initUserProfile();
@@ -181,18 +195,28 @@ async function loadStatusCounts() {
     statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
     statusCounts.CONVERTED = allEnquiries.filter(e => e.status === 'CONVERTED').length;
     
-    // Count today calls (NEW + FOLLOW_UP with today's date)
+    // Count today calls (NEW enquiries + today follow-ups excluding CONVERTED and NOT_INTERESTED)
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    statusCounts.today = allEnquiries.filter(e => {
-      if (e.status === 'NEW') return true;
-      if (e.status === 'FOLLOW_UP' && e.followUpDate) {
-        const followUpDate = new Date(e.followUpDate);
-        followUpDate.setHours(0, 0, 0, 0);
-        return followUpDate <= today;
-      }
-      return false;
+    
+    const todayNewCount = allEnquiries.filter(e => e.status === 'NEW').length;
+    
+    const todayFollowUpCount = allEnquiries.filter(e => {
+      if (e.status === 'CONVERTED' || e.status === 'NOT_INTERESTED') return false;
+      if (!e.followUpDate) return false;
+      const followUpDate = new Date(e.followUpDate);
+      followUpDate.setHours(0, 0, 0, 0);
+      return followUpDate.getTime() === today.getTime();
     }).length;
+    
+    // Combine counts, avoiding duplicates (NEW enquiries with today follow-up)
+    const newWithTodayFollowUp = allEnquiries.filter(e => 
+      e.status === 'NEW' && 
+      e.followUpDate && 
+      new Date(e.followUpDate).setHours(0, 0, 0, 0) === today.getTime()
+    ).length;
+    
+    statusCounts.today = todayNewCount + todayFollowUpCount - newWithTodayFollowUp;
     
     // Update UI
     updateCountDisplay();
@@ -381,7 +405,7 @@ async function loadEnquiries() {
     const dateFrom = document.getElementById('dateFromFilter').value;
     const dateTo = document.getElementById('dateToFilter').value;
 
-    // For Today Calls filter - fetch both NEW and FOLLOW_UP
+    // For Today Calls filter - fetch both NEW enquiries and today follow-ups
     if (currentQuickFilter === 'today') {
       const [newRes, followUpRes] = await Promise.all([
         apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
@@ -391,8 +415,7 @@ async function loadEnquiries() {
         }),
         apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
           page: 1,
-          limit: 100,
-          status: 'FOLLOW_UP'
+          limit: 100
         })
       ]);
 
@@ -400,13 +423,16 @@ async function loadEnquiries() {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      // Filter follow-up enquiries for today's date, excluding CONVERTED and NOT_INTERESTED
       const followUpEnquiries = (followUpRes.enquiries || []).filter(e => {
+        if (e.status === 'CONVERTED' || e.status === 'NOT_INTERESTED') return false;
         if (!e.followUpDate) return false;
         const followUpDate = new Date(e.followUpDate);
         followUpDate.setHours(0, 0, 0, 0);
-        return followUpDate <= today;
+        return followUpDate.getTime() === today.getTime();
       });
 
+      // Combine and remove duplicates
       const combined = [...newEnquiries, ...followUpEnquiries];
       const unique = combined.filter((item, index, self) =>
         index === self.findIndex((t) => t._id === item._id)
@@ -416,11 +442,16 @@ async function loadEnquiries() {
       let filteredEnquiries = unique;
       if (search) {
         const searchLower = search.toLowerCase();
-        filteredEnquiries = filteredEnquiries.filter(e => 
+        filteredEnquiries = filteredEnquiries.filter(e =>
           (e.name && e.name.toLowerCase().includes(searchLower)) ||
           (e.mobile && e.mobile.includes(search)) ||
           (e.email && e.email.toLowerCase().includes(searchLower)) ||
-          (e.courseInterested && e.courseInterested.toLowerCase().includes(searchLower))
+          // Handle both array and string formats for courseInterested
+          (e.courseInterested && (
+            Array.isArray(e.courseInterested)
+              ? e.courseInterested.some(c => c.toLowerCase().includes(searchLower))
+              : e.courseInterested.toLowerCase().includes(searchLower)
+          ))
         );
       }
 
@@ -558,8 +589,13 @@ function renderTable() {
           valueB = (b.name || '').toLowerCase();
           break;
         case 'course':
-          valueA = (a.courseInterested || '-').toLowerCase();
-          valueB = (b.courseInterested || '-').toLowerCase();
+          // Handle both array and string formats
+          valueA = Array.isArray(a.courseInterested)
+            ? (a.courseInterested[0] || '-').toLowerCase()
+            : (a.courseInterested || '-').toLowerCase();
+          valueB = Array.isArray(b.courseInterested)
+            ? (b.courseInterested[0] || '-').toLowerCase()
+            : (b.courseInterested || '-').toLowerCase();
           break;
         case 'status':
           valueA = a.status || '';
@@ -602,7 +638,7 @@ function renderTable() {
             ${enquiry.mobile || '-'}
           </div>
         </td>
-        <td class="px-4 py-3 text-gray-700 text-sm">${enquiry.courseInterested || '-'}</td>
+        <td class="px-4 py-3 text-gray-700 text-sm">${formatCourses(enquiry.courseInterested)}</td>
         <td class="px-4 py-3 text-center">
           <span class="status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
             ${statusInfo.label}
@@ -675,7 +711,7 @@ function renderMobileCards() {
         </div>
 
         <div class="text-sm text-gray-600 mb-3">
-          <span class="text-gray-400">Course:</span> ${enquiry.courseInterested || '-'}
+          <span class="text-gray-400">Course:</span> ${formatCourses(enquiry.courseInterested)}
         </div>
 
         <div class="flex items-center justify-between pt-3 border-t border-gray-100" onclick="event.stopPropagation();">
@@ -1023,7 +1059,6 @@ function validateAddForm() {
   const mobileRaw = document.getElementById('addMobile').value;
   const mobile = getCleanMobile(mobileRaw);
   const email = document.getElementById('addEmail').value.trim();
-  const course = document.getElementById('addCourse').value;
   const source = document.getElementById('addSource').value;
 
   // Name validation
@@ -1049,18 +1084,23 @@ function validateAddForm() {
     isValid = false;
   }
 
-  // Course validation
-  if (!course) {
-    showFieldError('addCourse', 'addCourseError');
+  // Course validation - at least one course must be selected
+  const courses = getSelectedCourses();
+  if (courses.length === 0) {
+    document.getElementById('addCourseError').textContent = 'Please select at least one course';
+    document.getElementById('addCourseError').classList.remove('hidden');
+    document.getElementById('courseDropdownBtn').classList.add('border-red-500');
     isValid = false;
   }
 
-  // Custom course validation if "Other" selected
-  if (course === 'Other') {
+  // Custom course validation if "Other" is selected
+  const otherCheckbox = document.getElementById('otherCourseCheckbox');
+  if (otherCheckbox && otherCheckbox.checked) {
     const customCourse = document.getElementById('addCustomCourse').value.trim();
     if (!customCourse) {
       document.getElementById('addCourseError').textContent = 'Please enter custom course name';
-      showFieldError('addCustomCourse', 'addCourseError');
+      document.getElementById('addCourseError').classList.remove('hidden');
+      document.getElementById('addCustomCourse').classList.add('border-red-500');
       isValid = false;
     }
   }
@@ -1107,20 +1147,21 @@ async function submitAddEnquiry() {
   lucide.createIcons();
 
   try {
-    const course = document.getElementById('addCourse').value;
-    const finalCourse = course === 'Other' ? document.getElementById('addCustomCourse').value.trim() : course;
     const source = document.getElementById('addSource').value;
     const email = document.getElementById('addEmail').value.trim();
-    
+
     // Get clean mobile number (10 digits only, no +91, no spaces)
     const mobileRaw = document.getElementById('addMobile').value;
     const cleanMobile = getCleanMobile(mobileRaw);
-    
+
+    // Get selected courses as array
+    const courses = getSelectedCourses();
+
     // Build clean payload - only include fields with values
     const payload = {
       name: document.getElementById('addName').value.trim(),
       mobile: cleanMobile,  // Only 10 digits
-      courseInterested: finalCourse,
+      courseInterested: courses, // Now sends as array
       source: source
     };
 
@@ -1144,22 +1185,27 @@ async function submitAddEnquiry() {
     }
 
     await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
-    
+
     // Reset form
     document.getElementById('addName').value = '';
     document.getElementById('addMobile').value = '';
     document.getElementById('addEmail').value = '';
-    document.getElementById('addCourse').value = '';
     document.getElementById('addSource').value = '';
-    document.getElementById('addCustomCourse').value = '';
     document.getElementById('addRefName').value = '';
     document.getElementById('addRefContact').value = '';
     document.getElementById('addWalkInBroughtBy').value = '';
-    document.getElementById('customCourseContainer').classList.add('hidden');
+    document.getElementById('addCustomCourse').value = '';
     document.getElementById('referralContainer').classList.add('hidden');
     document.getElementById('walkInContainer').classList.add('hidden');
+    document.getElementById('customCourseContainer').classList.add('hidden');
+
+    // Reset course checkboxes
+    document.querySelectorAll('.course-checkbox').forEach(cb => cb.checked = false);
+    selectedCourses = [];
+    updateSelectedCoursesDisplay();
+
     clearFieldErrors();
-    
+
     closeAddModal();
     showToast('Success', 'Enquiry added successfully', 'success');
     loadStatusCounts(); // Refresh counts after adding new enquiry
@@ -1711,3 +1757,108 @@ async function submitAssign() {
     }
   }
 }
+
+// ==================== MULTI-SELECT COURSE FUNCTIONS ====================
+let selectedCourses = [];
+
+function toggleCourseDropdown() {
+  const menu = document.getElementById('courseDropdownMenu');
+  const icon = document.getElementById('courseDropdownIcon');
+
+  if (menu.classList.contains('hidden')) {
+    menu.classList.remove('hidden');
+    icon.classList.add('rotate-180');
+  } else {
+    menu.classList.add('hidden');
+    icon.classList.remove('rotate-180');
+  }
+}
+
+function updateSelectedCoursesDisplay() {
+  const display = document.getElementById('selectedCoursesDisplay');
+  const checkboxes = document.querySelectorAll('.course-checkbox:checked');
+  const otherCheckbox = document.getElementById('otherCourseCheckbox');
+  const customCourse = document.getElementById('addCustomCourse').value.trim();
+
+  selectedCourses = [];
+  let html = '';
+
+  checkboxes.forEach(checkbox => {
+    const course = checkbox.value;
+    if (course === 'Other') {
+      if (customCourse) {
+        selectedCourses.push(customCourse);
+        html += `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg">${customCourse}<button onclick="removeCourse('Other')" class="hover:text-blue-900"><i data-lucide="x" class="w-3 h-3"></i></button></span>`;
+      }
+    } else {
+      selectedCourses.push(course);
+      html += `<span class="inline-flex items-center gap-1 px-2.5 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-lg">${course}<button onclick="removeCourse('${course}')" class="hover:text-blue-900"><i data-lucide="x" class="w-3 h-3"></i></button></span>`;
+    }
+  });
+
+  display.innerHTML = html;
+  lucide.createIcons();
+
+  // Update dropdown button text
+  const dropdownText = document.getElementById('courseDropdownText');
+  if (selectedCourses.length === 0) {
+    dropdownText.textContent = 'Click to select courses...';
+    dropdownText.classList.add('text-gray-500');
+  } else {
+    dropdownText.textContent = `${selectedCourses.length} course${selectedCourses.length > 1 ? 's' : ''} selected`;
+    dropdownText.classList.remove('text-gray-500');
+  }
+
+  // Show/hide custom course container
+  const customContainer = document.getElementById('customCourseContainer');
+  if (otherCheckbox && otherCheckbox.checked) {
+    customContainer.classList.remove('hidden');
+  } else {
+    customContainer.classList.add('hidden');
+    document.getElementById('addCustomCourse').value = '';
+  }
+
+  // Clear error
+  document.getElementById('addCourseError').classList.add('hidden');
+}
+
+function removeCourse(course) {
+  if (course === 'Other') {
+    const otherCheckbox = document.getElementById('otherCourseCheckbox');
+    if (otherCheckbox) otherCheckbox.checked = false;
+    document.getElementById('addCustomCourse').value = '';
+  } else {
+    const checkbox = document.querySelector(`.course-checkbox[value="${course}"]`);
+    if (checkbox) checkbox.checked = false;
+  }
+  updateSelectedCoursesDisplay();
+}
+
+function getSelectedCourses() {
+  return selectedCourses;
+}
+
+// Setup event listeners for course checkboxes
+document.addEventListener('DOMContentLoaded', () => {
+  // Course checkbox listeners
+  document.querySelectorAll('.course-checkbox').forEach(checkbox => {
+    checkbox.addEventListener('change', updateSelectedCoursesDisplay);
+  });
+
+  // Custom course input listener
+  const customCourseInput = document.getElementById('addCustomCourse');
+  if (customCourseInput) {
+    customCourseInput.addEventListener('input', updateSelectedCoursesDisplay);
+  }
+
+  // Close dropdown when clicking outside
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('courseDropdownBtn');
+    const menu = document.getElementById('courseDropdownMenu');
+    if (dropdown && menu && !dropdown.contains(e.target) && !menu.contains(e.target)) {
+      menu.classList.add('hidden');
+      const icon = document.getElementById('courseDropdownIcon');
+      if (icon) icon.classList.remove('rotate-180');
+    }
+  });
+});
