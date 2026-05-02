@@ -10,6 +10,7 @@ const API_ENDPOINTS = {
         GET_ALL_ADMIN: '/enquiries/all',                 // Admin: all enquiries (read-only for counselor)
         GET_BY_ID: (id) => `/enquiries/${id}`,
         CREATE: '/enquiries',
+        UPDATE: (id) => `/enquiries/${id}`,
         
         UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
         DELETE: (id) => `/enquiries/${id}`,               // Admin only

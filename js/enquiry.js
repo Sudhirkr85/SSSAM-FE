@@ -130,6 +130,15 @@ function initEventListeners() {
     e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
   });
 
+  // Edit form event listeners
+  document.getElementById('editCourse')?.addEventListener('change', handleEditCourseChange);
+  document.getElementById('editSource')?.addEventListener('change', handleEditSourceChange);
+  document.getElementById('editMobile')?.addEventListener('input', handleMobileInput);
+  document.getElementById('editMobile')?.addEventListener('paste', handleMobilePaste);
+  document.getElementById('editRefContact')?.addEventListener('input', (e) => {
+    e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+  });
+
   // Status change in update modal - handle follow-up date requirement
   document.getElementById('updateStatus')?.addEventListener('change', handleUpdateStatusChange);
 
@@ -650,10 +659,17 @@ function renderTable() {
           <div class="flex items-center justify-center gap-1">
             <button
               onclick="openUpdateModal('${enquiry._id}', '${enquiry.status}')"
-              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-sm font-medium transition-colors"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm font-medium transition-colors"
             >
               <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
               Action
+            </button>
+            <button
+              onclick="openEditModal('${enquiry._id}')"
+              class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              <i data-lucide="pencil" class="w-3.5 h-3.5"></i>
+              Edit
             </button>
             ${showAssignButton ? `
             <button
@@ -722,8 +738,11 @@ function renderMobileCards() {
               <i data-lucide="user-check" class="w-4 h-4"></i>
             </button>
             ` : ''}
-            <button onclick="event.stopPropagation(); openUpdateModal('${enquiry._id}', '${enquiry.status}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+            <button onclick="event.stopPropagation(); openUpdateModal('${enquiry._id}', '${enquiry.status}')" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors">
               <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+            <button onclick="event.stopPropagation(); openEditModal('${enquiry._id}')" class="p-2 text-purple-600 hover:bg-purple-50 rounded-lg transition-colors" title="Edit">
+              <i data-lucide="pencil" class="w-4 h-4"></i>
             </button>
             <a href="enquiry-detail.html?id=${enquiry._id}" onclick="event.stopPropagation();" class="p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
               <i data-lucide="eye" class="w-4 h-4"></i>
@@ -1216,6 +1235,204 @@ async function submitAddEnquiry() {
     showError(message);
   } finally {
     // Restore button state
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnContent;
+    lucide.createIcons();
+  }
+}
+
+// ==================== EDIT ENQUIRY MODAL ====================
+async function openEditModal(enquiryId) {
+  try {
+    const response = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_BY_ID(enquiryId));
+    const enquiry = response.data || response;
+    if (!enquiry) {
+      showToast('Error', 'Failed to load enquiry details', 'error');
+      return;
+    }
+    document.getElementById('editEnquiryId').value = enquiryId;
+    document.getElementById('editName').value = enquiry.name || '';
+    document.getElementById('editMobile').value = enquiry.mobile || '';
+    document.getElementById('editEmail').value = enquiry.email || '';
+    const courses = enquiry.courseInterested;
+    if (Array.isArray(courses) && courses.length > 0) {
+      document.getElementById('editCourse').value = courses[0];
+      if (courses[0] === 'Other') {
+        document.getElementById('editCustomCourseContainer').classList.remove('hidden');
+        document.getElementById('editCustomCourse').value = courses[1] || '';
+      }
+    } else if (typeof courses === 'string') {
+      document.getElementById('editCourse').value = courses;
+      if (courses === 'Other') {
+        document.getElementById('editCustomCourseContainer').classList.remove('hidden');
+      }
+    } else {
+      document.getElementById('editCourse').value = '';
+      document.getElementById('editCustomCourseContainer').classList.add('hidden');
+    }
+    document.getElementById('editSource').value = enquiry.source || '';
+    if (enquiry.source === 'referral') {
+      document.getElementById('editReferralContainer').classList.remove('hidden');
+      document.getElementById('editRefName').value = enquiry.referenceName || '';
+      document.getElementById('editRefContact').value = enquiry.referenceContact || '';
+    } else {
+      document.getElementById('editReferralContainer').classList.add('hidden');
+    }
+    clearEditErrors();
+    const modal = document.getElementById('editModal');
+    const content = document.getElementById('editModalContent');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+      modal.classList.remove('opacity-0');
+      content.classList.remove('scale-95');
+      content.classList.add('scale-100');
+    }, 10);
+    lucide.createIcons();
+  } catch (err) {
+    console.error('Failed to load enquiry:', err);
+    showToast('Error', 'Failed to load enquiry details', 'error');
+  }
+}
+
+function closeEditModal() {
+  const modal = document.getElementById('editModal');
+  const content = document.getElementById('editModalContent');
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+function clearEditErrors() {
+  const fields = ['editName','editMobile','editEmail','editCourse','editSource','editCustomCourse','editRefName','editRefContact'];
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.classList.remove('border-red-500','focus:border-red-500','focus:ring-red-100');
+      el.classList.add('border-gray-200','focus:border-blue-500','focus:ring-blue-100');
+    }
+  });
+  const errors = ['editNameError','editMobileError','editEmailError','editCourseError','editSourceError','editRefNameError','editRefContactError'];
+  errors.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.add('hidden');
+  });
+}
+
+function showEditFieldError(fieldId, errorId) {
+  const field = document.getElementById(fieldId);
+  const error = document.getElementById(errorId);
+  if (field) {
+    field.classList.remove('border-gray-200','focus:border-blue-500','focus:ring-blue-100');
+    field.classList.add('border-red-500','focus:border-red-500','focus:ring-red-100');
+  }
+  if (error) error.classList.remove('hidden');
+}
+
+function handleEditCourseChange(e) {
+  const container = document.getElementById('editCustomCourseContainer');
+  if (e.target.value === 'Other') container.classList.remove('hidden');
+  else container.classList.add('hidden');
+}
+
+function handleEditSourceChange(e) {
+  const container = document.getElementById('editReferralContainer');
+  if (e.target.value === 'referral') container.classList.remove('hidden');
+  else container.classList.add('hidden');
+}
+
+function validateEditForm() {
+  clearEditErrors();
+  let isValid = true;
+  const name = document.getElementById('editName').value.trim();
+  const mobileRaw = document.getElementById('editMobile').value;
+  const mobile = getCleanMobile(mobileRaw);
+  const email = document.getElementById('editEmail').value.trim();
+  const source = document.getElementById('editSource').value;
+  const course = document.getElementById('editCourse').value;
+  if (!name) { showEditFieldError('editName', 'editNameError'); isValid = false; }
+  if (!mobile) {
+    document.getElementById('editMobileError').textContent = 'Mobile number is required';
+    showEditFieldError('editMobile', 'editMobileError');
+    isValid = false;
+  } else if (mobile.length !== 10) {
+    document.getElementById('editMobileError').textContent = `Enter exactly 10 digits (current: ${mobile.length})`;
+    showEditFieldError('editMobile', 'editMobileError');
+    isValid = false;
+  }
+  if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    showEditFieldError('editEmail', 'editEmailError');
+    isValid = false;
+  }
+  if (!course) { showEditFieldError('editCourse', 'editCourseError'); isValid = false; }
+  if (course === 'Other') {
+    const customCourse = document.getElementById('editCustomCourse').value.trim();
+    if (!customCourse) {
+      document.getElementById('editCourseError').textContent = 'Please enter custom course name';
+      showEditFieldError('editCustomCourse', 'editCourseError');
+      isValid = false;
+    }
+  }
+  if (!source) { showEditFieldError('editSource', 'editSourceError'); isValid = false; }
+  if (source === 'referral') {
+    const refName = document.getElementById('editRefName').value.trim();
+    const refContact = document.getElementById('editRefContact').value.trim();
+    if (!refName) {
+      document.getElementById('editRefNameError').textContent = 'Reference name is required';
+      showEditFieldError('editRefName', 'editRefNameError');
+      isValid = false;
+    }
+    if (!refContact) {
+      document.getElementById('editRefContactError').textContent = 'Reference contact is required';
+      showEditFieldError('editRefContact', 'editRefContactError');
+      isValid = false;
+    } else if (!/^\d{10}$/.test(refContact)) {
+      document.getElementById('editRefContactError').textContent = 'Enter exactly 10 digits';
+      showEditFieldError('editRefContact', 'editRefContactError');
+      isValid = false;
+    }
+  }
+  return isValid;
+}
+
+async function submitEditEnquiry() {
+  if (!validateEditForm()) return;
+  const submitBtn = document.querySelector('#editModal button[onclick="submitEditEnquiry()"]');
+  const originalBtnContent = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
+  try {
+    const enquiryId = document.getElementById('editEnquiryId').value;
+    const source = document.getElementById('editSource').value;
+    const email = document.getElementById('editEmail').value.trim();
+    const mobileRaw = document.getElementById('editMobile').value;
+    const cleanMobile = getCleanMobile(mobileRaw);
+    const course = document.getElementById('editCourse').value;
+    const payload = {
+      name: document.getElementById('editName').value.trim(),
+      mobile: cleanMobile,
+      courseInterested: course === 'Other' ? ['Other', document.getElementById('editCustomCourse').value.trim()] : course,
+      source: source
+    };
+    if (email) payload.email = email;
+    if (source === 'referral') {
+      payload.referenceName = document.getElementById('editRefName').value.trim();
+      payload.referenceContact = document.getElementById('editRefContact').value.trim();
+    }
+    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), payload);
+    closeEditModal();
+    showToast('Success', 'Enquiry updated successfully', 'success');
+    loadEnquiries();
+  } catch (err) {
+    console.error('Failed to update enquiry:', err);
+    const message = err.response?.data?.message || 'Failed to update enquiry';
+    showToast('Error', message, 'error');
+  } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalBtnContent;
     lucide.createIcons();

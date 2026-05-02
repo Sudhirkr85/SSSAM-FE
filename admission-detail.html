@@ -67,46 +67,46 @@
     <div id="mobileOverlay" class="lg:hidden fixed inset-0 bg-black/50 z-40 hidden transition-opacity opacity-0"></div>
 
     <!-- SIDEBAR -->
-    <aside id="sidebar" class="w-64 bg-gray-900 text-gray-300 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50">
-      <div class="px-6 py-5 border-b border-gray-800 flex items-center gap-3">
-        <div class="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center">
-          <i data-lucide="graduation-cap" class="text-white w-6 h-6"></i>
+    <aside id="sidebar" class="w-56 bg-gradient-to-b from-gray-900 via-purple-950 to-gray-900 text-gray-300 flex flex-col fixed lg:relative inset-y-0 left-0 transform -translate-x-full lg:translate-x-0 transition-transform duration-300 z-50 shadow-2xl shadow-purple-500/10">
+      <div class="px-5 py-4 border-b border-white/10 flex items-center gap-3">
+        <div class="w-9 h-9 bg-gradient-to-br from-purple-500 to-purple-700 rounded-lg flex items-center justify-center shadow-lg shadow-purple-500/30">
+          <i data-lucide="graduation-cap" class="text-white w-5 h-5"></i>
         </div>
         <div>
-          <span class="text-lg font-semibold text-white">SSSAM</span>
-          <p class="text-xs text-gray-500">CRM System</p>
+          <span class="text-base font-bold text-white tracking-tight">SSSAM</span>
+          <p class="text-[10px] text-purple-300/70 uppercase tracking-wider">CRM System</p>
         </div>
       </div>
 
-      <nav class="flex-1 py-4 space-y-1">
-        <a href="dashboard.html" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
-          <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
-          <span>Dashboard</span>
+      <nav class="flex-1 py-3 space-y-0.5 px-2">
+        <a href="dashboard.html" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+          <i data-lucide="layout-dashboard" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+          <span class="text-sm font-medium text-gray-300 group-hover:text-white">Dashboard</span>
         </a>
-        <a href="enquiries.html" id="enquiriesMenu" class="flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
-          <i data-lucide="message-square" class="w-5 h-5"></i>
-          <span>Enquiries</span>
+        <a href="enquiries.html" id="enquiriesMenu" class="flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+          <i data-lucide="message-square" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+          <span class="text-sm font-medium text-gray-300 group-hover:text-white">Enquiries</span>
         </a>
-        <a href="admissions.html" class="bg-blue-600 text-white flex items-center gap-3 px-6 py-3 mx-3 rounded-lg">
-          <i data-lucide="user-check" class="w-5 h-5"></i>
-          <span>Admissions</span>
+        <a href="admissions.html" class="bg-gradient-to-r from-purple-600 to-purple-700 text-white flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg shadow-purple-500/25">
+          <i data-lucide="user-check" class="w-[18px] h-[18px]"></i>
+          <span class="text-sm font-medium">Admissions</span>
         </a>
-        <a href="payments.html" id="paymentsMenu" class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
-          <i data-lucide="wallet" class="w-5 h-5"></i>
-          <span>Payments</span>
+        <a href="payments.html" id="paymentsMenu" class="hidden flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+          <i data-lucide="wallet" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+          <span class="text-sm font-medium text-gray-300 group-hover:text-white">Payments</span>
         </a>
-        <a href="reports.html" id="reportsMenu" class="hidden flex items-center gap-3 px-6 py-3 mx-3 rounded-lg hover:bg-gray-800 transition-colors">
-          <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
-          <span>Reports</span>
+        <a href="reports.html" id="reportsMenu" class="hidden flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+          <i data-lucide="bar-chart-3" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+          <span class="text-sm font-medium text-gray-300 group-hover:text-white">Reports</span>
         </a>
       </nav>
 
-      <div class="p-4 border-t border-gray-800">
-        <p id="userName" class="text-sm text-white font-medium"></p>
-        <p id="userRole" class="text-xs text-gray-400"></p>
+      <div class="p-3 border-t border-white/10 bg-black/20">
+        <p id="userName" class="text-sm text-white font-medium truncate"></p>
+        <p id="userRole" class="text-xs text-purple-300/60"></p>
       </div>
 
-      <button id="mobileCloseBtn" class="lg:hidden absolute top-4 right-4 w-8 h-8 bg-gray-800 text-gray-400 hover:text-white rounded-lg flex items-center justify-center">
+      <button id="mobileCloseBtn" class="lg:hidden absolute top-4 right-4 w-8 h-8 bg-white/10 text-gray-400 hover:text-white hover:bg-white/20 rounded-lg flex items-center justify-center transition-colors">
         <i data-lucide="x" class="w-5 h-5"></i>
       </button>
     </aside>
