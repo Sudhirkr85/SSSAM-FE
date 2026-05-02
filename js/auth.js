@@ -158,6 +158,26 @@ function applyRoleBasedUI() {
     const role = getUserRole();
     const isAdminUser = isAdmin();
 
+    // Show/hide Dashboard menu (Admin only)
+    const dashboardMenu = document.getElementById('dashboardMenu');
+    if (dashboardMenu) {
+        if (isAdminUser) {
+            dashboardMenu.classList.remove('hidden');
+        } else {
+            dashboardMenu.classList.add('hidden');
+        }
+    }
+
+    // Show/hide Payments menu (Admin only)
+    const paymentsMenu = document.getElementById('paymentsMenu');
+    if (paymentsMenu) {
+        if (isAdminUser) {
+            paymentsMenu.classList.remove('hidden');
+        } else {
+            paymentsMenu.classList.add('hidden');
+        }
+    }
+
     // Show/hide Reports menu (Admin only)
     const reportsMenu = document.getElementById('reportsMenu');
     if (reportsMenu) {
