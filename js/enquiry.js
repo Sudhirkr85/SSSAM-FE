@@ -207,7 +207,7 @@ async function loadStatusCounts() {
     
     // Count by status from available data (3-status system)
     statusCounts.all = totalCount;
-    statusCounts.NEW = allEnquiries.filter(e => !e.status || e.status === null).length;
+    statusCounts.NEW = allEnquiries.filter(e => isCreatedToday(e)).length;
     statusCounts.CONTACTED = allEnquiries.filter(e => e.status === 'CONTACTED').length;
     statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
     
@@ -513,9 +513,6 @@ async function loadEnquiries() {
     renderTable();
     renderMobileCards();
     updatePagination();
-    
-    // Update status counts with current filtered data
-    updateStatusCountsFromCurrentData();
     
     // Re-enable filter buttons after loading
     document.querySelectorAll('[id^="quickBtn-"]').forEach(btn => {
