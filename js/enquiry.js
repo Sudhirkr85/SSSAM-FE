@@ -2081,11 +2081,31 @@ async function submitBulkUpload() {
     // Show results
     showUploadResults(res);
     loadEnquiries();
+    
+    // Show success message from API response after a short delay
+    setTimeout(() => {
+      const data = res.data || {};
+      const success = data.successCount || 0;
+      const failed = data.failedCount || 0;
+      const total = data.totalRows || 0;
+      
+      if (res.message) {
+        const messageWithCounts = `${res.message}\n\n✅ Success: ${success}\n❌ Failed: ${failed}\n📊 Total: ${total}`;
+        showSuccess(messageWithCounts);
+      }
+    }, 500);
+    
+    // Auto-close modal after 5 seconds (longer to see the results)
+    setTimeout(() => {
+      closeBulkUploadModal();
+    }, 5000);
   } catch (err) {
     clearInterval(progressInterval);
     console.error('Bulk upload failed:', err);
     const message = err.response?.data?.message || 'Bulk upload failed';
     showError(message);
+  } finally {
+    // Re-enable upload button
     document.getElementById('uploadButton').disabled = false;
   }
 }
@@ -2170,7 +2190,7 @@ function showUploadResults(results) {
 }
 
 function downloadTemplate() {
-  const csvContent = 'Name,Mobile,Email,Course Interested,Source,Reference Name,Reference Contact\nJohn Doe,9876543210,john@example.com,Python Programming,walk_in,,\nJane Smith,9876543211,jane@example.com,Data Science,referral,Friend Name,9876543212';
+  const csvContent = 'Name,Mobile,Email,Course\nSudhir,9876543210,sudhir@example.com,Python Full Stack\nSaloni,9876543211,saloni@example.com,Data Science\nMohit,9876543212,mohit@example.com,Java Full Stack';
   
   const blob = new Blob([csvContent], { type: 'text/csv' });
   const url = window.URL.createObjectURL(blob);
@@ -2246,6 +2266,30 @@ function showError(message) {
         <div>
           <h3 class="text-lg font-semibold text-gray-800">Error</h3>
           <p class="text-sm text-red-600 font-medium">${message}</p>
+        </div>
+      </div>
+      <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium">
+        Dismiss
+      </button>
+    </div>
+  `;
+  document.body.appendChild(modal);
+  lucide.createIcons();
+}
+
+function showSuccess(message) {
+  // Create success modal
+  const modal = document.createElement('div');
+  modal.className = 'fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[100]';
+  modal.innerHTML = `
+    <div class="bg-white rounded-2xl w-full max-w-sm p-6 shadow-2xl mx-4">
+      <div class="flex items-center gap-4 mb-4">
+        <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle" class="text-green-600 w-6 h-6"></i>
+        </div>
+        <div>
+          <h3 class="text-lg font-semibold text-gray-800">Success</h3>
+          <p class="text-sm text-green-600 font-medium">${message}</p>
         </div>
       </div>
       <button onclick="this.closest('.fixed').remove()" class="w-full px-4 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition-colors font-medium">
