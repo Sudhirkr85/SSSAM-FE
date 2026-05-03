@@ -177,17 +177,33 @@ async function loadStatusCounts() {
     console.log('API Endpoint:', API_ENDPOINTS.ENQUIRIES.LIST);
     console.log('Token exists:', !!localStorage.getItem('token'));
     
-    // Fetch all enquiries without limit to get accurate counts
-    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 1000 });
-    console.log('API Response:', res);
+    // Fetch first page to get total count
+    const firstRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 });
+    console.log('First page API Response:', firstRes);
     
-    const allEnquiries = res.data || res.enquiries || [];
-    console.log('All enquiries count:', allEnquiries.length);
-    
-    // Get total count from pagination
-    const pagination = res.pagination || {};
-    const totalCount = pagination.totalCount || allEnquiries.length;
+    const pagination = firstRes.pagination || {};
+    const totalCount = pagination.totalCount || 0;
+    const totalPages = pagination.totalPages || 1;
     console.log('Total count from pagination:', totalCount);
+    console.log('Total pages:', totalPages);
+    
+    let allEnquiries = [];
+    
+    // If there's only one page, use the data we already have
+    if (totalPages <= 1) {
+      allEnquiries = firstRes.data || firstRes.enquiries || [];
+    } else {
+      // Fetch all pages to get accurate counts
+      const pagePromises = [];
+      for (let page = 1; page <= totalPages; page++) {
+        pagePromises.push(apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page, limit: 100 }));
+      }
+      
+      const pageResults = await Promise.all(pagePromises);
+      allEnquiries = pageResults.flatMap(res => res.data || res.enquiries || []);
+    }
+    
+    console.log('All enquiries count:', allEnquiries.length);
     
     // Count by status from available data (3-status system)
     statusCounts.all = totalCount;
