@@ -134,10 +134,24 @@ function renderEnquiry(e) {
         : (typeof e.assignedTo === 'string' ? e.assignedTo : e.assignedTo?.name || 'Unassigned');
     document.getElementById('infoAssigned').textContent = assignedTo;
 
-    // Follow-up Date - handle null
-    document.getElementById('infoFollowUpDate').textContent = e.followUpDate
-        ? formatDateOnly(e.followUpDate)
-        : 'Not Scheduled';
+    // Follow-up Date - hide for NOT_INTERESTED status
+    const followUpDateElement = document.getElementById('infoFollowUpDate');
+    const followUpDateContainer = followUpDateElement.closest('div.bg-gray-50');
+    
+    if (e.status === 'NOT_INTERESTED') {
+        followUpDateContainer.style.visibility = 'hidden';
+        followUpDateContainer.style.height = '0';
+        followUpDateContainer.style.padding = '0';
+        followUpDateContainer.style.margin = '0';
+    } else {
+        followUpDateContainer.style.visibility = '';
+        followUpDateContainer.style.height = '';
+        followUpDateContainer.style.padding = '';
+        followUpDateContainer.style.margin = '';
+        followUpDateElement.textContent = e.followUpDate
+            ? formatDateOnly(e.followUpDate)
+            : 'Not Scheduled';
+    }
 
     // ===== MORE DETAILS (Collapsible) =====
     

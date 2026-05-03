@@ -213,9 +213,18 @@ async function loadStatusCounts() {
     statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
     
     // Calculate today followups
+    console.log('Checking follow-up dates:');
+    allEnquiries.forEach(e => {
+      if (e.followUpDate) {
+        console.log(`Name: ${e.name}, FollowUpDate: ${e.followUpDate}, isToday: ${isToday(e.followUpDate)}`);
+      }
+    });
+    
     statusCounts.TODAY_FOLLOWUPS = allEnquiries.filter(e => 
       e.followUpDate && isToday(e.followUpDate)
     ).length;
+    
+    console.log('Today Followups Count:', statusCounts.TODAY_FOLLOWUPS);
     
     // Calculate pending followups (overdue + no followup + new with no action)
     statusCounts.PENDING_FOLLOWUPS = allEnquiries.filter(e => {
@@ -411,7 +420,17 @@ function isToday(dateString) {
   if (!dateString) return false;
   const date = new Date(dateString);
   const today = new Date();
-  return date.toDateString() === today.toDateString();
+  
+  // Get date parts in local timezone
+  const dateYear = date.getFullYear();
+  const dateMonth = date.getMonth();
+  const dateDay = date.getDate();
+  
+  const todayYear = today.getFullYear();
+  const todayMonth = today.getMonth();
+  const todayDay = today.getDate();
+  
+  return dateYear === todayYear && dateMonth === todayMonth && dateDay === todayDay;
 }
 
 function isPast(dateString) {
