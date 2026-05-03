@@ -26,9 +26,10 @@ let statusCounts = {
   PENDING_FOLLOWUPS: 0
 };
 
-// ==================== STATUS MAPPING (3 Cases Only) ====================
+// ==================== STATUS MAPPING ====================
 const STATUS_MAP = {
   'CONTACTED': { label: 'Contacted', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  'INTERESTED': { label: 'Interested', color: 'bg-green-100 text-green-700 border-green-200' },
   'NOT_INTERESTED': { label: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200' },
   'null': { label: 'New', color: 'bg-gray-100 text-gray-700 border-gray-200' }
 };

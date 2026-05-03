@@ -66,6 +66,12 @@ document.addEventListener('DOMContentLoaded', () => {
         noteInput.addEventListener('input', clearStatusNoteError);
     }
 
+    // Setup status change listener for update modal
+    const updateStatusSelect = document.getElementById('updateStatus');
+    if (updateStatusSelect) {
+        updateStatusSelect.addEventListener('change', handleUpdateStatusChange);
+    }
+
     // Setup WhatsApp integration
     setupWhatsAppForEnquiry();
 });
@@ -76,11 +82,11 @@ LOAD DATA
 async function loadEnquiryDetail(id) {
     console.log('Loading enquiry detail for ID:', id);
     try {
-        const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_BY_ID(id));
+        const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET(id));
         console.log('API Response:', res);
 
-        // API returns { success, message, data: { enquiry: {...} } }
-        const enquiry = res.data?.enquiry;
+        // Handle different API response structures
+        const enquiry = res.data?.enquiry || res.data || res.enquiry || res;
         console.log('Extracted enquiry:', enquiry);
 
         if (!enquiry) {
@@ -129,7 +135,7 @@ function renderEnquiry(e) {
 
     // Follow-up Date - handle null
     document.getElementById('infoFollowUpDate').textContent = e.followUpDate
-        ? formatDateTime(e.followUpDate)
+        ? formatDateOnly(e.followUpDate)
         : 'Not Scheduled';
 
     // ===== MORE DETAILS (Collapsible) =====
@@ -309,6 +315,15 @@ function formatDateTime(dateStr) {
     return `${day} ${month}, ${hours12}:${minutes} ${ampm}`;
 }
 
+// Format date as "3 May" (no time)
+function formatDateOnly(dateStr) {
+    if (!dateStr) return '-';
+    const date = new Date(dateStr);
+    const day = date.getDate();
+    const month = date.toLocaleDateString('en-IN', { month: 'short' });
+    return `${day} ${month}`;
+}
+
 // Toggle More Details section
 function toggleMoreDetails() {
     const content = document.getElementById('moreDetailsContent');
@@ -444,6 +459,167 @@ function closeStatusUpdateModal() {
     setTimeout(() => {
         modal.classList.add('hidden');
     }, 300);
+}
+
+// ==================== UPDATE MODAL ====================
+function openUpdateModal(enquiryId, currentStatus) {
+  const modal = document.getElementById('updateModal');
+  const content = document.getElementById('updateModalContent');
+
+  // Set values
+  document.getElementById('updateEnquiryId').value = enquiryId;
+  document.getElementById('updateStatus').value = ''; // Reset to placeholder
+  document.getElementById('updateNote').value = '';
+  document.getElementById('updateFollowUpDate').value = '';
+
+  // Hide errors
+  document.getElementById('updateNoteError').classList.add('hidden');
+  document.getElementById('followUpError').classList.add('hidden');
+
+  // Handle follow-up date visibility
+  handleUpdateStatusChange();
+
+  // Show modal
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
+}
+
+function closeUpdateModal() {
+  const modal = document.getElementById('updateModal');
+  const content = document.getElementById('updateModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+function handleUpdateStatusChange() {
+  const status = document.getElementById('updateStatus').value;
+  const followUpRequired = document.getElementById('followUpRequired');
+  const followUpDate = document.getElementById('updateFollowUpDate');
+  
+  // Follow-up rules for 3-status system:
+  // CONTACTED → follow-up REQUIRED
+  // INTERESTED → follow-up OPTIONAL  
+  // NOT_INTERESTED → follow-up NOT ALLOWED
+  
+  if (status === 'CONTACTED') {
+    followUpRequired.classList.remove('hidden');
+    followUpDate.required = true;
+    followUpDate.disabled = false;
+  } else if (status === 'INTERESTED') {
+    followUpRequired.classList.add('hidden');
+    followUpDate.required = false;
+    followUpDate.disabled = false;
+  } else if (status === 'NOT_INTERESTED') {
+    followUpRequired.classList.add('hidden');
+    followUpDate.required = false;
+    followUpDate.disabled = true;
+    followUpDate.value = ''; // Clear follow-up date
+  } else {
+    // No status selected
+    followUpRequired.classList.add('hidden');
+    followUpDate.required = false;
+    followUpDate.disabled = false;
+  }
+  
+  document.getElementById('followUpError').classList.add('hidden');
+}
+
+// Global flag to prevent duplicate API calls
+let isUpdating = false;
+
+async function submitUpdate() {
+  // Prevent duplicate calls
+  if (isUpdating) return;
+  isUpdating = true;
+
+  const enquiryId = document.getElementById('updateEnquiryId').value;
+  const status = document.getElementById('updateStatus').value;
+  const note = document.getElementById('updateNote').value.trim();
+  const followUpDate = document.getElementById('updateFollowUpDate').value;
+
+  // Get submit button and disable it
+  const submitBtn = document.querySelector('#updateModal button[onclick="submitUpdate()"]');
+  const originalBtnText = submitBtn ? submitBtn.innerHTML : null;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Please wait...';
+    lucide.createIcons();
+  }
+
+  // Validation for 3-status system
+  document.getElementById('updateNoteError').classList.add('hidden');
+  document.getElementById('followUpError').classList.add('hidden');
+
+  if (!note) {
+    document.getElementById('updateNoteError').classList.remove('hidden');
+    document.getElementById('updateNoteError').textContent = 'Note is required';
+    isUpdating = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
+    return;
+  }
+
+  // Follow-up validation rules:
+  // CONTACTED → follow-up REQUIRED (throw error if missing)
+  // INTERESTED → follow-up OPTIONAL (allow if missing)
+  // NOT_INTERESTED → follow-up NOT ALLOWED (always set to null)
+  
+  if (status === 'CONTACTED' && !followUpDate) {
+    document.getElementById('followUpError').classList.remove('hidden');
+    document.getElementById('followUpError').textContent = 'Follow-up date required for Contacted';
+    isUpdating = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
+    return;
+  }
+
+  const payload = {
+    status: status,
+    note: note
+  };
+
+  // Handle follow-up date based on status
+  if (status === 'NOT_INTERESTED') {
+    payload.followUpDate = null; // Always null for NOT_INTERESTED
+  } else if (followUpDate) {
+    payload.followUpDate = followUpDate;
+  }
+
+  try {
+    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), payload);
+    showToast('success', 'Status updated successfully');
+    closeUpdateModal();
+    loadEnquiryDetail(enquiryId);
+  } catch (error) {
+    console.error('Failed to update status:', error);
+    showToast('error', 'Failed to update status');
+  } finally {
+    // Reset flag and button
+    isUpdating = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+      lucide.createIcons();
+    }
+  }
 }
 
 // Note: selectStatus function removed - using dropdown instead
@@ -640,7 +816,7 @@ async function executeStatusUpdate(id, payload) {
     }
 
     try {
-        await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(id), payload);
+        await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(id), payload);
         showToast('success', 'Status updated successfully');
         closeStatusUpdateModal();
         loadEnquiryDetail(id);
