@@ -19,18 +19,18 @@ let sortDirection = 'asc'; // 'asc' or 'desc'
 // Status counts cache
 let statusCounts = {
   all: 0,
+  NEW: 0,
   CONTACTED: 0,
-  INTERESTED: 0,
   NOT_INTERESTED: 0,
   TODAY_FOLLOWUPS: 0,
   PENDING_FOLLOWUPS: 0
 };
 
-// ==================== STATUS MAPPING (Simple 3-Status System) ====================
+// ==================== STATUS MAPPING (3 Cases Only) ====================
 const STATUS_MAP = {
-  'CONTACTED': { label: 'Contacted', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  'INTERESTED': { label: 'Interested', color: 'bg-green-100 text-green-700 border-green-200' },
-  'NOT_INTERESTED': { label: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200' }
+  'CONTACTED': { label: 'Contacted', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  'NOT_INTERESTED': { label: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200' },
+  'null': { label: 'New', color: 'bg-gray-100 text-gray-700 border-gray-200' }
 };
 
 // ==================== SOURCE MAPPING ====================
@@ -175,11 +175,10 @@ async function loadStatusCounts() {
   try {
     console.log('Loading status counts...');
     console.log('API Endpoint:', API_ENDPOINTS.ENQUIRIES.LIST);
-    console.log('BASE_URL:', 'https://sssam-r3pz.onrender.com/api');
     console.log('Token exists:', !!localStorage.getItem('token'));
     
-    // Fetch all enquiries - first page with high limit
-    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 });
+    // Fetch all enquiries without limit to get accurate counts
+    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 1000 });
     console.log('API Response:', res);
     
     const allEnquiries = res.data || res.enquiries || [];
@@ -192,51 +191,91 @@ async function loadStatusCounts() {
     
     // Count by status from available data (3-status system)
     statusCounts.all = totalCount;
+    statusCounts.NEW = allEnquiries.filter(e => !e.status || e.status === null).length;
     statusCounts.CONTACTED = allEnquiries.filter(e => e.status === 'CONTACTED').length;
-    statusCounts.INTERESTED = allEnquiries.filter(e => e.status === 'INTERESTED').length;
     statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
     
-    // Calculate new filter counts
+    // Calculate today followups
     statusCounts.TODAY_FOLLOWUPS = allEnquiries.filter(e => 
       e.followUpDate && isToday(e.followUpDate)
     ).length;
     
+    // Calculate pending followups (overdue + no followup + new with no action)
     statusCounts.PENDING_FOLLOWUPS = allEnquiries.filter(e => {
-      // A. Missed Follow-ups
+      // A. Overdue followups
       if (e.followUpDate && isPast(e.followUpDate)) return true;
       
-      // B. No Follow-up Set
+      // B. No follow-up date set
       if (!e.followUpDate) return true;
       
-      // C. New Enquiry with No Action
+      // C. New enquiry created today with no action taken today
       if (isCreatedToday(e) && !hasActionToday(e)) return true;
       
       return false;
     }).length;
     
+    console.log('Final status counts:', statusCounts);
+    
     // Update UI
     updateCountDisplay();
   } catch (err) {
     console.error('Failed to load status counts:', err);
+    // Set default values on error
+    statusCounts.all = 0;
+    statusCounts.NEW = 0;
+    statusCounts.CONTACTED = 0;
+    statusCounts.NOT_INTERESTED = 0;
+    statusCounts.TODAY_FOLLOWUPS = 0;
+    statusCounts.PENDING_FOLLOWUPS = 0;
+    updateCountDisplay();
   }
+}
+
+function updateStatusCountsFromCurrentData() {
+  // Update counts based on currently loaded enquiries
+  statusCounts.NEW = enquiries.filter(e => !e.status || e.status === null).length;
+  statusCounts.CONTACTED = enquiries.filter(e => e.status === 'CONTACTED').length;
+  statusCounts.NOT_INTERESTED = enquiries.filter(e => e.status === 'NOT_INTERESTED').length;
+  
+  // Calculate today followups
+  statusCounts.TODAY_FOLLOWUPS = enquiries.filter(e => 
+    e.followUpDate && isToday(e.followUpDate)
+  ).length;
+  
+  // Calculate pending followups
+  statusCounts.PENDING_FOLLOWUPS = enquiries.filter(e => {
+    // A. Overdue followups
+    if (e.followUpDate && isPast(e.followUpDate)) return true;
+    
+    // B. No follow-up date set
+    if (!e.followUpDate) return true;
+    
+    // C. New enquiry created today with no action taken today
+    if (isCreatedToday(e) && !hasActionToday(e)) return true;
+    
+    return false;
+  }).length;
+  
+  console.log('Updated status counts from current data:', statusCounts);
+  updateCountDisplay();
 }
 
 function updateCountDisplay() {
   console.log('Updating count display with:', statusCounts);
   
   const countAll = document.getElementById('count-all');
+  const countNew = document.getElementById('count-NEW');
   const countContacted = document.getElementById('count-CONTACTED');
-  const countInterested = document.getElementById('count-INTERESTED');
   const countNotInterested = document.getElementById('count-NOT_INTERESTED');
   const countTodayFollowups = document.getElementById('count-TODAY_FOLLOWUPS');
   const countPendingFollowups = document.getElementById('count-PENDING_FOLLOWUPS');
   const totalDisplay = document.getElementById('totalCountDisplay');
   
-  console.log('DOM Elements found:', { countAll, countContacted, countInterested, countNotInterested, countTodayFollowups, countPendingFollowups, totalDisplay });
+  console.log('DOM Elements found:', { countAll, countContacted, countNotInterested, countTodayFollowups, countPendingFollowups, totalDisplay });
   
   if (countAll) countAll.textContent = statusCounts.all;
+  if (countNew) countNew.textContent = statusCounts.NEW;
   if (countContacted) countContacted.textContent = statusCounts.CONTACTED;
-  if (countInterested) countInterested.textContent = statusCounts.INTERESTED;
   if (countNotInterested) countNotInterested.textContent = statusCounts.NOT_INTERESTED;
   if (countTodayFollowups) countTodayFollowups.textContent = statusCounts.TODAY_FOLLOWUPS;
   if (countPendingFollowups) countPendingFollowups.textContent = statusCounts.PENDING_FOLLOWUPS;
@@ -247,44 +286,23 @@ function updateCountDisplay() {
 
 // ==================== QUICK FILTER FUNCTIONS ====================
 function applyQuickFilter(filter) {
+  // Show loading state immediately
+  showLoadingState();
+  
   currentQuickFilter = filter;
   currentPage = 1;
   
   // Update button active states
-  const buttons = [
-    'quickBtn-all', 'quickBtn-CONTACTED', 'quickBtn-INTERESTED',
-    'quickBtn-NOT_INTERESTED', 'quickBtn-TODAY_FOLLOWUPS', 'quickBtn-PENDING_FOLLOWUPS'
-  ];
-  
-  buttons.forEach(btnId => {
-    const btn = document.getElementById(btnId);
-    if (btn) {
-      btn.classList.remove('ring-2', 'ring-offset-1', 'ring-gray-400', 'ring-blue-400', 'ring-yellow-400', 
-        'ring-purple-400', 'ring-green-400', 'ring-red-400', 'ring-emerald-400', 'ring-orange-400', 'ring-amber-400');
-    }
+  document.querySelectorAll('[id^="quickBtn-"]').forEach(btn => {
+    btn.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
   });
   
-  const activeBtnId = filter === 'all' ? 'quickBtn-all' : `quickBtn-${filter}`;
-  const activeBtn = document.getElementById(activeBtnId);
+  const activeBtn = document.getElementById(`quickBtn-${filter}`);
   if (activeBtn) {
-    activeBtn.classList.add('ring-2', 'ring-offset-1');
-    
-    // Set ring color based on filter
-    if (filter === 'all') {
-      activeBtn.classList.add('ring-gray-400');
-    } else if (filter === 'TODAY_FOLLOWUPS') {
-      activeBtn.classList.add('ring-orange-400');
-    } else if (filter === 'PENDING_FOLLOWUPS') {
-      activeBtn.classList.add('ring-amber-400');
-    } else if (filter === 'CONTACTED') {
-      activeBtn.classList.add('ring-yellow-400');
-    } else if (filter === 'INTERESTED') {
-      activeBtn.classList.add('ring-green-400');
-    } else if (filter === 'NOT_INTERESTED') {
-      activeBtn.classList.add('ring-red-400');
-    }
+    activeBtn.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
   }
   
+  // Load data with smooth transition
   loadEnquiries();
 }
 
@@ -313,7 +331,7 @@ function getFollowUpTooltip(enquiry) {
   
   // Add current status
   if (enquiry.status) {
-    const statusInfo = STATUS_MAP[enquiry.status] || { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['null'];
     tooltip += `Status: ${statusInfo.label}`;
   }
   
@@ -389,20 +407,21 @@ function isPast(dateString) {
 }
 
 function isCreatedToday(enquiry) {
-  if (!enquiry.created_at) return false;
-  const createdDate = new Date(enquiry.created_at);
+  const createdDate = enquiry.createdAt ? new Date(enquiry.createdAt) : (enquiry.created_at ? new Date(enquiry.created_at) : null);
+  if (!createdDate) return false;
   const today = new Date();
   return createdDate.toDateString() === today.toDateString();
 }
 
 function hasActionToday(enquiry) {
   // Check if any update was done on the same day as creation
-  if (!enquiry.created_at || !enquiry.statusHistory) return false;
+  const createdDate = enquiry.createdAt ? new Date(enquiry.createdAt) : (enquiry.created_at ? new Date(enquiry.created_at) : null);
+  if (!createdDate || !enquiry.statusHistory) return false;
   
-  const createdDate = new Date(enquiry.created_at).toDateString();
+  const createdDateString = createdDate.toDateString();
   return enquiry.statusHistory.some(entry => {
     const actionDate = new Date(entry.changedAt).toDateString();
-    return actionDate === createdDate;
+    return actionDate === createdDateString;
   });
 }
 
@@ -438,13 +457,19 @@ async function loadEnquiries() {
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
 
-    // Handle special filter types (5-filter system)
+    // Handle filter requests (send only filterType, no status)
     if (currentQuickFilter === 'TODAY_FOLLOWUPS') {
       params.filterType = 'today_followups';
     } else if (currentQuickFilter === 'PENDING_FOLLOWUPS') {
       params.filterType = 'pending_followups';
-    } else if (currentQuickFilter !== 'all') {
-      params.status = currentQuickFilter;
+    } else if (currentQuickFilter === 'NEW') {
+      params.filterType = 'new';
+    } else if (currentQuickFilter === 'CONTACTED') {
+      params.filterType = 'contacted';
+    } else if (currentQuickFilter === 'NOT_INTERESTED') {
+      params.filterType = 'not_interested';
+    } else {
+      params.filterType = 'all';
     }
 
     console.log('Loading enquiries with params:', params);
@@ -472,10 +497,25 @@ async function loadEnquiries() {
     renderTable();
     renderMobileCards();
     updatePagination();
+    
+    // Update status counts with current filtered data
+    updateStatusCountsFromCurrentData();
+    
+    // Re-enable filter buttons after loading
+    document.querySelectorAll('[id^="quickBtn-"]').forEach(btn => {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    });
   } catch (err) {
     console.error('Failed to load enquiries:', err);
     showError('Failed to load enquiries. Please try again.');
     renderEmptyState();
+    
+    // Re-enable filter buttons even on error
+    document.querySelectorAll('[id^="quickBtn-"]').forEach(btn => {
+      btn.disabled = false;
+      btn.classList.remove('opacity-50', 'cursor-not-allowed');
+    });
   }
 }
 
@@ -501,12 +541,12 @@ function renderTable() {
           break;
         case 'course':
           // Handle both array and string formats
-          valueA = Array.isArray(a.courseInterested)
-            ? (a.courseInterested[0] || '-').toLowerCase()
-            : (a.courseInterested || '-').toLowerCase();
-          valueB = Array.isArray(b.courseInterested)
-            ? (b.courseInterested[0] || '-').toLowerCase()
-            : (b.courseInterested || '-').toLowerCase();
+          valueA = Array.isArray(a.course)
+            ? (a.course[0] || '-').toLowerCase()
+            : (a.course || '-').toLowerCase();
+          valueB = Array.isArray(b.course)
+            ? (b.course[0] || '-').toLowerCase()
+            : (b.course || '-').toLowerCase();
           break;
         case 'status':
           valueA = a.status || '';
@@ -537,7 +577,7 @@ function renderTable() {
   const isUserAdmin = isAdmin();
 
   tbody.innerHTML = sortedEnquiries.map(enquiry => {
-    const statusInfo = STATUS_MAP[enquiry.status] || { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['null'];
     const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
     const followUpDate = enquiry.followUpDate ? formatDate(enquiry.followUpDate) : '-';
     const followUpTooltip = getFollowUpTooltip(enquiry);
@@ -561,7 +601,7 @@ function renderTable() {
             ${enquiry.createdAt ? formatDate(enquiry.createdAt) : (enquiry.created_at ? formatDate(enquiry.created_at) : '-')}
           </div>
         </td>
-        <td class="px-4 py-3 text-gray-700 text-sm">${formatCourses(enquiry.courseInterested)}</td>
+        <td class="px-4 py-3 text-gray-700 text-sm">${formatCourses(enquiry.course)}</td>
         <td class="px-4 py-3 text-center">
           <span class="status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
             ${statusInfo.label}
@@ -624,7 +664,7 @@ function renderMobileCards() {
   const isUserAdmin = isAdmin();
 
   container.innerHTML = enquiries.map(enquiry => {
-    const statusInfo = STATUS_MAP[enquiry.status] || { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200' };
+    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['null'];
     const isUnassigned = !enquiry.assignedTo && !enquiry.counselorId;
     const showAssignButton = isUserAdmin && isUnassigned;
 
@@ -652,7 +692,7 @@ function renderMobileCards() {
         </div>
 
         <div class="text-sm text-gray-600 mb-3">
-          <span class="text-gray-400">Course:</span> ${formatCourses(enquiry.courseInterested)}
+          <span class="text-gray-400">Course:</span> ${formatCourses(enquiry.course)}
         </div>
 
         <div class="flex items-center justify-between pt-3 border-t border-gray-100" onclick="event.stopPropagation();">
@@ -718,36 +758,76 @@ function updateSortIcons() {
 
 function renderEmptyState() {
   const tbody = document.getElementById('enquiriesTableBody');
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="6" class="text-center py-12">
-        <div class="flex flex-col items-center gap-3">
-          <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
-            <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
+  const mobileCards = document.getElementById('mobileCards');
+  
+  // Empty state for table
+  if (tbody) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-12">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
+              <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
+            </div>
+            <div>
+              <p class="text-gray-800 font-medium">No enquiries found</p>
+              <p class="text-gray-500 text-sm mt-1">Try adjusting your filters</p>
+            </div>
           </div>
-          <div>
-            <p class="text-gray-800 font-medium">No enquiries found</p>
-            <p class="text-gray-500 text-sm">Try adjusting your filters or search</p>
-          </div>
+        </td>
+      </tr>
+    `;
+  }
+  
+  // Empty state for mobile cards
+  if (mobileCards) {
+    mobileCards.innerHTML = `
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+        <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+          <i data-lucide="inbox" class="w-8 h-8 text-gray-400"></i>
         </div>
-      </td>
-    </tr>
-  `;
+        <p class="text-gray-800 font-medium">No enquiries found</p>
+        <p class="text-gray-500 text-sm mt-1">Try adjusting your filters</p>
+      </div>
+    `;
+  }
+  
   lucide.createIcons();
 }
 
 function showLoadingState() {
   const tbody = document.getElementById('enquiriesTableBody');
-  tbody.innerHTML = `
-    <tr>
-      <td colspan="6" class="text-center py-12">
-        <div class="flex flex-col items-center gap-3">
-          <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
-          <p class="text-gray-500 text-sm">Loading enquiries...</p>
-        </div>
-      </td>
-    </tr>
-  `;
+  const mobileCards = document.getElementById('mobileCards');
+  
+  // Show loading skeleton for table
+  if (tbody) {
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="6" class="text-center py-12">
+          <div class="flex flex-col items-center gap-3">
+            <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin"></div>
+            <p class="text-gray-500 text-sm">Loading enquiries...</p>
+          </div>
+        </td>
+      </tr>
+    `;
+  }
+  
+  // Show loading skeleton for mobile
+  if (mobileCards) {
+    mobileCards.innerHTML = `
+      <div class="bg-white rounded-xl shadow-sm p-8 text-center">
+        <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+        <p class="text-gray-500 text-sm">Loading enquiries...</p>
+      </div>
+    `;
+  }
+  
+  // Disable filter buttons during loading
+  document.querySelectorAll('[id^="quickBtn-"]').forEach(btn => {
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+  });
 }
 
 // ==================== PAGINATION ====================
@@ -1820,6 +1900,7 @@ async function submitUpdate() {
 
   if (!note) {
     document.getElementById('updateNoteError').classList.remove('hidden');
+    document.getElementById('updateNoteError').textContent = 'Note is required';
     isUpdating = false;
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -1835,7 +1916,7 @@ async function submitUpdate() {
   
   if (status === 'CONTACTED' && !followUpDate) {
     document.getElementById('followUpError').classList.remove('hidden');
-    document.getElementById('followUpError').textContent = 'Follow-up date is required for "Contacted" status';
+    document.getElementById('followUpError').textContent = 'Follow-up date required for Contacted';
     isUpdating = false;
     if (submitBtn) {
       submitBtn.disabled = false;
