@@ -112,7 +112,8 @@ function renderEnquiry(e) {
     // Header info
     document.getElementById('detailName').textContent = e.name || '-';
     document.getElementById('detailMobile').querySelector('span').textContent = e.mobile || '-';
-    document.getElementById('detailCourse').querySelector('span').textContent = e.courseInterested || '-';
+    document.getElementById('detailEmail').querySelector('span').textContent = e.email || '-';
+    document.getElementById('detailCourse').querySelector('span').textContent = e.course || e.courseInterested || '-';
 
     // Status badge - styled
     const statusBadge = document.getElementById('detailStatusBadge');
@@ -171,15 +172,7 @@ function renderEnquiry(e) {
     // Created Date - formatted
     document.getElementById('infoCreated').textContent = formatDateTime(e.createdAt);
 
-    // Conditional: Show Convert to Admission button if status is INTERESTED and no admission exists
-    const convertBtn = document.getElementById('convertToAdmissionBtn');
-    const hasAdmission = e.hasAdmission || e.admissionId || e.status === 'CONVERTED' || e.status === 'ADMISSION_PROCESS';
-    if (e.status === 'INTERESTED' && !hasAdmission) {
-        convertBtn.classList.remove('hidden');
-    } else {
-        convertBtn.classList.add('hidden');
-    }
-
+    
     // Conditional: Show Cancel Admission button if status is ADMISSION_PROCESS
     const cancelAdmissionBtn = document.getElementById('cancelAdmissionProcessBtn');
     if (e.status === 'ADMISSION_PROCESS') {
@@ -833,19 +826,6 @@ async function executeStatusUpdate(id, payload) {
     }
 }
 
-/* ======================
-CONVERT TO ADMISSION FLOW
-====================== */
-let pendingConvertData = null;
-
-// Step 1: Open Setup Fees Modal directly (skip confirmation)
-function openConvertModal(id) {
-    console.log('openConvertModal called with id:', id);
-    currentId = id;
-    pendingConvertData = null;
-    // Open Setup Fees modal directly
-    openSetupFeesModal(id);
-}
 
 // Step 2: Setup Fees Modal
 function openSetupFeesModal(id) {
@@ -1607,35 +1587,10 @@ function replaceMessagePlaceholders(message, name, course, counselorName) {
 }
 
 const ENQUIRY_WHATSAPP_TEMPLATES = {
-    enquiry: (name, course, counselorName) => `Hi ${name},
+    enquiry: (name, course, counselorName) => `Hi ${name}, I'm ${counselorName} from SSSAM Academy, Gurgaon.
+Thanks for your enquiry 😊 How can I assist you?`,
 
-This is ${counselorName} from SSSAM Academy, Gurgaon.
-
-Regarding your ${course} enquiry, please let me know a convenient time to connect.`,
-
-    followup: (name, course, counselorName) => `Hi ${name},
-
-This is ${counselorName} from SSSAM Academy.
-
-Following up on your ${course} enquiry. Are you still interested?`,
-
-    interested: (name, course, counselorName) => `Hi ${name},
-
-This is ${counselorName} from SSSAM Academy.
-
-Great to know you're interested in ${course}! Let's proceed with admission.`,
-
-    notinterested: (name, course, counselorName) => `Hi ${name},
-
-This is ${counselorName} from SSSAM Academy.
-
-Thank you for your time. If you need any assistance in future, feel free to reach out.`,
-
-    custom: (name, course, counselorName) => `Hi ${name},
-
-This is ${counselorName} from SSSAM Academy, Gurgaon.
-
-I'd like to discuss your ${course} enquiry...`
+    custom: (name, course, counselorName) => `Hi ${name}, I'm ${counselorName} from SSSAM Academy, Gurgaon.`
 };
 
 function openWhatsAppModal() {
@@ -1704,18 +1659,14 @@ function generateEnquiryWhatsAppMessage() {
         case 'enquiry':
             message = ENQUIRY_WHATSAPP_TEMPLATES.enquiry(name, course, counselorName);
             break;
-        case 'followup':
-            message = ENQUIRY_WHATSAPP_TEMPLATES.followup(name, course, counselorName);
-            break;
-        case 'interested':
-            message = ENQUIRY_WHATSAPP_TEMPLATES.interested(name, course, counselorName);
-            break;
-        case 'notinterested':
-            message = ENQUIRY_WHATSAPP_TEMPLATES.notinterested(name, course, counselorName);
-            break;
         case 'custom':
             message = ENQUIRY_WHATSAPP_TEMPLATES.custom(name, course, counselorName);
+            // Make textarea editable for custom message
+            textarea.readOnly = false;
+            textarea.placeholder = 'Type your custom message...';
             break;
+        default:
+            message = ENQUIRY_WHATSAPP_TEMPLATES.enquiry(name, course, counselorName);
     }
 
     textarea.value = message;
