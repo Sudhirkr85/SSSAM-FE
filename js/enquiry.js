@@ -8,7 +8,7 @@ let currentPage = 1;
 const ITEMS_PER_PAGE = 10;
 let totalPages = 1;
 let totalCount = 0;
-let currentQuickFilter = 'all'; // 'all', 'today', or status values
+let currentQuickFilter = 'all'; // 'all' or status values
 let enquiries = [];
 let selectedFile = null;
 
@@ -19,26 +19,18 @@ let sortDirection = 'asc'; // 'asc' or 'desc'
 // Status counts cache
 let statusCounts = {
   all: 0,
-  today: 0,
-  NEW: 0,
   CONTACTED: 0,
-  NO_RESPONSE: 0,
-  FOLLOW_UP: 0,
   INTERESTED: 0,
   NOT_INTERESTED: 0,
-  CONVERTED: 0
+  TODAY_FOLLOWUPS: 0,
+  PENDING_FOLLOWUPS: 0
 };
 
-// ==================== STATUS MAPPING (Indian CRM Style) ====================
+// ==================== STATUS MAPPING (Simple 3-Status System) ====================
 const STATUS_MAP = {
-  'NEW': { label: 'New Lead', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   'CONTACTED': { label: 'Contacted', color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  'NO_RESPONSE': { label: 'Call Not Picked', color: 'bg-gray-100 text-gray-700 border-gray-200' },
-  'FOLLOW_UP': { label: 'Call Back', color: 'bg-purple-100 text-purple-700 border-purple-200' },
   'INTERESTED': { label: 'Interested', color: 'bg-green-100 text-green-700 border-green-200' },
-  'NOT_INTERESTED': { label: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200' },
-  'ADMISSION_PROCESS': { label: 'Admission In Progress', color: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  'CONVERTED': { label: 'Admission Done', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' }
+  'NOT_INTERESTED': { label: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200' }
 };
 
 // ==================== SOURCE MAPPING ====================
@@ -77,8 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const urlParams = new URLSearchParams(window.location.search);
   const filterParam = urlParams.get('filter');
 
-  if (filterParam === 'today') {
-    applyQuickFilter('today');
+  if (filterParam && filterParam !== 'today') {
+    applyQuickFilter(filterParam);
   } else {
     // Set initial active state for "all" button
     applyQuickFilter('all');
@@ -198,38 +190,29 @@ async function loadStatusCounts() {
     const totalCount = pagination.totalCount || allEnquiries.length;
     console.log('Total count from pagination:', totalCount);
     
-    // Count by status from available data
+    // Count by status from available data (3-status system)
     statusCounts.all = totalCount;
-    statusCounts.NEW = allEnquiries.filter(e => e.status === 'NEW').length;
     statusCounts.CONTACTED = allEnquiries.filter(e => e.status === 'CONTACTED').length;
-    statusCounts.NO_RESPONSE = allEnquiries.filter(e => e.status === 'NO_RESPONSE').length;
-    statusCounts.FOLLOW_UP = allEnquiries.filter(e => e.status === 'FOLLOW_UP').length;
     statusCounts.INTERESTED = allEnquiries.filter(e => e.status === 'INTERESTED').length;
     statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
-    statusCounts.CONVERTED = allEnquiries.filter(e => e.status === 'CONVERTED').length;
     
-    // Count today calls (NEW enquiries + today follow-ups excluding CONVERTED and NOT_INTERESTED)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const todayNewCount = allEnquiries.filter(e => e.status === 'NEW').length;
-    
-    const todayFollowUpCount = allEnquiries.filter(e => {
-      if (e.status === 'CONVERTED' || e.status === 'NOT_INTERESTED') return false;
-      if (!e.followUpDate) return false;
-      const followUpDate = new Date(e.followUpDate);
-      followUpDate.setHours(0, 0, 0, 0);
-      return followUpDate.getTime() === today.getTime();
-    }).length;
-    
-    // Combine counts, avoiding duplicates (NEW enquiries with today follow-up)
-    const newWithTodayFollowUp = allEnquiries.filter(e => 
-      e.status === 'NEW' && 
-      e.followUpDate && 
-      new Date(e.followUpDate).setHours(0, 0, 0, 0) === today.getTime()
+    // Calculate new filter counts
+    statusCounts.TODAY_FOLLOWUPS = allEnquiries.filter(e => 
+      e.followUpDate && isToday(e.followUpDate)
     ).length;
     
-    statusCounts.today = todayNewCount + todayFollowUpCount - newWithTodayFollowUp;
+    statusCounts.PENDING_FOLLOWUPS = allEnquiries.filter(e => {
+      // A. Missed Follow-ups
+      if (e.followUpDate && isPast(e.followUpDate)) return true;
+      
+      // B. No Follow-up Set
+      if (!e.followUpDate) return true;
+      
+      // C. New Enquiry with No Action
+      if (isCreatedToday(e) && !hasActionToday(e)) return true;
+      
+      return false;
+    }).length;
     
     // Update UI
     updateCountDisplay();
@@ -242,27 +225,21 @@ function updateCountDisplay() {
   console.log('Updating count display with:', statusCounts);
   
   const countAll = document.getElementById('count-all');
-  const countToday = document.getElementById('count-today');
-  const countNew = document.getElementById('count-NEW');
   const countContacted = document.getElementById('count-CONTACTED');
-  const countNoResponse = document.getElementById('count-NO_RESPONSE');
-  const countFollowUp = document.getElementById('count-FOLLOW_UP');
   const countInterested = document.getElementById('count-INTERESTED');
   const countNotInterested = document.getElementById('count-NOT_INTERESTED');
-  const countConverted = document.getElementById('count-CONVERTED');
+  const countTodayFollowups = document.getElementById('count-TODAY_FOLLOWUPS');
+  const countPendingFollowups = document.getElementById('count-PENDING_FOLLOWUPS');
   const totalDisplay = document.getElementById('totalCountDisplay');
   
-  console.log('DOM Elements found:', { countAll, countToday, countNew, countContacted, countNoResponse, countFollowUp, countInterested, countNotInterested, countConverted, totalDisplay });
+  console.log('DOM Elements found:', { countAll, countContacted, countInterested, countNotInterested, countTodayFollowups, countPendingFollowups, totalDisplay });
   
   if (countAll) countAll.textContent = statusCounts.all;
-  if (countToday) countToday.textContent = statusCounts.today;
-  if (countNew) countNew.textContent = statusCounts.NEW;
   if (countContacted) countContacted.textContent = statusCounts.CONTACTED;
-  if (countNoResponse) countNoResponse.textContent = statusCounts.NO_RESPONSE;
-  if (countFollowUp) countFollowUp.textContent = statusCounts.FOLLOW_UP;
   if (countInterested) countInterested.textContent = statusCounts.INTERESTED;
   if (countNotInterested) countNotInterested.textContent = statusCounts.NOT_INTERESTED;
-  if (countConverted) countConverted.textContent = statusCounts.CONVERTED;
+  if (countTodayFollowups) countTodayFollowups.textContent = statusCounts.TODAY_FOLLOWUPS;
+  if (countPendingFollowups) countPendingFollowups.textContent = statusCounts.PENDING_FOLLOWUPS;
   if (totalDisplay) totalDisplay.textContent = `Total: ${statusCounts.all}`;
   
   console.log('Count display updated');
@@ -275,43 +252,36 @@ function applyQuickFilter(filter) {
   
   // Update button active states
   const buttons = [
-    'quickBtn-all', 'quickBtn-today', 'quickBtn-NEW', 'quickBtn-CONTACTED',
-    'quickBtn-NO_RESPONSE', 'quickBtn-FOLLOW_UP', 'quickBtn-INTERESTED',
-    'quickBtn-NOT_INTERESTED', 'quickBtn-CONVERTED'
+    'quickBtn-all', 'quickBtn-CONTACTED', 'quickBtn-INTERESTED',
+    'quickBtn-NOT_INTERESTED', 'quickBtn-TODAY_FOLLOWUPS', 'quickBtn-PENDING_FOLLOWUPS'
   ];
   
   buttons.forEach(btnId => {
     const btn = document.getElementById(btnId);
     if (btn) {
       btn.classList.remove('ring-2', 'ring-offset-1', 'ring-gray-400', 'ring-blue-400', 'ring-yellow-400', 
-        'ring-purple-400', 'ring-green-400', 'ring-red-400', 'ring-emerald-400');
+        'ring-purple-400', 'ring-green-400', 'ring-red-400', 'ring-emerald-400', 'ring-orange-400', 'ring-amber-400');
     }
   });
   
-  const activeBtnId = filter === 'all' ? 'quickBtn-all' : 
-                      filter === 'today' ? 'quickBtn-today' : 
-                      `quickBtn-${filter}`;
+  const activeBtnId = filter === 'all' ? 'quickBtn-all' : `quickBtn-${filter}`;
   const activeBtn = document.getElementById(activeBtnId);
   if (activeBtn) {
     activeBtn.classList.add('ring-2', 'ring-offset-1');
     
     // Set ring color based on filter
-    if (filter === 'all' || filter === 'today') {
+    if (filter === 'all') {
       activeBtn.classList.add('ring-gray-400');
-    } else if (filter === 'NEW') {
-      activeBtn.classList.add('ring-blue-400');
+    } else if (filter === 'TODAY_FOLLOWUPS') {
+      activeBtn.classList.add('ring-orange-400');
+    } else if (filter === 'PENDING_FOLLOWUPS') {
+      activeBtn.classList.add('ring-amber-400');
     } else if (filter === 'CONTACTED') {
       activeBtn.classList.add('ring-yellow-400');
-    } else if (filter === 'NO_RESPONSE') {
-      activeBtn.classList.add('ring-gray-400');
-    } else if (filter === 'FOLLOW_UP') {
-      activeBtn.classList.add('ring-purple-400');
     } else if (filter === 'INTERESTED') {
       activeBtn.classList.add('ring-green-400');
     } else if (filter === 'NOT_INTERESTED') {
       activeBtn.classList.add('ring-red-400');
-    } else if (filter === 'CONVERTED') {
-      activeBtn.classList.add('ring-emerald-400');
     }
   }
   
@@ -343,7 +313,7 @@ function getFollowUpTooltip(enquiry) {
   
   // Add current status
   if (enquiry.status) {
-    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
+    const statusInfo = STATUS_MAP[enquiry.status] || { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200' };
     tooltip += `Status: ${statusInfo.label}`;
   }
   
@@ -381,7 +351,7 @@ function getFollowUpTooltip(enquiry) {
     // Show last 3 status history entries (oldest 3)
     const recentHistory = enquiry.statusHistory.slice(-3);
     recentHistory.forEach((entry, index) => {
-      const statusInfo = STATUS_MAP[entry.status] || STATUS_MAP['NEW'];
+      const statusInfo = STATUS_MAP[entry.status] || { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200' };
       const dateStr = formatDate(entry.changedAt);
       
       if (tooltip) tooltip += '\n';
@@ -394,6 +364,46 @@ function getFollowUpTooltip(enquiry) {
   }
   
   return tooltip ? `title="${tooltip}"` : '';
+}
+
+// ==================== DATE UTILITIES FOR FILTERING ====================
+function getTodayDateString() {
+  const today = new Date();
+  return today.toISOString().split('T')[0]; // YYYY-MM-DD format
+}
+
+function isToday(dateString) {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  const today = new Date();
+  return date.toDateString() === today.toDateString();
+}
+
+function isPast(dateString) {
+  if (!dateString) return false;
+  const date = new Date(dateString);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  date.setHours(0, 0, 0, 0);
+  return date < today;
+}
+
+function isCreatedToday(enquiry) {
+  if (!enquiry.created_at) return false;
+  const createdDate = new Date(enquiry.created_at);
+  const today = new Date();
+  return createdDate.toDateString() === today.toDateString();
+}
+
+function hasActionToday(enquiry) {
+  // Check if any update was done on the same day as creation
+  if (!enquiry.created_at || !enquiry.statusHistory) return false;
+  
+  const createdDate = new Date(enquiry.created_at).toDateString();
+  return enquiry.statusHistory.some(entry => {
+    const actionDate = new Date(entry.changedAt).toDateString();
+    return actionDate === createdDate;
+  });
 }
 
 // ==================== DEBOUNCE UTILITY ====================
@@ -418,98 +428,6 @@ async function loadEnquiries() {
     const dateFrom = document.getElementById('dateFromFilter').value;
     const dateTo = document.getElementById('dateToFilter').value;
 
-    // For Today Calls filter - fetch both NEW enquiries and today follow-ups
-    if (currentQuickFilter === 'today') {
-      const [newRes, followUpRes] = await Promise.all([
-        apiGet(API_ENDPOINTS.ENQUIRIES.LIST, {
-          page: 1,
-          limit: 100,
-          status: 'NEW'
-        }),
-        apiGet(API_ENDPOINTS.ENQUIRIES.LIST, {
-          page: 1,
-          limit: 100
-        })
-      ]);
-
-      const newEnquiries = newRes.enquiries || [];
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      // Filter follow-up enquiries for today's date, excluding CONVERTED and NOT_INTERESTED
-      const followUpEnquiries = (followUpRes.enquiries || []).filter(e => {
-        if (e.status === 'CONVERTED' || e.status === 'NOT_INTERESTED') return false;
-        if (!e.followUpDate) return false;
-        const followUpDate = new Date(e.followUpDate);
-        followUpDate.setHours(0, 0, 0, 0);
-        return followUpDate.getTime() === today.getTime();
-      });
-
-      // Combine and remove duplicates
-      const combined = [...newEnquiries, ...followUpEnquiries];
-      const unique = combined.filter((item, index, self) =>
-        index === self.findIndex((t) => t._id === item._id)
-      );
-
-      // Apply search filter
-      let filteredEnquiries = unique;
-      if (search) {
-        const searchLower = search.toLowerCase();
-        filteredEnquiries = filteredEnquiries.filter(e =>
-          (e.name && e.name.toLowerCase().includes(searchLower)) ||
-          (e.mobile && e.mobile.includes(search)) ||
-          (e.email && e.email.toLowerCase().includes(searchLower)) ||
-          // Handle both array and string formats for courseInterested
-          (e.courseInterested && (
-            Array.isArray(e.courseInterested)
-              ? e.courseInterested.some(c => c.toLowerCase().includes(searchLower))
-              : e.courseInterested.toLowerCase().includes(searchLower)
-          ))
-        );
-      }
-
-      // Apply date range filter
-      if (dateFrom) {
-        const fromDate = new Date(dateFrom);
-        fromDate.setHours(0, 0, 0, 0);
-        filteredEnquiries = filteredEnquiries.filter(e => {
-          const createdDate = new Date(e.createdAt);
-          createdDate.setHours(0, 0, 0, 0);
-          return createdDate >= fromDate;
-        });
-      }
-      if (dateTo) {
-        const toDate = new Date(dateTo);
-        toDate.setHours(23, 59, 59, 999);
-        filteredEnquiries = filteredEnquiries.filter(e => {
-          const createdDate = new Date(e.createdAt);
-          return createdDate <= toDate;
-        });
-      }
-
-      // Sort: NEW first, then by follow-up date
-      let allEnquiries = filteredEnquiries.sort((a, b) => {
-        if (a.status === 'NEW' && b.status !== 'NEW') return -1;
-        if (a.status !== 'NEW' && b.status === 'NEW') return 1;
-        const dateA = a.followUpDate ? new Date(a.followUpDate) : new Date(8640000000000000);
-        const dateB = b.followUpDate ? new Date(b.followUpDate) : new Date(8640000000000000);
-        return dateA - dateB;
-      });
-
-      const totalCount = allEnquiries.length;
-      const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-      const endIndex = startIndex + ITEMS_PER_PAGE;
-      const paginatedEnquiries = allEnquiries.slice(startIndex, endIndex);
-
-      totalPages = Math.ceil(totalCount / ITEMS_PER_PAGE) || 1;
-      enquiries = paginatedEnquiries;
-
-      renderTable();
-      renderMobileCards();
-      updatePagination(totalCount);
-      return;
-    }
-
     // For status filters or all enquiries
     const params = {
       page: currentPage,
@@ -517,11 +435,17 @@ async function loadEnquiries() {
     };
 
     if (search) params.search = search;
-    if (currentQuickFilter !== 'all' && currentQuickFilter !== 'today') {
-      params.status = currentQuickFilter;
-    }
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
+
+    // Handle special filter types (5-filter system)
+    if (currentQuickFilter === 'TODAY_FOLLOWUPS') {
+      params.filterType = 'today_followups';
+    } else if (currentQuickFilter === 'PENDING_FOLLOWUPS') {
+      params.filterType = 'pending_followups';
+    } else if (currentQuickFilter !== 'all') {
+      params.status = currentQuickFilter;
+    }
 
     console.log('Loading enquiries with params:', params);
     console.log('Full API URL:', 'https://sssam-r3pz.onrender.com/api' + API_ENDPOINTS.ENQUIRIES.LIST);
@@ -555,48 +479,7 @@ async function loadEnquiries() {
   }
 }
 
-// Pagination update for Today tab (client-side pagination)
-function updatePaginationToday(totalCount) {
-  const start = totalCount > 0 ? ((currentPage - 1) * ITEMS_PER_PAGE) + 1 : 0;
-  const end = Math.min(start + ITEMS_PER_PAGE - 1, totalCount);
 
-  document.getElementById('showingFrom').textContent = start;
-  document.getElementById('showingTo').textContent = end;
-  document.getElementById('totalItems').textContent = totalCount;
-
-  document.getElementById('firstPage').disabled = currentPage === 1;
-  document.getElementById('prevPage').disabled = currentPage === 1;
-  document.getElementById('nextPage').disabled = currentPage >= totalPages;
-  document.getElementById('lastPage').disabled = currentPage >= totalPages;
-
-  // Page numbers
-  const pageNumbers = document.getElementById('pageNumbers');
-  let html = '';
-
-  let startPage = Math.max(1, currentPage - 2);
-  let endPage = Math.min(totalPages, startPage + 4);
-
-  if (endPage - startPage < 4) {
-    startPage = Math.max(1, endPage - 4);
-  }
-
-  for (let i = startPage; i <= endPage; i++) {
-    if (i === currentPage) {
-      html += `<span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">${i}</span>`;
-    } else {
-      html += `<button onclick="goToPage(${i})" class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors">${i}</button>`;
-    }
-  }
-
-  pageNumbers.innerHTML = html;
-}
-
-function updateCountDisplayToday(totalCount) {
-  const countDisplay = document.getElementById('enquiryCountDisplay');
-  countDisplay.textContent = `Total Calls: ${totalCount}`;
-}
-
-// ==================== RENDER FUNCTIONS ====================
 function renderTable() {
   const tbody = document.getElementById('enquiriesTableBody');
   
@@ -650,7 +533,7 @@ function renderTable() {
   const isUserAdmin = isAdmin();
 
   tbody.innerHTML = sortedEnquiries.map(enquiry => {
-    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
+    const statusInfo = STATUS_MAP[enquiry.status] || { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200' };
     const counselor = enquiry.assignedTo?.name || enquiry.counselorId?.name || 'Unassigned';
     const followUpDate = enquiry.followUpDate ? formatDate(enquiry.followUpDate) : '-';
     const followUpTooltip = getFollowUpTooltip(enquiry);
@@ -729,7 +612,7 @@ function renderMobileCards() {
   const isUserAdmin = isAdmin();
 
   container.innerHTML = enquiries.map(enquiry => {
-    const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['NEW'];
+    const statusInfo = STATUS_MAP[enquiry.status] || { label: 'Unknown', color: 'bg-gray-100 text-gray-700 border-gray-200' };
     const isUnassigned = !enquiry.assignedTo && !enquiry.counselorId;
     const showAssignButton = isUserAdmin && isUnassigned;
 
@@ -1858,14 +1741,32 @@ function handleUpdateStatusChange() {
   const followUpRequired = document.getElementById('followUpRequired');
   const followUpDate = document.getElementById('updateFollowUpDate');
   
-  if (status === 'FOLLOW_UP') {
+  // Follow-up rules for 3-status system:
+  // CONTACTED → follow-up REQUIRED
+  // INTERESTED → follow-up OPTIONAL  
+  // NOT_INTERESTED → follow-up NOT ALLOWED
+  
+  if (status === 'CONTACTED') {
     followUpRequired.classList.remove('hidden');
     followUpDate.required = true;
-  } else {
+    followUpDate.disabled = false;
+  } else if (status === 'INTERESTED') {
     followUpRequired.classList.add('hidden');
     followUpDate.required = false;
-    document.getElementById('followUpError').classList.add('hidden');
+    followUpDate.disabled = false;
+  } else if (status === 'NOT_INTERESTED') {
+    followUpRequired.classList.add('hidden');
+    followUpDate.required = false;
+    followUpDate.disabled = true;
+    followUpDate.value = ''; // Clear follow-up date
+  } else {
+    // No status selected
+    followUpRequired.classList.add('hidden');
+    followUpDate.required = false;
+    followUpDate.disabled = false;
   }
+  
+  document.getElementById('followUpError').classList.add('hidden');
 }
 
 // Global flag to prevent duplicate API calls
@@ -1890,7 +1791,7 @@ async function submitUpdate() {
     lucide.createIcons();
   }
 
-  // Validation
+  // Validation for 3-status system
   document.getElementById('updateNoteError').classList.add('hidden');
   document.getElementById('followUpError').classList.add('hidden');
 
@@ -1904,8 +1805,14 @@ async function submitUpdate() {
     return;
   }
 
-  if (status === 'FOLLOW_UP' && !followUpDate) {
+  // Follow-up validation rules:
+  // CONTACTED → follow-up REQUIRED (throw error if missing)
+  // INTERESTED → follow-up OPTIONAL (allow if missing)
+  // NOT_INTERESTED → follow-up NOT ALLOWED (always set to null)
+  
+  if (status === 'CONTACTED' && !followUpDate) {
     document.getElementById('followUpError').classList.remove('hidden');
+    document.getElementById('followUpError').textContent = 'Follow-up date is required for "Contacted" status';
     isUpdating = false;
     if (submitBtn) {
       submitBtn.disabled = false;
@@ -1919,7 +1826,10 @@ async function submitUpdate() {
     note: note
   };
 
-  if (followUpDate) {
+  // Handle follow-up date based on status
+  if (status === 'NOT_INTERESTED') {
+    payload.followUpDate = null; // Always null for NOT_INTERESTED
+  } else if (followUpDate) {
     payload.followUpDate = followUpDate;
   }
 
