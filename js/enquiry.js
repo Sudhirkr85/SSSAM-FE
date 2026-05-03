@@ -182,11 +182,15 @@ function checkAdminFeatures() {
 async function loadStatusCounts() {
   try {
     console.log('Loading status counts...');
+    console.log('API Endpoint:', API_ENDPOINTS.ENQUIRIES.LIST);
+    console.log('BASE_URL:', 'https://sssam-r3pz.onrender.com/api');
+    console.log('Token exists:', !!localStorage.getItem('token'));
+    
     // Fetch all enquiries - first page with high limit
-    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { page: 1, limit: 100 });
+    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 });
     console.log('API Response:', res);
     
-    const allEnquiries = res.enquiries || [];
+    const allEnquiries = res.data || res.enquiries || [];
     console.log('All enquiries count:', allEnquiries.length);
     
     // Get total count from pagination
@@ -417,12 +421,12 @@ async function loadEnquiries() {
     // For Today Calls filter - fetch both NEW enquiries and today follow-ups
     if (currentQuickFilter === 'today') {
       const [newRes, followUpRes] = await Promise.all([
-        apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+        apiGet(API_ENDPOINTS.ENQUIRIES.LIST, {
           page: 1,
           limit: 100,
           status: 'NEW'
         }),
-        apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, {
+        apiGet(API_ENDPOINTS.ENQUIRIES.LIST, {
           page: 1,
           limit: 100
         })
@@ -519,12 +523,27 @@ async function loadEnquiries() {
     if (dateFrom) params.dateFrom = dateFrom;
     if (dateTo) params.dateTo = dateTo;
 
-    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, params);
+    console.log('Loading enquiries with params:', params);
+    console.log('Full API URL:', 'https://sssam-r3pz.onrender.com/api' + API_ENDPOINTS.ENQUIRIES.LIST);
+    
+    const res = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
+    console.log('Load enquiries response:', res);
+    console.log('Response data structure:', {
+        'res.data': res.data,
+        'res.enquiries': res.enquiries,
+        'res.pagination': res.pagination,
+        'data type': typeof res.data,
+        'data isArray': Array.isArray(res.data)
+    });
 
-    enquiries = res.enquiries || [];
+    // Extract data based on response structure
+    enquiries = res.data || res.enquiries || [];
     const pagination = res.pagination || {};
     totalPages = pagination.totalPages || 1;
     totalCount = pagination.totalCount || 0;
+    
+    console.log('Extracted enquiries:', enquiries.length);
+    console.log('Pagination:', pagination);
 
     renderTable();
     renderMobileCards();
@@ -965,7 +984,7 @@ function handleSourceChange(e) {
 }
 
 function clearFieldErrors() {
-  const fields = ['addName', 'addMobile', 'addEmail', 'addCourse', 'addSource', 'addCustomCourse', 'addRefName', 'addRefContact'];
+  const fields = ['addName', 'addMobile', 'addEmail', 'addCourse', 'addSource', 'addCustomCourse', 'addRefName', 'addRefContact', 'addWalkInBroughtBy'];
   fields.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -1106,15 +1125,14 @@ function validateAddForm() {
   // Course validation - at least one course must be selected
   const courses = getSelectedCourses();
   if (courses.length === 0) {
-    document.getElementById('addCourseError').textContent = 'Please select at least one course';
+    document.getElementById('addCourseError').textContent = 'Please select a course';
     document.getElementById('addCourseError').classList.remove('hidden');
-    document.getElementById('courseDropdownBtn').classList.add('border-red-500');
+    document.getElementById('addCourse').classList.add('border-red-500');
     isValid = false;
   }
 
   // Custom course validation if "Other" is selected
-  const otherCheckbox = document.getElementById('otherCourseCheckbox');
-  if (otherCheckbox && otherCheckbox.checked) {
+  if (document.getElementById('addCourse').value === 'Other') {
     const customCourse = document.getElementById('addCustomCourse').value.trim();
     if (!customCourse) {
       document.getElementById('addCourseError').textContent = 'Please enter custom course name';
@@ -1152,11 +1170,29 @@ function validateAddForm() {
     }
   }
 
+  // Walk-in fields validation
+  if (source === 'walk_in') {
+    const broughtBy = document.getElementById('addWalkInBroughtBy').value.trim();
+    
+    if (!broughtBy) {
+      document.getElementById('addWalkInBroughtByError').textContent = 'Brought by is required';
+      showFieldError('addWalkInBroughtBy', 'addWalkInBroughtByError');
+      isValid = false;
+    }
+  }
+
   return isValid;
 }
 
 async function submitAddEnquiry() {
   if (!validateAddForm()) return;
+
+  // Get clean mobile number
+  const mobileRaw = document.getElementById('addMobile').value;
+  const cleanMobile = getCleanMobile(mobileRaw);
+  
+  // Check for duplicate mobile number
+  // Note: Backend handles duplicate check and returns 409 error if duplicate found
 
   // Get submit button and show loading state
   const submitBtn = document.querySelector('#addModal button[onclick="submitAddEnquiry()"]');
@@ -1180,7 +1216,7 @@ async function submitAddEnquiry() {
     const payload = {
       name: document.getElementById('addName').value.trim(),
       mobile: cleanMobile,  // Only 10 digits
-      courseInterested: courses, // Now sends as array
+      course: courses[0] || courses, // Send as string, not array
       source: source
     };
 
@@ -1203,7 +1239,49 @@ async function submitAddEnquiry() {
       }
     }
 
-    await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
+    // Add followUpDate if provided
+    const followUpDate = document.getElementById('addFollowUpDate')?.value;
+    if (followUpDate) {
+      payload.followUpDate = formatDateForAPI(followUpDate);
+    }
+
+    const res = await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
+    
+    console.log('Create enquiry response:', res);
+    
+    // Check if response is successful
+    if (!res.success) {
+        console.log('Create enquiry failed:', res.error?.message);
+        
+        // Check if it's a duplicate mobile error (409 status)
+        if (res.statusCode === 409) {
+            console.log('Duplicate mobile detected, fetching existing enquiry...');
+            try {
+                // Get existing enquiry by mobile number
+                const mobile = payload.mobile;
+                const checkResponse = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { mobile: mobile, limit: 1 });
+                
+                console.log('Duplicate check response:', checkResponse);
+                
+                if (checkResponse.success && checkResponse.data && checkResponse.data.length > 0) {
+                    const existingEnquiry = checkResponse.data[0];
+                    console.log('Found existing enquiry:', existingEnquiry);
+                    showDuplicateEnquiryPopup(existingEnquiry);
+                    return;
+                } else {
+                    console.log('No existing enquiry found');
+                }
+            } catch (checkError) {
+                console.log('Error checking for duplicate:', checkError);
+            }
+        }
+        
+        const message = res.error?.message || 'Failed to add enquiry';
+        showError(message);
+        return;
+    }
+    
+    console.log('Create enquiry successful');
 
     // Reset form
     document.getElementById('addName').value = '';
@@ -1218,10 +1296,8 @@ async function submitAddEnquiry() {
     document.getElementById('walkInContainer').classList.add('hidden');
     document.getElementById('customCourseContainer').classList.add('hidden');
 
-    // Reset course checkboxes
-    document.querySelectorAll('.course-checkbox').forEach(cb => cb.checked = false);
-    selectedCourses = [];
-    updateSelectedCoursesDisplay();
+    // Reset course dropdown
+    document.getElementById('addCourse').value = '';
 
     clearFieldErrors();
 
@@ -1231,7 +1307,22 @@ async function submitAddEnquiry() {
     loadEnquiries();
   } catch (err) {
     console.error('Failed to create enquiry:', err);
-    const message = err.response?.data?.message || 'Failed to add enquiry';
+    
+    // Check if it's a duplicate mobile error (409 status)
+    console.log('=== DUPLICATE DETECTION DEBUG ===');
+    console.log('Error response structure:', err.response?.data);
+    console.log('Error status:', err.response?.status);
+    console.log('Errors object:', err.response?.data?.errors);
+    
+    if (err.response?.status === 409 && err.response?.data?.errors?.duplicate && err.response?.data?.errors?.existingEnquiry) {
+      console.log('Duplicate mobile detected in catch block, showing popup');
+      showDuplicateEnquiryPopup(err.response.data.errors.existingEnquiry);
+      return;
+    }
+    
+    console.log('Not a duplicate error, showing regular error message');
+    
+    const message = err.response?.data?.message || err.message || 'Failed to add enquiry';
     showError(message);
   } finally {
     // Restore button state
@@ -1241,46 +1332,292 @@ async function submitAddEnquiry() {
   }
 }
 
+// ==================== DUPLICATE ENQUIRY POPUP ====================
+function showDuplicateEnquiryPopup(existingEnquiry) {
+  console.log('=== DUPLICATE POPUP DEBUG ===');
+  console.log('showDuplicateEnquiryPopup called with:', existingEnquiry);
+  
+  const modal = document.getElementById('duplicateEnquiryModal');
+  const content = document.getElementById('duplicateEnquiryModalContent');
+  const details = document.getElementById('duplicateEnquiryDetails');
+  
+  console.log('Modal elements found:', {
+    modal: !!modal,
+    content: !!content,
+    details: !!details
+  });
+  
+  // Populate existing enquiry details
+  details.innerHTML = `
+    <div class="space-y-3">
+      <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+            <i data-lucide="user-x" class="text-amber-600 w-4 h-4"></i>
+          </div>
+          <div>
+            <h3 class="font-semibold text-amber-800 text-sm">Existing Student</h3>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-white rounded-lg p-3 border border-gray-200">
+        <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
+          <i data-lucide="file-text" class="w-3.5 h-3.5 text-gray-600"></i>
+          Details
+        </h4>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-gray-500">Name</span>
+            <span class="font-medium text-gray-900">${existingEnquiry.name}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-gray-500">Mobile</span>
+            <span class="font-medium text-gray-900">${existingEnquiry.mobile}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-gray-500">Course</span>
+            <span class="font-medium text-gray-900">${existingEnquiry.course}</span>
+          </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-gray-500">Status</span>
+            <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+              existingEnquiry.status === 'NEW' ? 'bg-blue-100 text-blue-800' :
+              existingEnquiry.status === 'CONTACTED' ? 'bg-green-100 text-green-800' :
+              existingEnquiry.status === 'CONVERTED' ? 'bg-purple-100 text-purple-800' :
+              'bg-gray-100 text-gray-800'
+            }">
+              ${existingEnquiry.status}
+            </span>
+          </div>
+          <div class="flex justify-between items-center py-2">
+            <span class="text-gray-500">Created</span>
+            <span class="font-medium text-gray-900">${formatDateForDisplay(existingEnquiry.createdAt)}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Store existing enquiry ID for potential update
+  const duplicateIdInput = document.getElementById('duplicateEnquiryId');
+  if (duplicateIdInput) {
+    duplicateIdInput.value = existingEnquiry._id;
+    console.log('Set duplicateEnquiryId to:', existingEnquiry._id);
+  } else {
+    console.error('duplicateEnquiryId input not found');
+  }
+  
+  // Show modal
+  console.log('Showing duplicate modal...');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+    console.log('Modal should now be visible');
+  }, 10);
+  lucide.createIcons();
+}
+
+function closeDuplicateModal() {
+  const modal = document.getElementById('duplicateEnquiryModal');
+  const content = document.getElementById('duplicateEnquiryModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+function updateExistingEnquiry() {
+  const duplicateIdInput = document.getElementById('duplicateEnquiryId');
+  const enquiryId = duplicateIdInput ? duplicateIdInput.value : null;
+  
+  console.log('=== UPDATE EXISTING ENQUIRY DEBUG ===');
+  console.log('User chose to update existing enquiry:', enquiryId);
+  
+  if (!enquiryId) {
+    console.error('No enquiry ID found for update');
+    showError('Unable to update enquiry - missing ID');
+    return;
+  }
+  
+  // Close duplicate modal
+  closeDuplicateModal();
+  
+  // Close add modal
+  closeAddModal();
+  
+  // Open edit modal with existing enquiry data (same as table row edit)
+  console.log('Opening edit modal for enquiry:', enquiryId);
+  openEditModal(enquiryId);
+}
+
+function createNewEnquiryAnyway() {
+  // Close duplicate modal and proceed with creation
+  closeDuplicateModal();
+  
+  // Call submitAddEnquiry again but skip duplicate check
+  submitAddEnquirySkipDuplicate();
+}
+
+async function submitAddEnquirySkipDuplicate() {
+  // Get submit button and show loading state
+  const submitBtn = document.querySelector('#addModal button[onclick="submitAddEnquiry()"]');
+  const originalBtnContent = submitBtn.innerHTML;
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  lucide.createIcons();
+
+  try {
+    const source = document.getElementById('addSource').value;
+    const email = document.getElementById('addEmail').value.trim();
+    const mobileRaw = document.getElementById('addMobile').value;
+    const cleanMobile = getCleanMobile(mobileRaw);
+    const courses = getSelectedCourses();
+
+    const payload = {
+      name: document.getElementById('addName').value.trim(),
+      mobile: cleanMobile,
+      course: courses[0] || courses,
+      source: source
+    };
+
+    if (email) payload.email = email;
+    if (source === 'referral') {
+      payload.referenceName = document.getElementById('addRefName').value.trim();
+      payload.referenceContact = document.getElementById('addRefContact').value.trim();
+    }
+    if (source === 'walk_in') {
+      const broughtBy = document.getElementById('addWalkInBroughtBy').value.trim();
+      if (broughtBy) payload.walkInBroughtBy = broughtBy;
+    }
+
+    const res = await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
+    
+    if (!res.success) {
+      const message = res.error?.message || 'Failed to add enquiry';
+      showError(message);
+      return;
+    }
+
+    // Reset form and close modal
+    resetAddForm();
+    closeAddModal();
+    showToast('Success', 'Enquiry added successfully', 'success');
+    loadStatusCounts();
+    loadEnquiries();
+  } catch (err) {
+    console.error('Failed to create enquiry:', err);
+    const message = err.response?.data?.message || 'Failed to add enquiry';
+    showError(message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = originalBtnContent;
+    lucide.createIcons();
+  }
+}
+
+function resetAddForm() {
+  document.getElementById('addName').value = '';
+  document.getElementById('addMobile').value = '';
+  document.getElementById('addEmail').value = '';
+  document.getElementById('addSource').value = '';
+  document.getElementById('addRefName').value = '';
+  document.getElementById('addRefContact').value = '';
+  document.getElementById('addWalkInBroughtBy').value = '';
+  document.getElementById('addCustomCourse').value = '';
+  document.getElementById('referralContainer').classList.add('hidden');
+  document.getElementById('walkInContainer').classList.add('hidden');
+  document.getElementById('customCourseContainer').classList.add('hidden');
+  document.querySelectorAll('.course-checkbox').forEach(cb => cb.checked = false);
+  selectedCourses = [];
+  updateSelectedCoursesDisplay();
+  clearFieldErrors();
+}
+
 // ==================== EDIT ENQUIRY MODAL ====================
 async function openEditModal(enquiryId) {
   try {
-    const response = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_BY_ID(enquiryId));
-    const enquiry = response.data || response;
+    const response = await apiGet(API_ENDPOINTS.ENQUIRIES.GET(enquiryId));
+    
+    // Handle nested response structure: {success: true, data: {enquiry: {...}}}
+    const enquiry = response.data?.enquiry || response.data || response;
+    
     if (!enquiry) {
       showToast('Error', 'Failed to load enquiry details', 'error');
       return;
     }
+    
+    // Set enquiry ID
     document.getElementById('editEnquiryId').value = enquiryId;
+    
+    // Basic fields
     document.getElementById('editName').value = enquiry.name || '';
     document.getElementById('editMobile').value = enquiry.mobile || '';
     document.getElementById('editEmail').value = enquiry.email || '';
-    const courses = enquiry.courseInterested;
-    if (Array.isArray(courses) && courses.length > 0) {
-      document.getElementById('editCourse').value = courses[0];
-      if (courses[0] === 'Other') {
-        document.getElementById('editCustomCourseContainer').classList.remove('hidden');
-        document.getElementById('editCustomCourse').value = courses[1] || '';
-      }
-    } else if (typeof courses === 'string') {
-      document.getElementById('editCourse').value = courses;
-      if (courses === 'Other') {
-        document.getElementById('editCustomCourseContainer').classList.remove('hidden');
-      }
-    } else {
-      document.getElementById('editCourse').value = '';
-      document.getElementById('editCustomCourseContainer').classList.add('hidden');
+    
+    // Course field - handle different data structures
+    const courseField = document.getElementById('editCourse');
+    const customCourseContainer = document.getElementById('editCustomCourseContainer');
+    const customCourseField = document.getElementById('editCustomCourse');
+    
+    console.log('Course data:', enquiry.course, enquiry.courseInterested);
+    
+    // Try different possible course field names
+    let courseValue = enquiry.course || enquiry.courseInterested || '';
+    if (Array.isArray(courseValue)) {
+      courseValue = courseValue[0] || '';
     }
-    document.getElementById('editSource').value = enquiry.source || '';
+    
+    courseField.value = courseValue;
+    
+    // Handle custom course
+    if (courseValue === 'Other') {
+      customCourseContainer.classList.remove('hidden');
+      const customCourse = enquiry.customCourse || (Array.isArray(enquiry.courseInterested) ? enquiry.courseInterested[1] : '') || '';
+      customCourseField.value = customCourse;
+    } else {
+      customCourseContainer.classList.add('hidden');
+    }
+    
+    // Source field
+    const sourceField = document.getElementById('editSource');
+    sourceField.value = enquiry.source || '';
+    
+    // Handle referral fields
+    const referralContainer = document.getElementById('editReferralContainer');
+    const walkInContainer = document.getElementById('editWalkInContainer');
+    const refNameField = document.getElementById('editRefName');
+    const refContactField = document.getElementById('editRefContact');
+    const walkInBroughtByField = document.getElementById('editWalkInBroughtBy');
+    
+    // Hide all containers first
+    referralContainer.classList.add('hidden');
+    walkInContainer.classList.add('hidden');
+    
+    // Show appropriate container based on source
     if (enquiry.source === 'referral') {
-      document.getElementById('editReferralContainer').classList.remove('hidden');
-      document.getElementById('editRefName').value = enquiry.referenceName || '';
-      document.getElementById('editRefContact').value = enquiry.referenceContact || '';
-    } else {
-      document.getElementById('editReferralContainer').classList.add('hidden');
+      referralContainer.classList.remove('hidden');
+      refNameField.value = enquiry.referenceName || enquiry.refName || '';
+      refContactField.value = enquiry.referenceContact || enquiry.refContact || '';
+    } else if (enquiry.source === 'walk_in') {
+      walkInContainer.classList.remove('hidden');
+      walkInBroughtByField.value = enquiry.walkInBroughtBy || '';
     }
-    clearEditErrors();
+    
+    console.log('All fields populated successfully');
+    
+    // Show modal
     const modal = document.getElementById('editModal');
     const content = document.getElementById('editModalContent');
+    
     modal.classList.remove('hidden');
     modal.classList.add('flex');
     setTimeout(() => {
@@ -1308,7 +1645,7 @@ function closeEditModal() {
 }
 
 function clearEditErrors() {
-  const fields = ['editName','editMobile','editEmail','editCourse','editSource','editCustomCourse','editRefName','editRefContact'];
+  const fields = ['editName','editMobile','editEmail','editCourse','editSource','editCustomCourse','editRefName','editRefContact','editWalkInBroughtBy'];
   fields.forEach(id => {
     const el = document.getElementById(id);
     if (el) {
@@ -1316,7 +1653,7 @@ function clearEditErrors() {
       el.classList.add('border-gray-200','focus:border-blue-500','focus:ring-blue-100');
     }
   });
-  const errors = ['editNameError','editMobileError','editEmailError','editCourseError','editSourceError','editRefNameError','editRefContactError'];
+  const errors = ['editNameError','editMobileError','editEmailError','editCourseError','editSourceError','editRefNameError','editRefContactError','editWalkInBroughtByError'];
   errors.forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.add('hidden');
@@ -1340,9 +1677,19 @@ function handleEditCourseChange(e) {
 }
 
 function handleEditSourceChange(e) {
-  const container = document.getElementById('editReferralContainer');
-  if (e.target.value === 'referral') container.classList.remove('hidden');
-  else container.classList.add('hidden');
+  const referralContainer = document.getElementById('editReferralContainer');
+  const walkInContainer = document.getElementById('editWalkInContainer');
+  
+  if (e.target.value === 'referral') {
+    referralContainer.classList.remove('hidden');
+    walkInContainer?.classList.add('hidden');
+  } else if (e.target.value === 'walk_in') {
+    walkInContainer?.classList.remove('hidden');
+    referralContainer.classList.add('hidden');
+  } else {
+    referralContainer.classList.add('hidden');
+    walkInContainer?.classList.add('hidden');
+  }
 }
 
 function validateEditForm() {
@@ -1396,6 +1743,17 @@ function validateEditForm() {
       isValid = false;
     }
   }
+
+  // Walk-in fields validation
+  if (source === 'walk_in') {
+    const broughtBy = document.getElementById('editWalkInBroughtBy').value.trim();
+    
+    if (!broughtBy) {
+      document.getElementById('editWalkInBroughtByError').textContent = 'Brought by is required';
+      showEditFieldError('editWalkInBroughtBy', 'editWalkInBroughtByError');
+      isValid = false;
+    }
+  }
   return isValid;
 }
 
@@ -1413,17 +1771,29 @@ async function submitEditEnquiry() {
     const mobileRaw = document.getElementById('editMobile').value;
     const cleanMobile = getCleanMobile(mobileRaw);
     const course = document.getElementById('editCourse').value;
+    const customCourse = course === 'Other' ? document.getElementById('editCustomCourse').value.trim() : null;
+    
     const payload = {
       name: document.getElementById('editName').value.trim(),
       mobile: cleanMobile,
-      courseInterested: course === 'Other' ? ['Other', document.getElementById('editCustomCourse').value.trim()] : course,
+      course: customCourse || course, // Send custom course if 'Other', otherwise send selected course
       source: source
     };
+    
     if (email) payload.email = email;
+    
     if (source === 'referral') {
       payload.referenceName = document.getElementById('editRefName').value.trim();
       payload.referenceContact = document.getElementById('editRefContact').value.trim();
     }
+    
+    if (source === 'walk_in') {
+      const broughtBy = document.getElementById('editWalkInBroughtBy')?.value.trim();
+      if (broughtBy) {
+        payload.walkInBroughtBy = broughtBy;
+      }
+    }
+    
     await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), payload);
     closeEditModal();
     showToast('Success', 'Enquiry updated successfully', 'success');
@@ -1554,7 +1924,7 @@ async function submitUpdate() {
   }
 
   try {
-    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE_STATUS(enquiryId), payload);
+    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), payload);
     closeUpdateModal();
     showToast('Success', 'Status updated successfully', 'success');
     loadEnquiries();
@@ -1688,7 +2058,7 @@ async function submitBulkUpload() {
   }, 200);
 
   try {
-    const res = await apiPost(API_ENDPOINTS.ENQUIRIES.BULK_UPLOAD, formData);
+    const res = await apiPost('/bulk-upload/enquiries', formData);
     
     clearInterval(progressInterval);
     document.getElementById('uploadProgressPercent').textContent = '100%';
@@ -1805,10 +2175,20 @@ function viewEnquiryDetail(enquiryId) {
 }
 
 function showToast(title, message, type = 'success') {
+  console.log('=== TOAST DEBUG ===');
+  console.log('showToast called with:', { title, message, type });
+  
   const toast = document.getElementById('toast');
   const icon = document.getElementById('toastIcon');
   const titleEl = document.getElementById('toastTitle');
   const messageEl = document.getElementById('toastMessage');
+  
+  console.log('Toast elements found:', {
+    toast: !!toast,
+    icon: !!icon,
+    titleEl: !!titleEl,
+    messageEl: !!messageEl
+  });
 
   // Set icon based on type
   if (type === 'success') {
@@ -1822,11 +2202,15 @@ function showToast(title, message, type = 'success') {
   titleEl.textContent = title;
   messageEl.textContent = message;
 
+  console.log('Setting toast content and showing...');
   toast.classList.remove('hidden');
   lucide.createIcons();
 
+  console.log('Toast should now be visible');
+  
   // Auto hide after 3 seconds
   setTimeout(() => {
+    console.log('Auto-hiding toast...');
     hideToast();
   }, 3000);
 }
@@ -2052,7 +2436,20 @@ function removeCourse(course) {
 }
 
 function getSelectedCourses() {
-  return selectedCourses;
+  const courseSelect = document.getElementById('addCourse');
+  const customCourseInput = document.getElementById('addCustomCourse');
+  const customCourseContainer = document.getElementById('customCourseContainer');
+  
+  if (courseSelect.value === 'Other' && customCourseContainer.classList.contains('hidden') === false) {
+    // Other is selected and custom input is visible
+    const customCourse = customCourseInput.value.trim();
+    return customCourse ? [customCourse] : [];
+  } else if (courseSelect.value && courseSelect.value !== 'Other') {
+    // Regular course is selected
+    return [courseSelect.value];
+  }
+  
+  return [];
 }
 
 // Setup event listeners for course checkboxes

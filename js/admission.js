@@ -84,7 +84,7 @@ async function loadAdmissions(search = '') {
       params.search = search;
     }
 
-    const response = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_ALL, params);
+    const response = await apiGet(API_ENDPOINTS.ADMISSIONS.LIST, params);
     
     admissions = response.admissions || [];
     const pagination = response.pagination || {};
@@ -755,7 +755,7 @@ async function submitAddAdmission() {
       payload.installments = installments;
     }
 
-    const response = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(enquiryId), payload);
+    const response = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, payload);
 
     closeAddModal();
 
@@ -930,7 +930,7 @@ async function submitPaymentPlan() {
       }))
     };
     
-    await apiPut(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(currentAdmissionId), payload);
+    await apiPut(API_ENDPOINTS.ADMISSIONS.UPDATE(currentAdmissionId), payload);
     
     closePaymentPlanModal();
     showToast('Success', 'Payment plan saved successfully', 'success');

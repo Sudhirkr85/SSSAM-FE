@@ -302,8 +302,10 @@
         <div id="mobileCards" class="lg:hidden space-y-3">
           <!-- Loading State -->
           <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
-            <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
-            <p class="text-gray-500 text-sm">Loading enquiries...</p>
+            <div class="flex flex-col items-center gap-3">
+              <div class="w-10 h-10 border-4 border-gray-200 border-t-blue-600 rounded-full animate-spin mx-auto mb-3"></div>
+              <p class="text-gray-500 text-sm">Loading enquiries...</p>
+            </div>
           </div>
         </div>
 
@@ -389,31 +391,18 @@
               class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer"
             >
               <option value="">Select Course</option>
-              <option value="Data Science">Data Science</option>
               <option value="Data Analytics">Data Analytics</option>
-              <option value="Python Programming">Python Programming</option>
-              <option value="Full Stack Web Development">Full Stack Web Development</option>
-              <option value="Web Designing">Web Designing</option>
-              <option value="Digital Marketing">Digital Marketing</option>
-              <option value="Cyber Security">Cyber Security</option>
+              <option value="Data Science">Data Science</option>
+              <option value="Basic Computer">Basic Computer</option>
+              <option value="Python Full Stack">Python Full Stack</option>
+              <option value="Java Full Stack">Java Full Stack</option>
+              <option value="MERN Stack">MERN Stack</option>
               <option value="Ethical Hacking">Ethical Hacking</option>
-              <option value="Machine Learning">Machine Learning</option>
-              <option value="Artificial Intelligence">Artificial Intelligence</option>
-              <option value="Java Programming">Java Programming</option>
-              <option value="C Programming">C Programming</option>
-              <option value="C++ Programming">C++ Programming</option>
-              <option value="PHP Development">PHP Development</option>
-              <option value="WordPress Development">WordPress Development</option>
-              <option value="Graphic Designing">Graphic Designing</option>
-              <option value="Video Editing">Video Editing</option>
-              <option value="Tally ERP / Accounting">Tally ERP / Accounting</option>
-              <option value="GST (Goods and Services Tax)">GST (Goods and Services Tax)</option>
-              <option value="Advanced Excel">Advanced Excel</option>
-              <option value="Basic Computer Course">Basic Computer Course</option>
-              <option value="MS Office (Word, Excel, PowerPoint)">MS Office (Word, Excel, PowerPoint)</option>
-              <option value="Typing Course">Typing Course</option>
-              <option value="Hardware & Networking">Hardware & Networking</option>
-              <option value="Computer Teacher Training Course (CTTC)">Computer Teacher Training Course (CTTC)</option>
+              <option value="C & C++">C & C++</option>
+              <option value="Python (Core)">Python (Core)</option>
+              <option value="Java (Core + Advanced)">Java (Core + Advanced)</option>
+              <option value="Web Development">Web Development</option>
+              <option value="Digital Marketing">Digital Marketing</option>
               <option value="Other">Other</option>
             </select>
             <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
@@ -491,7 +480,7 @@
         <!-- Walk In Brought By (hidden by default, shown when source = walk_in) -->
         <div id="walkInContainer" class="hidden border-t border-gray-100 pt-4">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Brought By <span class="text-gray-400 text-xs">(Who brought this student?)</span>
+            Brought By <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(Who brought this student?)</span>
           </label>
           <input 
             type="text" 
@@ -500,6 +489,7 @@
             placeholder="Enter name of the person who brought them"
             oninput="this.value = this.value.replace(/\b\w/g, l => l.toUpperCase())"
           >
+          <p id="addWalkInBroughtByError" class="hidden text-red-500 text-xs mt-1">Brought by is required</p>
         </div>
 
       </div>
@@ -599,31 +589,18 @@
               class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm bg-white appearance-none cursor-pointer"
             >
               <option value="">Select Course</option>
-              <option value="Data Science">Data Science</option>
               <option value="Data Analytics">Data Analytics</option>
-              <option value="Python Programming">Python Programming</option>
-              <option value="Full Stack Web Development">Full Stack Web Development</option>
-              <option value="Web Designing">Web Designing</option>
-              <option value="Digital Marketing">Digital Marketing</option>
-              <option value="Cyber Security">Cyber Security</option>
+              <option value="Data Science">Data Science</option>
+              <option value="Basic Computer">Basic Computer</option>
+              <option value="Python Full Stack">Python Full Stack</option>
+              <option value="Java Full Stack">Java Full Stack</option>
+              <option value="MERN Stack">MERN Stack</option>
               <option value="Ethical Hacking">Ethical Hacking</option>
-              <option value="Machine Learning">Machine Learning</option>
-              <option value="Artificial Intelligence">Artificial Intelligence</option>
-              <option value="Java Programming">Java Programming</option>
-              <option value="C Programming">C Programming</option>
-              <option value="C++ Programming">C++ Programming</option>
-              <option value="PHP Development">PHP Development</option>
-              <option value="WordPress Development">WordPress Development</option>
-              <option value="Graphic Designing">Graphic Designing</option>
-              <option value="Video Editing">Video Editing</option>
-              <option value="Tally ERP / Accounting">Tally ERP / Accounting</option>
-              <option value="GST (Goods and Services Tax)">GST (Goods and Services Tax)</option>
-              <option value="Advanced Excel">Advanced Excel</option>
-              <option value="Basic Computer Course">Basic Computer Course</option>
-              <option value="MS Office (Word, Excel, PowerPoint)">MS Office (Word, Excel, PowerPoint)</option>
-              <option value="Typing Course">Typing Course</option>
-              <option value="Hardware & Networking">Hardware & Networking</option>
-              <option value="Computer Teacher Training Course (CTTC)">Computer Teacher Training Course (CTTC)</option>
+              <option value="C & C++">C & C++</option>
+              <option value="Python (Core)">Python (Core)</option>
+              <option value="Java (Core + Advanced)">Java (Core + Advanced)</option>
+              <option value="Web Development">Web Development</option>
+              <option value="Digital Marketing">Digital Marketing</option>
               <option value="Other">Other</option>
             </select>
             <i data-lucide="chevron-down" class="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 pointer-events-none"></i>
@@ -698,6 +675,21 @@
           </div>
         </div>
 
+        <!-- Walk In Brought By (hidden by default, shown when source = walk_in) -->
+        <div id="editWalkInContainer" class="hidden border-t border-gray-100 pt-4">
+          <label class="block text-sm font-medium text-gray-700 mb-1.5">
+            Brought By <span class="text-red-500">*</span> <span class="text-gray-400 text-xs">(Who brought this student?)</span>
+          </label>
+          <input 
+            type="text" 
+            id="editWalkInBroughtBy" 
+            class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+            placeholder="Enter name of the person who brought them"
+            oninput="this.value = this.value.replace(/\b\w/g, l => l.toUpperCase())"
+          >
+          <p id="editWalkInBroughtByError" class="hidden text-red-500 text-xs mt-1">Brought by is required</p>
+        </div>
+
       </div>
 
       <!-- Footer -->
@@ -706,8 +698,8 @@
           Cancel
         </button>
         <button onclick="submitEditEnquiry()" class="px-4 py-2 bg-gradient-to-r from-purple-600 to-purple-700 hover:from-purple-700 hover:to-purple-800 text-white rounded-lg shadow-md shadow-purple-500/25 transition-all font-medium text-sm flex items-center gap-2">
-          <i data-lucide="check" class="w-4 h-4"></i>
-          Save Changes
+          <i data-lucide="edit-3" class="w-4 h-4"></i>
+          Update
         </button>
       </div>
 
@@ -981,12 +973,109 @@
     </div>
   </div>
 
+  <!-- DUPLICATE ENQUIRY MODAL -->
+  <div id="duplicateEnquiryModal" class="fixed inset-0 bg-black/60 backdrop-blur-md hidden items-center justify-center z-50 opacity-0 transition-opacity duration-300 p-4">
+    <div class="bg-white/95 backdrop-blur-xl rounded-2xl w-full max-w-sm shadow-2xl transform scale-95 transition-transform duration-300 border border-white/20" id="duplicateEnquiryModalContent">
+      
+      <!-- Header -->
+      <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100/50">
+        <div class="w-10 h-10 bg-gradient-to-br from-amber-400 to-orange-500 rounded-xl flex items-center justify-center shadow-lg">
+          <i data-lucide="user-x" class="text-white w-5 h-5"></i>
+        </div>
+        <div class="flex-1">
+          <h2 class="text-lg font-bold text-gray-900">Duplicate Found</h2>
+        </div>
+      </div>
+
+      <!-- Content (Scrollable) -->
+      <div class="max-h-80 overflow-y-auto">
+        <div class="p-5">
+          <input type="hidden" id="duplicateEnquiryId">
+          <div id="duplicateEnquiryDetails">
+            <!-- Content will be populated by JavaScript -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Action Question -->
+      <div class="px-5 pb-4">
+        <div class="p-3 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+          <div class="flex items-center gap-2">
+            <div class="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <i data-lucide="help-circle" class="text-white w-3 h-3"></i>
+            </div>
+            <div>
+              <h3 class="font-semibold text-blue-900 text-sm">What would you like to do?</h3>
+              <p class="text-xs text-blue-700 mt-0.5">Edit existing</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="flex gap-2 px-5 py-3 border-t border-gray-100/50 bg-gray-50/50 rounded-b-2xl">
+        <button onclick="closeDuplicateModal()" class="flex-1 px-3 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-all font-medium text-xs flex items-center justify-center gap-1.5 border border-gray-300">
+          <i data-lucide="x" class="w-3.5 h-3.5"></i>
+          Cancel
+        </button>
+        <button onclick="updateExistingEnquiry()" class="flex-1 px-3 py-2.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg transition-all font-medium text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-blue-500/25">
+          <i data-lucide="edit-3" class="w-3.5 h-3.5"></i>
+          Edit
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
+  <script src="js/app.js"></script>
   <script src="js/api.js"></script>
   <script src="js/enquiry.js"></script>
   <script>
     // Initialize Lucide icons
     lucide.createIcons();
+    
+    // Course dropdown - show custom input for "Other"
+    function handleCourseChange(e) {
+      console.log('Course changed to:', e.target.value);
+      const container = document.getElementById('customCourseContainer');
+      console.log('Container found:', container);
+      if (e.target.value === 'Other') {
+        container.classList.remove('hidden');
+        console.log('Showing custom course container');
+      } else {
+        container.classList.add('hidden');
+        console.log('Hiding custom course container');
+      }
+    }
+
+    // Source dropdown - show referral/walk-in fields
+    function handleSourceChange(e) {
+      console.log('Source changed to:', e.target.value);
+      const referralContainer = document.getElementById('referralContainer');
+      const walkInContainer = document.getElementById('walkInContainer');
+      
+      if (e.target.value === 'referral') {
+        referralContainer.classList.remove('hidden');
+        walkInContainer.classList.add('hidden');
+        console.log('Showing referral container');
+      } else if (e.target.value === 'walk_in') {
+        walkInContainer.classList.remove('hidden');
+        referralContainer.classList.add('hidden');
+        console.log('Showing walk-in container');
+      } else {
+        referralContainer.classList.add('hidden');
+        walkInContainer.classList.add('hidden');
+        console.log('Hiding all containers');
+      }
+    }
+    
+    // Add event listeners
+    document.getElementById('addCourse')?.addEventListener('change', handleCourseChange);
+    document.getElementById('addSource')?.addEventListener('change', handleSourceChange);
+    
+    // Edit modal event listeners
+    document.getElementById('editCourse')?.addEventListener('change', handleEditCourseChange);
+    document.getElementById('editSource')?.addEventListener('change', handleEditSourceChange);
     
     // Set minimum date to today for follow-up date inputs
     const today = new Date().toISOString().split('T')[0];

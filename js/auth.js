@@ -73,18 +73,57 @@ async function handleLogin() {
     lucide.createIcons();
 
     try {
+        console.log('=== LOGIN DEBUG START ===');
+        console.log('Login data being sent:', loginData);
+        console.log('API Endpoint:', API_ENDPOINTS.AUTH.LOGIN);
+        
         const res = await apiPost(API_ENDPOINTS.AUTH.LOGIN, loginData);
+        
+        console.log('=== RAW API RESPONSE ===');
+        console.log('Full response:', res);
+        console.log('Response type:', typeof res);
+        console.log('Response keys:', Object.keys(res));
+        console.log('Response.success:', res.success);
+        console.log('Response.error:', res.error);
+        
+        // Check if response is successful
+        if (!res.success) {
+            console.log('=== LOGIN FAILED ===');
+            console.log('Failure reason:', res.error?.message || 'Unknown error');
+            showToast('error', res.error?.message || 'Login failed');
+            return;
+        }
+        
+        console.log('=== LOGIN SUCCESSFUL ===');
 
         // Handle different response structures
-        const token = res.token || res.data?.token || res.accessToken;
+        console.log('Extracting token and user from response...');
+        
+        // Extract token from nested structure
+        const token = res.token || res.data?.token || res.accessToken || res.data?.accessToken;
+        // Extract user from nested structure  
         const user = res.user || res.data?.user || res.data;
+        
+        console.log('Extracted token:', token ? 'Found' : 'Not found');
+        console.log('Extracted user:', user ? user.name : 'Not found');
 
         if (!token) {
+            console.error('Token extraction failed. Available paths:', {
+                'res.token': res.token,
+                'res.data?.token': res.data?.token,
+                'res.accessToken': res.accessToken,
+                'res.data?.accessToken': res.data?.accessToken
+            });
             showToast('error', 'Login failed: No token received');
             return;
         }
 
         if (!user) {
+            console.error('User extraction failed. Available paths:', {
+                'res.user': res.user,
+                'res.data?.user': res.data?.user,
+                'res.data': res.data
+            });
             showToast('error', 'Login failed: No user data received');
             return;
         }
@@ -93,14 +132,23 @@ async function handleLogin() {
         localStorage.setItem('token', token);
         safeSetLocalStorage('user', user);
 
+        showToast('success', 'Login successful!');
         window.location.href = 'dashboard.html';
 
     } catch (err) {
+        console.log('=== LOGIN CATCH BLOCK ===');
+        console.log('Error caught:', err);
+        console.log('Error type:', typeof err);
+        console.log('Error message:', err.message);
+        console.log('Error response:', err.response);
+        console.log('Error data:', err.response?.data);
+        
         // Show field-level error (red border + message)
         showLoginError();
 
         // Also show toast for additional feedback
-        const message = err.response?.data?.message || 'Invalid email or password';
+        const message = err.response?.data?.message || err.message || 'Invalid email or password';
+        console.log('Error message to show:', message);
         showToast('error', message);
 
         // Reset button

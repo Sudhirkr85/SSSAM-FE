@@ -1,64 +1,34 @@
-// const BASE_URL = 'http://localhost:5000/api';
-const BASE_URL = 'https://sssam-r3pz.onrender.com/api'
+// Import axios
+const axios = window.axios;
+
+// const BASE_URL = 'https://sssam-r3pz.onrender.com/api';
+const BASE_URL = 'http://localhost:5000/api'
 
 /* ======================
-ENDPOINTS
+API ENDPOINTS (Updated to match new documentation)
 ====================== */
 const API_ENDPOINTS = {
     ENQUIRIES: {
-        GET_ALL: '/enquiries',                           // Counselor: assigned + unassigned only
-        GET_ALL_ADMIN: '/enquiries/all',                 // Admin: all enquiries (read-only for counselor)
-        GET_BY_ID: (id) => `/enquiries/${id}`,
         CREATE: '/enquiries',
+        LIST: '/enquiries',
+        GET: (id) => `/enquiries/${id}`,
         UPDATE: (id) => `/enquiries/${id}`,
-        
-        UPDATE_STATUS: (id) => `/enquiries/${id}/update`,
-        DELETE: (id) => `/enquiries/${id}`,               // Admin only
-        BULK_UPLOAD: '/bulk-upload/enquiries',            // Admin & Counselor
-        ASSIGN: (id) => `/enquiries/${id}/assign`         // Admin only
+        ASSIGN: (id) => `/enquiries/${id}/assign`
     },
     ADMISSIONS: {
-        GET_ALL: '/admissions',
-        GET_BY_ID: (id) => `/admissions/${id}`,
-        GET_BY_ENQUIRY: (enquiryId) => `/admissions/by-enquiry/${enquiryId}`,
-        CREATE_FROM_ENQUIRY: (enquiryId) => `/admissions/from-enquiry/${enquiryId}`,
-        UPDATE_FEES: (id) => `/admissions/${id}/fees`,
-        LOCK: (id) => `/admissions/${id}/lock`,
-        PAYMENT_PLAN: (id) => `/admissions/${id}/payment-plan`,
-        CANCEL: (id) => `/admissions/${id}/cancel`
+        CREATE: '/admissions',
+        LIST: '/admissions',
+        GET: (id) => `/admissions/${id}`,
+        UPDATE: (id) => `/admissions/${id}`,
+        RECORD_PAYMENT: (id) => `/admissions/${id}/payments`,
+        LIST_PAYMENTS: (id) => `/admissions/${id}/payments`
     },
     PAYMENTS: {
-        CREATE: '/payments',
-        GET_ALL: '/payments',
-        GET_BY_ADMISSION: (admissionId) => `/payments/admission/${admissionId}`,
-        GET_BY_ID: (id) => `/payments/${id}`,
-        UPDATE: (id) => `/payments/${id}`,
-        CHECK_OVERDUE: '/payments/check-overdue',
-        REFUND: '/payments'
-    },
-    REPORTS: {
-        SUMMARY: '/reports/summary',
-        ADMISSIONS: '/reports/admissions',
-        FEES: '/reports/fees',
-        INSTALLMENT_ALERTS: '/reports/installments/alerts',
-        COUNSELOR_PERFORMANCE: '/reports/counselor-performance',
-        COURSE_PERFORMANCE: '/reports/course-performance'
-    },
-    DASHBOARD: {
-        GET: '/dashboard',                    // Full dashboard stats
-        REVENUE: '/dashboard/revenue',        // Admin only
-        ENQUIRIES: '/dashboard/enquiries',    // Admin only
-        FOLLOWUPS: '/dashboard/followups',    // Overdue & today followups
-        TODAY_CALLS: '/dashboard/today-calls', // Today's calls with summary
-        COUNSELOR: '/dashboard/counselor'     // Counselor only
+        LIST: '/payments',
+        CHECK_OVERDUE: '/payments/check-overdue'
     },
     AUTH: {
-        LOGIN: '/auth/login',
-        REGISTER: '/auth/register'
-    },
-    USERS: {
-        GET_ALL: '/users',
-        GET_COUNSELORS: '/users/counselors'
+        LOGIN: '/auth/login'
     }
 };
 
@@ -101,149 +71,189 @@ api.interceptors.response.use(
 METHODS
 ====================== */
 async function apiGet(url, params = {}) {
-    const res = await api.get(url, { params });
-    const responseData = res.data;
-
-    // If response has nested pagination (data.pagination), extract it
-    if (responseData.data?.pagination) {
-        const dataObj = responseData.data;
-        return {
-            ...responseData,
-            ...dataObj,
-            enquiries: dataObj.enquiries || [],
-            admissions: dataObj.admissions || [],
-            payments: dataObj.payments || []
-        };
+    try {
+        const res = await api.get(url, { params });
+        return res.data;
+    } catch (error) {
+        return handleApiError(error);
     }
-
-    // If response has pagination at top level and data is an array
-    if (responseData.pagination && Array.isArray(responseData.data)) {
-        return {
-            ...responseData,
-            enquiries: responseData.data || [],
-            admissions: responseData.data || [],
-            payments: responseData.data || []
-        };
-    }
-
-    // If response has data as object with named arrays (no pagination)
-    if (responseData.data && typeof responseData.data === 'object' && !Array.isArray(responseData.data)) {
-        const dataObj = responseData.data;
-        return {
-            ...responseData,
-            ...dataObj,
-            enquiries: dataObj.enquiries || [],
-            admissions: dataObj.admissions || [],
-            payments: dataObj.payments || []
-        };
-    }
-
-    // If response has pagination at top level with named arrays
-    if (responseData.pagination) {
-        return responseData;
-    }
-
-    // Return full response to preserve success/message/data structure
-    return responseData;
 }
 
 async function apiPost(url, data) {
-    const isFormData = data instanceof FormData;
-    const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
-    const res = await api.post(url, data, config);
-    return res.data;
+    try {
+        const isFormData = data instanceof FormData;
+        const config = isFormData ? { headers: { 'Content-Type': 'multipart/form-data' } } : {};
+        const res = await api.post(url, data, config);
+        return res.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
 }
 
 async function apiPut(url, data) {
-    const res = await api.put(url, data);
-    return res.data;
+    try {
+        const res = await api.put(url, data);
+        return res.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
 }
 
 async function apiDelete(url) {
-    const res = await api.delete(url);
-    return res.data;
+    try {
+        const res = await api.delete(url);
+        return res.data;
+    } catch (error) {
+        return handleApiError(error);
+    }
 }
 
 /* ======================
-ROLE-BASED UTILITIES
+ENQUIRY API FUNCTIONS
 ====================== */
-
-// Safe localStorage parsing utility
-function safeParseLocalStorage(key, defaultValue = {}) {
-    try {
-        const value = localStorage.getItem(key);
-        if (!value || value === 'undefined' || value === 'null') {
-            return defaultValue;
-        }
-        return JSON.parse(value);
-    } catch (error) {
-        console.warn(`Failed to parse localStorage key "${key}":`, error);
-        return defaultValue;
-    }
-}
-
-// Safe localStorage set utility
-function safeSetLocalStorage(key, value) {
-    try {
-        localStorage.setItem(key, JSON.stringify(value));
-    } catch (error) {
-        console.error(`Failed to set localStorage key "${key}":`, error);
-    }
-}
-
-function getCurrentUser() {
-    return safeParseLocalStorage('user', {});
-}
-
-function getUserRole() {
-    return getCurrentUser().role || 'counselor';
-}
-
-function isAdmin() {
-    return getUserRole() === 'admin';
-}
-
-function isCounselor() {
-    return getUserRole() === 'counselor';
-}
-
-// Get dashboard endpoint based on user role
-function getDashboardEndpoint() {
-    return isCounselor()
-        ? API_ENDPOINTS.DASHBOARD.COUNSELOR
-        : API_ENDPOINTS.DASHBOARD.GET;
-}
-
-// Check if user has access to a feature
-function hasAccess(feature) {
-    const role = getUserRole();
-    const permissions = {
-        'dashboard': ['admin', 'counselor'],
-        'counselor_dashboard': ['counselor'],
-        'reports': ['admin'],
-        'revenue_stats': ['admin'],
-        'enquiry_stats': ['admin'],
-        'admissions_report': ['admin'],
-        'fees_report': ['admin'],
-        'counselor_performance': ['admin'],
-        'course_performance': ['admin'],
-        'today_calls': ['admin', 'counselor'],
-        'followups': ['admin', 'counselor'],
-        'installment_alerts': ['admin', 'counselor'],
-        'all_enquiries': ['admin'],
-        'assign_enquiry': ['admin'],
-        'delete_enquiry': ['admin'],
-        'lock_admission': ['admin'],
-        'payment_update': ['admin']
+async function createEnquiry(enquiryData) {
+    const data = {
+        ...enquiryData,
+        followUpDate: enquiryData.followUpDate ? formatDateForAPI(enquiryData.followUpDate) : null
     };
-    return permissions[feature]?.includes(role) || false;
+    return await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, data);
 }
 
-// Handle 403 errors for role-restricted APIs
-function handleRoleError(error, feature) {
-    if (error.response?.status === 403) {
-        console.warn(`Access denied: ${feature} requires elevated permissions`);
-        return { accessDenied: true, message: error.response.data?.message || 'Access denied' };
+async function listEnquiries(filters = {}) {
+    return await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, filters);
+}
+
+async function getEnquiry(id) {
+    return await apiGet(API_ENDPOINTS.ENQUIRIES.GET(id));
+}
+
+async function updateEnquiry(id, updateData) {
+    const data = {
+        ...updateData,
+        followUpDate: updateData.followUpDate ? formatDateForAPI(updateData.followUpDate) : undefined
+    };
+    return await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(id), data);
+}
+
+async function assignEnquiry(id, counselorId) {
+    return await apiPut(API_ENDPOINTS.ENQUIRIES.ASSIGN(id), { counselorId });
+}
+
+
+/* ======================
+ADMISSION API FUNCTIONS
+====================== */
+async function createAdmission(admissionData) {
+    const data = {
+        ...admissionData,
+        admissionDate: formatDateForAPI(admissionData.admissionDate),
+        installments: admissionData.installments?.map(installment => ({
+            ...installment,
+            dueDate: formatDateForAPI(installment.dueDate)
+        }))
+    };
+    return await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, data);
+}
+
+async function listAdmissions(filters = {}) {
+    return await apiGet(API_ENDPOINTS.ADMISSIONS.LIST, filters);
+}
+
+async function getAdmission(id) {
+    return await apiGet(API_ENDPOINTS.ADMISSIONS.GET(id));
+}
+
+async function updateAdmission(id, updateData) {
+    const data = {
+        ...updateData,
+        admissionDate: updateData.admissionDate ? formatDateForAPI(updateData.admissionDate) : undefined,
+        installments: updateData.installments?.map(installment => ({
+            ...installment,
+            dueDate: formatDateForAPI(installment.dueDate)
+        }))
+    };
+    return await apiPut(API_ENDPOINTS.ADMISSIONS.UPDATE(id), data);
+}
+
+async function recordPayment(admissionId, paymentData) {
+    const data = {
+        ...paymentData,
+        paymentDate: formatDateForAPI(paymentData.paymentDate)
+    };
+    return await apiPost(API_ENDPOINTS.ADMISSIONS.RECORD_PAYMENT(admissionId), data);
+}
+
+async function listAdmissionPayments(admissionId) {
+    return await apiGet(API_ENDPOINTS.ADMISSIONS.LIST_PAYMENTS(admissionId));
+}
+
+/* ======================
+PAYMENT API FUNCTIONS
+====================== */
+async function listPayments(filters = {}) {
+    return await apiGet(API_ENDPOINTS.PAYMENTS.LIST, filters);
+}
+
+async function checkOverdueInstallments() {
+    return await apiPost(API_ENDPOINTS.PAYMENTS.CHECK_OVERDUE, {});
+}
+
+/* ======================
+DATE FORMATTING UTILITIES
+====================== */
+function formatDateForAPI(date) {
+    return new Date(date).toISOString();
+}
+
+function formatDateForDisplay(dateString) {
+    return new Date(dateString).toLocaleDateString('en-IN');
+}
+
+function formatDateTimeForDisplay(dateString) {
+    return new Date(dateString).toLocaleString('en-IN');
+}
+
+/* ======================
+ERROR HANDLING
+====================== */
+function handleApiError(error) {
+    console.error('=== API ERROR DETAILS ===');
+    console.error('Error:', error);
+    console.error('Error config:', error.config);
+    console.error('Error message:', error.message);
+    
+    if (error.response) {
+        const { status, data } = error.response;
+        console.error(`API Error ${status}:`, data);
+        console.error('Response headers:', error.response.headers);
+
+        if (status === 401) {
+            console.log('Unauthorized - redirecting to login');
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+        }
+
+        return {
+            success: false,
+            error: data.error || { message: 'Something went wrong' },
+            statusCode: status
+        };
+    } else if (error.request) {
+        console.error('No response received:', error.request);
+        console.error('Request was made but no response received');
+        return {
+            success: false,
+            error: { message: 'Server not responding' },
+            statusCode: 0
+        };
+    } else {
+        console.error('Network Error:', error);
+        console.error('Request setup error');
+        return {
+            success: false,
+            error: { message: 'Network connection failed' },
+            statusCode: 0
+        };
     }
-    throw error;
 }
