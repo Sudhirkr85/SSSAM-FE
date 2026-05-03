@@ -520,6 +520,10 @@ function renderTable() {
           valueA = a.followUpDate ? new Date(a.followUpDate) : new Date(0);
           valueB = b.followUpDate ? new Date(b.followUpDate) : new Date(0);
           break;
+        case 'createdDate':
+          valueA = a.createdAt ? new Date(a.createdAt) : (a.created_at ? new Date(a.created_at) : new Date(0));
+          valueB = b.createdAt ? new Date(b.createdAt) : (b.created_at ? new Date(b.created_at) : new Date(0));
+          break;
         default:
           return 0;
       }
@@ -547,6 +551,14 @@ function renderTable() {
           <div class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
             <i data-lucide="phone" class="w-3 h-3"></i>
             ${enquiry.mobile || '-'}
+          </div>
+          <div class="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+            <i data-lucide="mail" class="w-3 h-3"></i>
+            ${enquiry.email || '-'}
+          </div>
+          <div class="text-xs text-gray-400 flex items-center gap-1 mt-0.5">
+            <i data-lucide="calendar" class="w-3 h-3"></i>
+            ${enquiry.createdAt ? formatDate(enquiry.createdAt) : (enquiry.created_at ? formatDate(enquiry.created_at) : '-')}
           </div>
         </td>
         <td class="px-4 py-3 text-gray-700 text-sm">${formatCourses(enquiry.courseInterested)}</td>
@@ -621,7 +633,18 @@ function renderMobileCards() {
         <div class="flex items-start justify-between mb-3">
           <div>
             <div class="font-semibold text-gray-800">${enquiry.name || '-'}</div>
-            <div class="text-sm text-gray-500">${enquiry.mobile || '-'}</div>
+            <div class="text-sm text-gray-500 flex items-center gap-1">
+              <i data-lucide="phone" class="w-3 h-3"></i>
+              ${enquiry.mobile || '-'}
+            </div>
+            <div class="text-sm text-gray-500 flex items-center gap-1 mt-1">
+              <i data-lucide="mail" class="w-3 h-3"></i>
+              ${enquiry.email || '-'}
+            </div>
+            <div class="text-xs text-gray-400 flex items-center gap-1 mt-1">
+              <i data-lucide="calendar" class="w-3 h-3"></i>
+              ${enquiry.createdAt ? formatDate(enquiry.createdAt) : (enquiry.created_at ? formatDate(enquiry.created_at) : '-')}
+            </div>
           </div>
           <span class="status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
             ${statusInfo.label}
