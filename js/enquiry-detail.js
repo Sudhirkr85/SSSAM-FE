@@ -635,7 +635,18 @@ async function submitUpdate() {
     loadEnquiryDetail(enquiryId);
   } catch (error) {
     console.error('Failed to update status:', error);
-    showToast('error', 'Failed to update status');
+    
+    // Extract specific error message from API response
+    let errorMessage = 'Failed to update status';
+    if (error.response?.data?.message) {
+      errorMessage = error.response.data.message;
+    } else if (error.error?.message) {
+      errorMessage = error.error.message;
+    } else if (error.message) {
+      errorMessage = error.message;
+    }
+    
+    showToast('error', errorMessage);
   } finally {
     // Reset flag and button
     isUpdating = false;
@@ -845,8 +856,20 @@ async function executeStatusUpdate(id, payload) {
         showToast('success', 'Status updated successfully');
         closeStatusUpdateModal();
         loadEnquiryDetail(id);
-    } catch {
-        showToast('error', 'Failed to update status');
+    } catch (error) {
+        console.error('Failed to update status:', error);
+        
+        // Extract specific error message from API response
+        let errorMessage = 'Failed to update status';
+        if (error.response?.data?.message) {
+            errorMessage = error.response.data.message;
+        } else if (error.error?.message) {
+            errorMessage = error.error.message;
+        } else if (error.message) {
+            errorMessage = error.message;
+        }
+        
+        showToast('error', errorMessage);
     } finally {
         // Reset flag and button
         isStatusUpdating = false;
@@ -1440,7 +1463,7 @@ async function submitSetupFees() {
         const alreadyExists = errData?.alreadyExists || errData?.data?.alreadyExists || false;
         const hasSuccess = errData?.success === true || errData?.data?.success === true;
 
-        if (hasSuccess && alreadyExists) {
+        if (alreadyExists) {
             // This is actually a success case - admission already exists
             showToast('info', 'Admission already exists for this enquiry');
             closeSetupFeesModal();
@@ -1449,7 +1472,7 @@ async function submitSetupFees() {
         }
 
         // Extract specific error message from backend response
-        const backendMessage = errData?.message || err.message || 'Please try again';
+        const backendMessage = errData?.message || errData?.data?.message || err.message || 'Please try again';
         const backendErrors = errData?.errors || errData?.data?.errors;
         let errorMsg = backendMessage;
         if (backendErrors && backendErrors.length > 0) {
@@ -1742,7 +1765,6 @@ window.isCounselor = isCounselor;
 window.openStatusModal = openStatusModal;
 window.closeStatusModal = closeStatusModal;
 window.submitStatusUpdate = submitStatusUpdate;
-window.openConvertModal = openConvertModal;
 window.closeSetupFeesModal = closeSetupFeesModal;
 window.submitSetupFees = submitSetupFees;
 window.onPaymentTypeChange = onPaymentTypeChange;
