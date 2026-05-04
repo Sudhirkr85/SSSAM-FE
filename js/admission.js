@@ -42,7 +42,8 @@ function initEventListeners() {
     clearTimeout(searchTimeout);
     searchTimeout = setTimeout(() => {
       currentPage = 1;
-      loadAdmissions(e.target.value);
+      const filters = getActiveFilters();
+      loadAdmissions(e.target.value, filters);
     }, 300);
   });
 
@@ -73,11 +74,12 @@ function initEventListeners() {
 }
 
 // ==================== API CALLS ====================
-async function loadAdmissions(search = '') {
+async function loadAdmissions(search = '', filters = {}) {
   try {
     const params = {
       page: currentPage,
-      limit: ITEMS_PER_PAGE
+      limit: ITEMS_PER_PAGE,
+      ...filters
     };
     
     if (search) {
@@ -399,25 +401,60 @@ function getPaymentTypeIcon(type) {
     : '<i data-lucide="calendar" class="w-3.5 h-3.5"></i>';
 }
 
+// ==================== FILTER HELPER FUNCTIONS ====================
+function getActiveFilters() {
+  const filters = {};
+  
+  const statusFilter = document.getElementById('statusFilter')?.value;
+  if (statusFilter) {
+    filters.status = statusFilter;
+  }
+  
+  const courseFilter = document.getElementById('courseFilter')?.value?.trim();
+  if (courseFilter) {
+    filters.course = courseFilter;
+  }
+  
+  const sortBy = document.getElementById('sortBy')?.value;
+  if (sortBy) {
+    filters.sortBy = sortBy;
+  }
+  
+  return filters;
+}
+
+function applyFilters() {
+  currentPage = 1;
+  const search = document.getElementById('searchInput')?.value || '';
+  const filters = getActiveFilters();
+  loadAdmissions(search, filters);
+}
+
 // ==================== PAGINATION CONTROLS ====================
 function changePage(delta) {
   const newPage = currentPage + delta;
   if (newPage >= 1 && newPage <= totalPages) {
     currentPage = newPage;
-    loadAdmissions(document.getElementById('searchInput')?.value || '');
+    const search = document.getElementById('searchInput')?.value || '';
+    const filters = getActiveFilters();
+    loadAdmissions(search, filters);
   }
 }
 
 function goToPage(page) {
   if (page >= 1 && page <= totalPages) {
     currentPage = page;
-    loadAdmissions(document.getElementById('searchInput')?.value || '');
+    const search = document.getElementById('searchInput')?.value || '';
+    const filters = getActiveFilters();
+    loadAdmissions(search, filters);
   }
 }
 
 function goToLastPage() {
   currentPage = totalPages;
-  loadAdmissions(document.getElementById('searchInput')?.value || '');
+  const search = document.getElementById('searchInput')?.value || '';
+  const filters = getActiveFilters();
+  loadAdmissions(search, filters);
 }
 
 // ==================== ADD ADMISSION MODAL ====================
@@ -631,7 +668,7 @@ async function submitAddAdmission() {
   const totalFees = parseFloat(document.getElementById('totalFeesInput').value) || 0;
   const registrationAmount = parseFloat(document.getElementById('registrationAmountInput').value) || 0;
   const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value || 'ONE_TIME';
-  const paymentDate = document.getElementById('paymentDateInput').value;
+  const admissionDate = document.getElementById('paymentDateInput').value;
   const initialPayment = parseFloat(document.getElementById('initialPaymentInput').value) || 0;
   const initialPaymentMode = document.getElementById('paymentModeInput').value;
 
@@ -661,7 +698,7 @@ async function submitAddAdmission() {
     hasError = true;
   }
 
-  if (!paymentDate) {
+  if (!admissionDate) {
     document.getElementById('paymentDateError').classList.remove('hidden');
     document.getElementById('paymentDateInput').classList.add('border-red-500');
     hasError = true;
@@ -734,25 +771,30 @@ async function submitAddAdmission() {
   lucide.createIcons();
 
   try {
-    // Build payload per API contract
+    // Get selected enquiry data for student info
+    const enquiry = enquiries.find(e => e._id === selectedEnquiryId);
+    
+    // Build payload per API documentation
     const payload = {
+      name: enquiry?.name || '',
+      email: enquiry?.email || '',
+      mobile: enquiry?.mobile || '',
       course,
-      paymentType,
+      admissionDate: admissionDate, // Use admissionDate as per documentation
       totalFees,
       registrationAmount,
-      paymentDate,
-      initialPayment,
-      initialPaymentMode
+      paymentMode: initialPaymentMode // Use paymentMode as per documentation
     };
-
-    // Add paymentMethod for ONE_TIME (required)
-    if (paymentType === 'ONE_TIME') {
-      payload.paymentMethod = initialPaymentMode;
-    }
 
     // Add installments for INSTALLMENT type
     if (paymentType === 'INSTALLMENT' && installments && installments.length > 0) {
       payload.installments = installments;
+    }
+
+    // For ONE_TIME, we still need to record the initial payment separately
+    if (paymentType === 'ONE_TIME') {
+      // The initial payment will be recorded as a separate payment after admission creation
+      payload.initialPaymentAmount = initialPayment;
     }
 
     const response = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, payload);
@@ -764,6 +806,24 @@ async function submitAddAdmission() {
       showToast('Info', 'Admission already exists for this enquiry', 'success');
     } else {
       showToast('Success', 'Admission created successfully', 'success');
+      
+      // Record initial payment for ONE_TIME payments
+      if (paymentType === 'ONE_TIME' && initialPayment > 0) {
+        try {
+          const admissionId = response.data?.admission?._id;
+          if (admissionId) {
+            await recordPayment(admissionId, {
+              amount: initialPayment,
+              paymentMode: initialPaymentMode,
+              paymentDate: admissionDate,
+              note: 'Initial payment'
+            });
+          }
+        } catch (paymentErr) {
+          console.error('Failed to record initial payment:', paymentErr);
+          // Don't show error to user as admission was created successfully
+        }
+      }
     }
 
     loadAdmissions();

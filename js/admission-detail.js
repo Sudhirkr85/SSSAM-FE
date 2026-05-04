@@ -492,10 +492,8 @@ async function submitAddPayment() {
   
   try {
     const payload = {
-      admissionId: admissionId,
       amount: amount,
-      paymentMode: mode,
-      type: type
+      paymentMode: mode
     };
     
     // Only add note if it has a value
@@ -503,7 +501,12 @@ async function submitAddPayment() {
       payload.note = note;
     }
     
-    await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
+    // Add paymentDate if provided (defaults to current date)
+    if (document.getElementById('paymentDate')?.value) {
+      payload.paymentDate = document.getElementById('paymentDate').value;
+    }
+    
+    await apiPost(API_ENDPOINTS.ADMISSIONS.RECORD_PAYMENT(admissionId), payload);
     
     closeAddPaymentModal();
     showToast('Success', 'Payment recorded successfully', 'success');
@@ -799,14 +802,12 @@ async function submitRefund() {
   
   try {
     const payload = {
-      admissionId: admissionId,
       amount: amount,
       paymentMode: mode,
-      type: 'refund',
-      refundReason: note
+      note: note || 'Refund processed'
     };
     
-    await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
+    await apiPost(API_ENDPOINTS.ADMISSIONS.RECORD_PAYMENT(admissionId), payload);
     
     closeRefundModal();
     showToast('Success', 'Refund processed successfully', 'success');

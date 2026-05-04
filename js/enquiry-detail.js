@@ -25,7 +25,8 @@ const statusLabels = {
     'INTERESTED': { text: 'Interested', color: 'green' },
     'NOT_INTERESTED': { text: 'Not Interested', color: 'red' },
     'ADMISSION_PROCESS': { text: 'Admission In Progress', color: 'purple' },
-    'CONVERTED': { text: 'Admission Done', color: 'green' }
+    'CONVERTED': { text: 'Admission Done', color: 'green' },
+    'ADMITTED': { text: 'Admission Done', color: 'emerald' }
 };
 
 // Source mapping for human readable display
@@ -124,9 +125,23 @@ function renderEnquiry(e) {
         'amber': 'bg-amber-100 text-amber-800',
         'red': 'bg-red-100 text-red-800',
         'purple': 'bg-purple-100 text-purple-800',
+        'emerald': 'bg-emerald-100 text-emerald-800',
         'gray': 'bg-gray-100 text-gray-800'
     }[statusInfo.color] || 'bg-gray-100 text-gray-800';
-    statusBadge.innerHTML = `<span class="px-2 py-1 rounded-full text-xs font-semibold ${colorClass}">${statusInfo.text}</span>`;
+
+    // Make ADMITTED status very prominent
+    if (e.status === 'ADMITTED' || e.status === 'CONVERTED') {
+        statusBadge.innerHTML = `
+            <div class="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-50 border border-emerald-200 shadow-sm">
+                <div class="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                </div>
+                <span class="text-sm font-bold text-emerald-800">${statusInfo.text}</span>
+            </div>
+        `;
+    } else {
+        statusBadge.innerHTML = `<span class="px-2 py-1 rounded-full text-xs font-semibold ${colorClass}">${statusInfo.text}</span>`;
+    }
 
     // Assigned To - handle null or isUnassigned
     const assignedTo = (e.assignedTo === null || e.isUnassigned === true)
@@ -195,9 +210,9 @@ function renderEnquiry(e) {
         cancelAdmissionBtn.classList.add('hidden');
     }
 
-    // Conditional: Hide Admission Setup button if already converted or in progress
+    // Conditional: Hide Admission Setup button if already converted, admitted, or in progress
     const admissionSetupBtn = document.getElementById('admissionSetupBtn');
-    if (e.status === 'CONVERTED' || e.status === 'ADMISSION_PROCESS') {
+    if (e.status === 'CONVERTED' || e.status === 'ADMITTED' || e.status === 'ADMISSION_PROCESS') {
         admissionSetupBtn.classList.add('hidden');
     } else {
         admissionSetupBtn.classList.remove('hidden');
@@ -225,6 +240,7 @@ function renderTimeline(statusHistory) {
         'NOT_INTERESTED': 'Not Interested',
         'ADMISSION_PROCESS': 'Admission Process',
         'CONVERTED': 'Converted',
+        'ADMITTED': 'Admission Done',
         'CREATED': 'Enquiry Created'
     };
 
@@ -238,6 +254,7 @@ function renderTimeline(statusHistory) {
         'NOT_INTERESTED': 'bg-red-100 text-red-800 border-red-200',
         'ADMISSION_PROCESS': 'bg-purple-100 text-purple-800 border-purple-200',
         'CONVERTED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
+        'ADMITTED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
         'CREATED': 'bg-indigo-100 text-indigo-800 border-indigo-200'
     };
 
@@ -251,6 +268,7 @@ function renderTimeline(statusHistory) {
         'NOT_INTERESTED': 'bg-red-500',
         'ADMISSION_PROCESS': 'bg-purple-500',
         'CONVERTED': 'bg-emerald-500',
+        'ADMITTED': 'bg-emerald-500',
         'CREATED': 'bg-indigo-500'
     };
 
@@ -1362,7 +1380,9 @@ async function submitSetupFees() {
         console.log('Sending payload:', JSON.stringify(payload, null, 2));
 
         // Create Admission with payment plan in one call
-        const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE_FROM_ENQUIRY(id), payload);
+        // Add enquiryId to payload for the /api/admissions endpoint
+        payload.enquiryId = id;
+        const admissionRes = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, payload);
 
         // DEBUG: Log full response
         console.log('Admission API Response:', admissionRes);

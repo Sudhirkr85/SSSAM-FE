@@ -511,7 +511,7 @@
               today.setHours(0, 0, 0, 0);
               
               // Fetch NEW enquiries
-              const newRes = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { 
+              const newRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
                 page: 1, 
                 limit: 100, 
                 status: 'NEW' 
@@ -519,7 +519,7 @@
               const newCount = newRes.enquiries?.length || newRes.pagination?.total || 0;
               
               // Fetch FOLLOW_UP enquiries  
-              const followUpRes = await apiGet(API_ENDPOINTS.ENQUIRIES.GET_ALL, { 
+              const followUpRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
                 page: 1, 
                 limit: 100, 
                 status: 'FOLLOW_UP' 

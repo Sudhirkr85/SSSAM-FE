@@ -11,6 +11,7 @@ const API_ENDPOINTS = {
     ENQUIRIES: {
         CREATE: '/enquiries',
         LIST: '/enquiries',
+        GET_ALL: '/enquiries',
         GET: (id) => `/enquiries/${id}`,
         UPDATE: (id) => `/enquiries/${id}`,
         ASSIGN: (id) => `/enquiries/${id}/assign`
@@ -25,6 +26,7 @@ const API_ENDPOINTS = {
     },
     PAYMENTS: {
         LIST: '/payments',
+        GET_ALL: '/payments',
         CHECK_OVERDUE: '/payments/check-overdue'
     },
     AUTH: {
@@ -166,12 +168,17 @@ async function getAdmission(id) {
 async function updateAdmission(id, updateData) {
     const data = {
         ...updateData,
-        admissionDate: updateData.admissionDate ? formatDateForAPI(updateData.admissionDate) : undefined,
-        installments: updateData.installments?.map(installment => ({
+        admissionDate: updateData.admissionDate ? formatDateForAPI(updateData.admissionDate) : undefined
+    };
+    
+    // Handle installments if provided
+    if (updateData.installments) {
+        data.installments = updateData.installments.map(installment => ({
             ...installment,
             dueDate: formatDateForAPI(installment.dueDate)
-        }))
-    };
+        }));
+    }
+    
     return await apiPut(API_ENDPOINTS.ADMISSIONS.UPDATE(id), data);
 }
 

@@ -12,6 +12,9 @@ let currentQuickFilter = 'all'; // 'all' or status values
 let enquiries = [];
 let selectedFile = null;
 
+// Request counter to prevent stale filter renders
+let lastFilterRequestId = 0;
+
 // Sorting state
 let sortColumn = null;
 let sortDirection = 'asc'; // 'asc' or 'desc'
@@ -31,6 +34,7 @@ const STATUS_MAP = {
   'CONTACTED': { label: 'Contacted', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   'INTERESTED': { label: 'Interested', color: 'bg-green-100 text-green-700 border-green-200' },
   'NOT_INTERESTED': { label: 'Not Interested', color: 'bg-red-100 text-red-700 border-red-200' },
+  'ADMITTED': { label: 'Admission Done', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
   'null': { label: 'New', color: 'bg-gray-100 text-gray-700 border-gray-200' }
 };
 
@@ -59,12 +63,25 @@ function formatCourses(courses) {
   return courses; // It's already a string
 }
 
+/**
+ * Get the last status update from status history
+ */
+function getLastStatusUpdate(enquiry) {
+  if (!enquiry.statusHistory || enquiry.statusHistory.length === 0) return null;
+  const lastEntry = enquiry.statusHistory[enquiry.statusHistory.length - 1];
+  return {
+    status: lastEntry.status,
+    date: lastEntry.changedAt,
+    note: lastEntry.note
+  };
+}
+
 // ==================== INITIALIZATION ====================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   initUserProfile();
   initEventListeners();
   checkAdminFeatures();
-  loadStatusCounts();
+  await loadStatusCounts();
 
   // Check URL parameters for filter
   const urlParams = new URLSearchParams(window.location.search);
@@ -73,7 +90,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (filterParam && filterParam !== 'today') {
     applyQuickFilter(filterParam);
   } else {
-    // Set initial active state for "all" button
     applyQuickFilter('all');
   }
 });
@@ -305,13 +321,15 @@ function updateCountDisplay() {
   if (countNotInterested) countNotInterested.textContent = statusCounts.NOT_INTERESTED;
   if (countTodayFollowups) countTodayFollowups.textContent = statusCounts.TODAY_FOLLOWUPS;
   if (countPendingFollowups) countPendingFollowups.textContent = statusCounts.PENDING_FOLLOWUPS;
-  if (totalDisplay) totalDisplay.textContent = `Total: ${statusCounts.all}`;
   
   console.log('Count display updated');
 }
 
 // ==================== QUICK FILTER FUNCTIONS ====================
 function applyQuickFilter(filter) {
+  lastFilterRequestId++;
+  const currentRequestId = lastFilterRequestId;
+  
   // Show loading state immediately
   showLoadingState();
   
@@ -329,7 +347,7 @@ function applyQuickFilter(filter) {
   }
   
   // Load data with smooth transition
-  loadEnquiries();
+  loadEnquiries(currentRequestId);
 }
 
 function resetAllFilters() {
@@ -475,7 +493,7 @@ function debounce(func, wait) {
 }
 
 // ==================== API FUNCTIONS ====================
-async function loadEnquiries() {
+async function loadEnquiries(requestId = null) {
   try {
     showLoadingState();
 
@@ -512,6 +530,13 @@ async function loadEnquiries() {
     console.log('Full API URL:', 'https://sssam-r3pz.onrender.com/api' + API_ENDPOINTS.ENQUIRIES.LIST);
     
     const res = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
+    
+    // Ignore stale responses from previous filter requests
+    if (requestId !== null && requestId !== lastFilterRequestId) {
+      console.log('Ignoring stale filter response');
+      return;
+    }
+    
     console.log('Load enquiries response:', res);
     console.log('Response data structure:', {
         'res.data': res.data,
@@ -533,6 +558,13 @@ async function loadEnquiries() {
     renderTable();
     renderMobileCards();
     updatePagination();
+    
+    // Update total display and active filter badge from API response
+    const totalDisplay = document.getElementById('totalCountDisplay');
+    if (totalDisplay) totalDisplay.textContent = `Total: ${totalCount}`;
+    
+    const activeCountBadge = document.getElementById(`count-${currentQuickFilter}`);
+    if (activeCountBadge) activeCountBadge.textContent = totalCount;
     
     // Re-enable filter buttons after loading
     document.querySelectorAll('[id^="quickBtn-"]').forEach(btn => {
@@ -616,6 +648,8 @@ function renderTable() {
     const followUpTooltip = getFollowUpTooltip(enquiry);
     const isUnassigned = !enquiry.assignedTo && !enquiry.counselorId;
     const showAssignButton = isUserAdmin && isUnassigned;
+    const lastUpdate = getLastStatusUpdate(enquiry);
+    const lastUpdateHtml = lastUpdate ? `<div class="text-[10px] text-gray-400 mt-1">Updated ${formatDate(lastUpdate.date)}</div>` : '';
 
     return `
       <tr class="enquiry-row border-b border-gray-100 last:border-0 cursor-pointer hover:bg-blue-50/50 transition-colors" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'" ${followUpTooltip}>
@@ -639,6 +673,7 @@ function renderTable() {
           <span class="status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
             ${statusInfo.label}
           </span>
+          ${lastUpdateHtml}
         </td>
         <td class="px-4 py-3 text-center text-sm text-gray-600">${counselor}</td>
         <td class="px-4 py-3 text-center text-sm text-gray-600">${followUpDate}</td>
@@ -700,6 +735,8 @@ function renderMobileCards() {
     const statusInfo = STATUS_MAP[enquiry.status] || STATUS_MAP['null'];
     const isUnassigned = !enquiry.assignedTo && !enquiry.counselorId;
     const showAssignButton = isUserAdmin && isUnassigned;
+    const lastUpdate = getLastStatusUpdate(enquiry);
+    const lastUpdateHtml = lastUpdate ? `<div class="text-[10px] text-gray-400 mt-1">Updated ${formatDate(lastUpdate.date)}</div>` : '';
 
     return `
       <div class="enquiry-card bg-white rounded-xl shadow-sm p-4 border border-gray-100 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='enquiry-detail.html?id=${enquiry._id}'">
@@ -722,6 +759,7 @@ function renderMobileCards() {
           <span class="status-badge inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium border ${statusInfo.color}">
             ${statusInfo.label}
           </span>
+          ${lastUpdateHtml}
         </div>
 
         <div class="text-sm text-gray-600 mb-3">
