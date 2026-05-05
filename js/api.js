@@ -1,8 +1,8 @@
 // Import axios
 const axios = window.axios;
 
-// const BASE_URL = 'https://sssam-r3pz.onrender.com/api';
-const BASE_URL = 'http://localhost:5000/api'
+const BASE_URL = 'https://sssam-r3pz.onrender.com/api';
+// const BASE_URL = 'http://localhost:5000/api'
 
 /* ======================
 API ENDPOINTS (Updated to match new documentation)
@@ -40,6 +40,13 @@ const API_ENDPOINTS = {
     },
     AUTH: {
         LOGIN: '/auth/login'
+    },
+    REPORTS: {
+        ADMISSIONS: '/reports/admissions',
+        FEES: '/reports/fees',
+        COURSE_PERFORMANCE: '/reports/course-performance',
+        COUNSELOR_PERFORMANCE: '/reports/counselor-performance',
+        SUMMARY: '/reports/summary'
     }
 };
 

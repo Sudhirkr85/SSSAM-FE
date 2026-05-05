@@ -3,6 +3,17 @@
  * Indian Institute Style - Production Ready
  */
 
+// ==================== HELPER FUNCTIONS ====================
+function safeParseLocalStorage(key, defaultValue = null) {
+  try {
+    const item = localStorage.getItem(key);
+    return item ? JSON.parse(item) : defaultValue;
+  } catch (e) {
+    console.error(`Error parsing localStorage key "${key}":`, e);
+    return defaultValue;
+  }
+}
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   // Check if user is admin (reports usually admin-only)
@@ -98,8 +109,6 @@ async function loadReports() {
   try {
     // Fetch all reports in parallel using date range parameters
     console.log('[Reports] Calling APIs with params:', dateRange);
-    const admissionsUrl = BASE_URL + API_ENDPOINTS.REPORTS.ADMISSIONS;
-    console.log('[Reports] Admissions URL:', admissionsUrl);
     
     const [admissionsRes, feesRes, courseRes, counselorRes] = await Promise.all([
       apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, dateRange).catch(err => {
@@ -122,7 +131,14 @@ async function loadReports() {
 
     console.log('[Reports] API responses:', { admissionsRes, feesRes, courseRes, counselorRes });
 
-    // apiGet flattens response.data, so access fields directly (not .data.data)
+    // If reports APIs fail, fallback to regular APIs
+    if (!admissionsRes && !feesRes && !courseRes && !counselorRes) {
+      console.log('[Reports] Falling back to regular APIs');
+      await loadReportsFromRegularApis(dateRange);
+      hideLoadingState();
+      return;
+    }
+
     // Build summary data from API responses
     const summaryData = buildSummaryData(admissionsRes, feesRes);
     renderSummaryCards(summaryData);
@@ -143,11 +159,147 @@ async function loadReports() {
     const counselorStats = counselorRes?.counselorStats || counselorRes?.data?.counselorStats || [];
     renderCounselorTable(counselorStats);
 
+    // Calculate total revenue from all counselors
+    const totalCounselorRevenue = counselorStats.reduce((sum, c) => {
+      const period = c.period || c.total || {};
+      const revenue = period.totalPaid || period.totalFees || 0;
+      return sum + revenue;
+    }, 0);
+
+    // Update summary with counselor revenue
+    const counselorSummaryData = buildSummaryData(admissionsRes, feesRes);
+    counselorSummaryData.totalRevenue = totalCounselorRevenue;
+    renderSummaryCards(counselorSummaryData);
+
     hideLoadingState();
   } catch (err) {
     console.error('Failed to load reports:', err);
     hideLoadingState();
     showToast('Error', 'Failed to load reports', 'error');
+  }
+}
+
+// Fallback: Load reports data from regular APIs
+async function loadReportsFromRegularApis(dateRange) {
+  try {
+    // Fetch from regular APIs
+    const [enquiriesRes, admissionsRes] = await Promise.all([
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { ...dateRange, limit: 1000 }).catch(() => null),
+      listAdmissions({ limit: 1000 }).catch(() => null)
+    ]);
+
+    const enquiries = enquiriesRes?.data || [];
+    const admissions = admissionsRes?.data || [];
+
+    // Calculate summary
+    const totalEnquiries = enquiries.length;
+    const convertedEnquiries = enquiries.filter(e => e.status === 'ADMITTED').length;
+    const totalRevenue = admissions.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
+    const pendingAmount = admissions.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
+
+    renderSummaryCards({
+      totalEnquiries,
+      convertedEnquiries,
+      totalRevenue,
+      pendingAmount,
+      overdueAmount: 0
+    });
+
+    // Course stats
+    const courseGroups = {};
+    
+    // Process enquiries for counts
+    if (enquiries && Array.isArray(enquiries)) {
+      enquiries.forEach(enq => {
+        const course = enq.course || 'Unknown Course';
+        if (!courseGroups[course]) {
+          courseGroups[course] = { enquiries: 0, admissions: 0, revenue: 0 };
+        }
+        courseGroups[course].enquiries++;
+        if (enq.status === 'ADMITTED') {
+          courseGroups[course].admissions++;
+        }
+      });
+    }
+    
+    // Process admissions for revenue
+    if (admissions && Array.isArray(admissions)) {
+      admissions.forEach(adm => {
+        const course = adm.course || adm.enquiry?.course || 'Unknown Course';
+        if (courseGroups[course]) {
+          courseGroups[course].revenue += (adm.totalPaid || 0);
+        }
+      });
+    }
+    
+    const courseStats = Object.entries(courseGroups).map(([course, data]) => ({
+      course,
+      enquiries: data.enquiries,
+      admissions: data.admissions,
+      revenue: data.revenue
+    }));
+    
+    console.log('[Reports] Course stats calculated:', courseStats);
+    renderCourseTable(courseStats);
+
+    // Payment stats (simplified)
+    renderPaymentTable([]);
+
+    // Source stats
+    const sourceGroups = {};
+    enquiries.forEach(enq => {
+      const source = enq.source || 'other';
+      if (!sourceGroups[source]) sourceGroups[source] = { enquiries: 0, converted: 0 };
+      sourceGroups[source].enquiries++;
+      if (enq.status === 'ADMITTED') sourceGroups[source].converted++;
+    });
+    const sourceStats = Object.entries(sourceGroups).map(([source, data]) => ({
+      source,
+      enquiries: data.enquiries,
+      converted: data.converted
+    }));
+    renderSourceTable(sourceStats);
+
+    // Counselor stats - calculate from admissions data
+    const counselorGroups = {};
+    
+    // Group admissions by counselor
+    if (admissions && Array.isArray(admissions)) {
+      admissions.forEach(adm => {
+        const counselorName = adm.counselorName || adm.counselor?.name || 'Unknown Counselor';
+        const counselorId = adm.counselorId || adm.counselor?._id || '';
+        
+        if (!counselorGroups[counselorName]) {
+          counselorGroups[counselorName] = {
+            counselorName,
+            counselorId,
+            assignedEnquiries: 0,
+            convertedEnquiries: 0,
+            revenue: 0
+          };
+        }
+        
+        counselorGroups[counselorName].convertedEnquiries++;
+        counselorGroups[counselorName].revenue += (adm.totalPaid || 0);
+      });
+    }
+    
+    // Count enquiries per counselor
+    if (enquiries && Array.isArray(enquiries)) {
+      enquiries.forEach(enq => {
+        const counselorName = enq.counselorName || enq.counselor?.name || 'Unknown Counselor';
+        if (counselorGroups[counselorName]) {
+          counselorGroups[counselorName].assignedEnquiries++;
+        }
+      });
+    }
+    
+    const counselorStats = Object.values(counselorGroups);
+    console.log('[Reports] Counselor stats calculated:', counselorStats);
+    renderCounselorTable(counselorStats);
+
+  } catch (err) {
+    console.error('Failed to load fallback reports:', err);
   }
 }
 
@@ -228,10 +380,7 @@ function renderSummaryCards(data) {
 function renderCourseTable(courses) {
   const table = document.getElementById('courseTable');
   
-  // Filter out courses with 0 revenue
-  const filteredCourses = courses.filter(c => (c.revenue || 0) > 0);
-
-  if (filteredCourses.length === 0) {
+  if (!courses || courses.length === 0) {
     table.innerHTML = `
       <tr>
         <td colspan="4" class="px-4 py-8 text-center text-gray-500">
@@ -242,14 +391,17 @@ function renderCourseTable(courses) {
     return;
   }
   
-  table.innerHTML = filteredCourses.map(c => `
+  table.innerHTML = courses.map(c => {
+    const revenue = c.paidAmount || c.totalFees || 0;
+    return `
     <tr class="hover:bg-gray-50 transition-colors">
       <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.course)}</td>
-      <td class="px-4 py-3 text-center text-gray-600">${c.enquiries || 0}</td>
+      <td class="px-4 py-3 text-center text-gray-600">${c.totalEnquiries || 0}</td>
       <td class="px-4 py-3 text-center text-gray-600">${c.admissions || 0}</td>
-      <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(c.revenue || 0)}</td>
+      <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(revenue)}</td>
     </tr>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderPaymentTable(payments) {
@@ -486,7 +638,7 @@ function renderCounselorTable(counselors) {
   }
 
   table.innerHTML = counselors.map(c => {
-    const period = c.period || {};
+    const period = c.period || c.total || {};
     return `
     <tr class="hover:bg-gray-50 transition-colors cursor-pointer" onclick="navigateToCounselorStudents('${escapeHtml(c.counselorName)}', '${escapeHtml(c.counselorId || '')}')">
       <td class="px-4 py-3 font-medium text-gray-800">${escapeHtml(c.counselorName)}</td>
