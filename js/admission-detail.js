@@ -25,26 +25,90 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==================== DATA LOADING ====================
 async function loadAdmissionDetail() {
+  console.log('=== DEBUG: loadAdmissionDetail called with ID:', admissionId);
   showLoadingState();
 
   try {
     // Load admission details
-    const admissionRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(admissionId));
+    const admissionRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET(admissionId));
+    console.log('=== DEBUG: API response:', admissionRes);
 
-    // Backend now returns: { success, message, data: { admission: {...}, totalPaid, remainingAmount } }
-    const data = admissionRes.data;
-    admissionData = data.admission;
-    // Store calculated totals from backend
-    admissionData.totalPaid = data.totalPaid;
-    admissionData.remainingAmount = data.remainingAmount;
+    // Handle API response structure: { success, data: admission } or { success, data: { admission: {...} } }
+    console.log('=== DEBUG: Full API response structure:', admissionRes);
+    
+    // Check if response has data property and if it's an array or object
+    if (admissionRes.data) {
+      if (Array.isArray(admissionRes.data)) {
+        // If data is an array, get the first item
+        admissionData = admissionRes.data[0];
+        console.log('=== DEBUG: Data is array, using first item:', admissionData);
+      } else if (admissionRes.data.admission) {
+        // If data has admission property (nested structure)
+        admissionData = admissionRes.data.admission;
+        console.log('=== DEBUG: Using data.admission:', admissionData);
+      } else {
+        // If data is an object, use it directly (correct API structure)
+        admissionData = admissionRes.data;
+        console.log('=== DEBUG: Data is object, using directly:', admissionData);
+      }
+    } else if (admissionRes.success && admissionRes.admission) {
+      // Alternative structure: { success, admission }
+      admissionData = admissionRes.admission;
+      console.log('=== DEBUG: Using admission property:', admissionData);
+    } else {
+      // Last resort: use the response directly if it has admission properties
+      admissionData = admissionRes;
+      console.log('=== DEBUG: Using response directly:', admissionData);
+    }
+    
+    console.log('=== DEBUG: Final admission data:', admissionData);
+    
+    if (!admissionData) {
+      console.error('No admission found in response');
+      showErrorState('Admission not found');
+      return;
+    }
 
     // Load payments
-    const paymentsRes = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(admissionId));
-    // API returns { success, message, data: { payments: [...] } }
-    payments = paymentsRes.data?.payments || paymentsRes.payments || [];
+    const paymentsRes = await apiGet(API_ENDPOINTS.ADMISSIONS.LIST_PAYMENTS(admissionId));
+    console.log('=== DEBUG: Payments response:', paymentsRes);
+    
+    // Handle different payment response structures according to API documentation
+    if (paymentsRes.data) {
+      if (Array.isArray(paymentsRes.data)) {
+        // Structure: { success, data: [...] }
+        payments = paymentsRes.data;
+        console.log('=== DEBUG: Using data array:', payments);
+      } else if (paymentsRes.data.payments) {
+        // Structure: { success, data: { payments: [...] } }
+        payments = paymentsRes.data.payments;
+        console.log('=== DEBUG: Using data.payments:', payments);
+      } else {
+        payments = [];
+        console.log('=== DEBUG: No payments found in data object');
+      }
+    } else if (paymentsRes.payments) {
+      // Structure: { success, payments: [...] }
+      payments = paymentsRes.payments;
+      console.log('=== DEBUG: Using payments property:', payments);
+    } else if (Array.isArray(paymentsRes)) {
+      // Structure: Direct payments array
+      payments = paymentsRes;
+      console.log('=== DEBUG: Using response as array:', payments);
+    } else {
+      payments = [];
+      console.log('=== DEBUG: No payments found, using empty array');
+    }
+    
+    console.log('=== DEBUG: Final payments array:', payments);
 
+    console.log('=== DEBUG: Calling renderAdmissionDetail ===');
     renderAdmissionDetail();
-    showContentState();
+    
+    // Small delay to ensure DOM is ready and content displays
+    setTimeout(() => {
+      showContentState();
+    }, 100);
   } catch (err) {
     console.error('Failed to load admission detail:', err);
     showErrorState('Failed to load admission details');
@@ -64,19 +128,17 @@ const activityConfig = {
 function renderAdmissionDetail() {
   if (!admissionData) return;
   
-  const enquiry = admissionData.enquiryId || {};
-  const studentName = enquiry.name || 'Unknown';
-  const studentMobile = enquiry.mobile || '--';
+  // Admission data is now directly in admissionData object, not nested under enquiryId
+  const studentName = admissionData.name || 'Unknown';
+  const studentMobile = admissionData.mobile || '--';
   const course = admissionData.course || '--';
   const paymentType = admissionData.paymentType || 'ONE_TIME';
   
   const totalFees = admissionData.totalFees || 0;
-  // Calculate total paid from payments array (excluding refunds)
-  const calculatedPaid = payments
+  // Use backend calculated values if available, otherwise calculate from payments
+  const paidAmount = admissionData.totalPaid ?? payments
     .filter(p => p.type !== 'refund')
     .reduce((sum, p) => sum + (p.amount || 0), 0);
-  // Use calculated paid amount, fallback to backend totalPaid
-  const paidAmount = calculatedPaid || (admissionData.totalPaid ?? 0);
   const remaining = admissionData.remainingAmount ?? (totalFees - paidAmount);
   
   // Student info
@@ -292,7 +354,7 @@ function renderPaymentHistory() {
     };
     
     const typeClass = typeColors[p.type] || 'bg-gray-100 text-gray-700';
-    const typeLabel = typeLabels[p.type] || p.type;
+    const typeLabel = typeLabels[p.type] || (p.type ? p.type.charAt(0).toUpperCase() + p.type.slice(1) : 'Payment');
     
     return `
       <div class="payment-row px-6 py-4 border-b border-gray-50 last:border-0">
@@ -333,7 +395,7 @@ function renderTimeline() {
     title: 'Admission Created',
     description: `Course: ${admissionData?.course || '-'}`,
     date: admissionData?.createdAt,
-    user: admissionData?.createdBy?.name || 'System'
+    user: admissionData?.createdBy?.name || admissionData?.counselorId?.name || ''
   });
   
   // Add installments setup if exists
@@ -343,7 +405,7 @@ function renderTimeline() {
       title: 'Installment Plan Set',
       description: `${admissionData.installments.length} installments configured`,
       date: admissionData.updatedAt || admissionData.createdAt,
-      user: admissionData?.updatedBy?.name || admissionData?.createdBy?.name || 'System'
+      user: admissionData?.updatedBy?.name || admissionData?.createdBy?.name || admissionData?.counselorId?.name || ''
     });
   }
   
@@ -361,7 +423,7 @@ function renderTimeline() {
       title: typeLabels[p.type] || 'Payment',
       description: `${formatCurrency(p.amount)} via ${p.paymentMode}`,
       date: p.createdAt,
-      user: p.createdBy?.name || 'System'
+      user: p.createdBy?.name || admissionData?.counselorId?.name || ''
     });
   });
   
@@ -395,7 +457,7 @@ function renderTimeline() {
             <span class="text-xs text-gray-400">${date}</span>
           </div>
           <p class="text-sm text-gray-600 mb-1">${item.description}</p>
-          <span class="text-xs text-gray-400">by ${item.user}</span>
+          ${item.user ? `<span class="text-xs text-gray-400">by ${item.user}</span>` : ''}
         </div>
       </div>
     `;
@@ -579,7 +641,9 @@ function closeSetInstallmentsModal() {
 function renderInstallmentRows() {
   const container = document.getElementById('installmentRows');
   
-  container.innerHTML = installmentRows.map((row, index) => `
+  container.innerHTML = installmentRows.map((row, index) => {
+    const today = new Date().toISOString().split('T')[0]; // Format as YYYY-MM-DD
+    return `
     <div class="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
       <div class="flex-1">
         <label class="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
@@ -600,6 +664,7 @@ function renderInstallmentRows() {
         <input 
           type="date" 
           value="${row.dueDate}"
+          min="${today}"
           onchange="updateInstallmentRow(${index}, 'dueDate', this.value)"
           class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-amber-500"
         >
@@ -654,24 +719,35 @@ async function submitInstallmentPlan() {
       return;
     }
     
-    // Check date is in future
+    // Check date sequence (browser handles min date, just need to check sequence)
     const dueDate = new Date(row.dueDate);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (dueDate < today) {
-      errorEl.textContent = `Installment ${i + 1}: Due date must be in the future`;
-      errorEl.classList.remove('hidden');
-      return;
+    
+    // Check installment date sequence
+    if (i > 0) {
+      const prevDueDate = new Date(installmentRows[i - 1].dueDate);
+      if (dueDate <= prevDueDate) {
+        errorEl.textContent = `Installment ${i + 1}: Due date must be after previous installment`;
+        errorEl.classList.remove('hidden');
+        return;
+      }
     }
   }
   
-  // Check sum matches remaining
+  // Check sum does not exceed remaining (allow less than remaining)
   const totalInstallments = installmentRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
   
-  if (totalInstallments !== remaining) {
-    errorEl.textContent = `Total installments (${formatCurrency(totalInstallments)}) must equal remaining amount (${formatCurrency(remaining)})`;
+  if (totalInstallments > remaining) {
+    errorEl.textContent = `Total installments (${formatCurrency(totalInstallments)}) cannot exceed remaining amount (${formatCurrency(remaining)})`;
     errorEl.classList.remove('hidden');
     return;
+  }
+  
+  // Show warning if sum is less than remaining but don't block submission
+  if (totalInstallments < remaining) {
+    const difference = remaining - totalInstallments;
+    errorEl.textContent = `Warning: ₹${difference.toLocaleString('en-IN')} remaining amount not scheduled`;
+    errorEl.classList.remove('hidden');
+    // Don't return - allow submission with warning
   }
   
   errorEl.classList.add('hidden');
@@ -691,7 +767,7 @@ async function submitInstallmentPlan() {
       }))
     };
     
-    await apiPut(API_ENDPOINTS.ADMISSIONS.PAYMENT_PLAN(admissionId), payload);
+    await apiPut(API_ENDPOINTS.ADMISSIONS.UPDATE(admissionId), payload);
     
     closeSetInstallmentsModal();
     showToast('Success', 'Installment plan saved successfully', 'success');
@@ -889,9 +965,25 @@ function showErrorState(message) {
 }
 
 function showContentState() {
-  document.getElementById('loadingState').classList.add('hidden');
-  document.getElementById('errorState').classList.add('hidden');
-  document.getElementById('detailContent').classList.remove('hidden');
+  console.log('=== DEBUG: showContentState called ===');
+  const loadingState = document.getElementById('loadingState');
+  const errorState = document.getElementById('errorState');
+  const detailContent = document.getElementById('detailContent');
+  
+  console.log('=== DEBUG: Elements found:', {
+    loadingState: !!loadingState,
+    errorState: !!errorState,
+    detailContent: !!detailContent
+  });
+  
+  if (loadingState) loadingState.classList.add('hidden');
+  if (errorState) errorState.classList.add('hidden');
+  if (detailContent) {
+    detailContent.classList.remove('hidden');
+    console.log('=== DEBUG: detailContent shown');
+  } else {
+    console.error('=== DEBUG: detailContent element not found!');
+  }
 }
 
 // ==================== WHATSAPP MESSAGING ====================

@@ -950,20 +950,14 @@ async function showLoginWelcomePopup() {
         const token = localStorage.getItem('token');
         if (!token) return;
 
-        const response = await fetch(`${getBaseUrl()}/api/notifications/today-summary`, {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
-        });
-
-        const result = await response.json();
-
-        if (result.success && result.data) {
-            const summary = result.data;
-            renderWelcomeModal(summary);
-        }
+        // Removed unnecessary API call to today-summary endpoint
+        // The welcome popup will now show without requiring additional API call
+        console.log('Login welcome popup shown');
+        
+        // You can add a custom welcome message here if needed
+        renderWelcomeModal(null); // Show welcome without summary data
     } catch (error) {
-        console.log('Today summary not available:', error);
+        console.log('Error showing welcome popup:', error);
     }
 }
 

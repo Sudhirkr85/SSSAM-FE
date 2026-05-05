@@ -71,13 +71,7 @@ function initEventListeners() {
     }
   });
 
-  // Form submission
-  document.getElementById('admissionForm')?.addEventListener('submit', submitAdmissionForm);
-
-  // Duplicate admission check
-  document.getElementById('courseInput')?.addEventListener('change', checkDuplicateAdmission);
-  document.getElementById('mobileInput')?.addEventListener('blur', checkDuplicateAdmission);
-}
+  }
 
 // ==================== API CALLS ====================
 async function loadAdmissions(search = '', filters = {}) {
@@ -93,12 +87,17 @@ async function loadAdmissions(search = '', filters = {}) {
     }
 
     const response = await apiGet(API_ENDPOINTS.ADMISSIONS.LIST, params);
+    console.log('=== DEBUG: Admissions API response:', response);
     
-    admissions = response.admissions || [];
+    // Handle different response structures
+    admissions = response.data || response.admissions || [];
+    console.log('=== DEBUG: Admissions array length:', admissions.length);
+    console.log('=== DEBUG: First admission:', admissions[0]);
     const pagination = response.pagination || {};
     totalPages = pagination.totalPages || 1;
     totalCount = pagination.totalCount || 0;
 
+    console.log('=== DEBUG: Calling render functions ===');
     renderTable();
     renderMobileCards();
     updatePagination();
@@ -129,8 +128,8 @@ function renderTable() {
       
       switch (sortColumn) {
         case 'student':
-          valueA = (a.enquiryId?.name || 'Unknown').toLowerCase();
-          valueB = (b.enquiryId?.name || 'Unknown').toLowerCase();
+          valueA = (a.name || 'Unknown').toLowerCase();
+          valueB = (b.name || 'Unknown').toLowerCase();
           break;
         case 'course':
           valueA = (a.course || '-').toLowerCase();
@@ -165,10 +164,11 @@ function renderTable() {
   }
 
   table.innerHTML = sortedAdmissions.map(admission => {
-    const student = admission.enquiryId || {};
-    const name = student.name || 'Unknown';
-    const mobile = student.mobile || '';
+    console.log('=== DEBUG: Processing admission:', admission);
+    const name = admission.name || 'Unknown';
+    const mobile = admission.mobile || '';
     const course = admission.course || '-';
+    console.log('=== DEBUG: Extracted data - Name:', name, 'Mobile:', mobile, 'Course:', course);
     const totalFees = admission.totalFees || 0;
     // Backend sends remainingAmount, calculate paid from it
     const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
@@ -227,9 +227,8 @@ function renderMobileCards() {
   }
 
   container.innerHTML = admissions.map(admission => {
-    const student = admission.enquiryId || {};
-    const name = student.name || 'Unknown';
-    const mobile = student.mobile || '';
+    const name = admission.name || 'Unknown';
+    const mobile = admission.mobile || '';
     const course = admission.course || '-';
     const totalFees = admission.totalFees || 0;
     // Backend sends remainingAmount, calculate paid from it
@@ -1242,118 +1241,6 @@ function closeViewPaymentsModal() {
   }, 200);
 }
 
-// ==================== FORM SUBMISSION ====================
-async function submitAdmissionForm(event) {
-  event.preventDefault();
-  
-  // Validation
-  const name = document.getElementById('nameInput')?.value.trim();
-  const email = document.getElementById('emailInput')?.value.trim();
-  const mobile = document.getElementById('mobileInput')?.value.trim();
-  const course = document.getElementById('courseInput')?.value.trim();
-  const totalFees = parseFloat(document.getElementById('totalFeesInput')?.value);
-  const registrationAmount = parseFloat(document.getElementById('registrationAmountInput')?.value || 0);
-
-  if (!name || !mobile || !course || !totalFees) {
-    showToast('Error', 'Please fill all required fields', 'error');
-    return;
-  }
-
-  // Mobile validation (10 digits)
-  if (!mobile.match(/^[0-9]{10}$/)) {
-    showToast('Error', 'Mobile must be 10 digits', 'error');
-    return;
-  }
-
-  if (registrationAmount > totalFees) {
-    showToast('Error', 'Registration amount cannot exceed total fees', 'error');
-    return;
-  }
-
-  const formData = {
-    name: name,
-    email: email,
-    mobile: mobile,  // 10 digits - backend will convert to +91XXXXXXXXXX
-    course: course,
-    admissionDate: document.getElementById('admissionDateInput')?.value || new Date().toISOString().split('T')[0],
-    totalFees: totalFees,
-    registrationAmount: registrationAmount,
-    installments: getInstallmentData()
-  };
-
-  try {
-    showLoadingState(true);
-    const response = await createAdmission(formData);
-    showLoadingState(false);
-
-    if (response.success) {
-      showToast('Success', 'Admission created successfully', 'success');
-      resetAdmissionForm();
-      await loadAdmissions();
-      closeModal('admissionModal');
-    } else {
-      // Handle duplicate admission error
-      const errorMsg = response.error?.message || 'Failed to create admission';
-      if (errorMsg.includes('already admitted')) {
-        showToast('Error', `Student is already admitted for ${course}`, 'error');
-      } else {
-        showToast('Error', errorMsg, 'error');
-      }
-    }
-  } catch (error) {
-    showLoadingState(false);
-    console.error('Submit admission error:', error);
-    showToast('Error', 'Failed to create admission', 'error');
-  }
-}
-
-/**
- * Check if student is already admitted for the selected course
- * Prevention: Duplicate admissions for same (mobile + course)
- */
-async function checkDuplicateAdmission() {
-  const mobile = document.getElementById('mobileInput')?.value.trim();
-  const course = document.getElementById('courseInput')?.value.trim();
-  const errorEl = document.getElementById('duplicateAdmissionError');
-  const submitBtn = document.getElementById('submitAdmissionBtn');
-
-  // Skip if fields empty
-  if (!mobile || !course || !mobile.match(/^[0-9]{10}$/)) {
-    if (errorEl) errorEl.classList.add('hidden');
-    if (submitBtn) submitBtn.disabled = false;
-    return;
-  }
-
-  try {
-    // Search admissions for this mobile + course
-    const response = await listAdmissions({
-      search: mobile,
-      course: course,
-      limit: 100
-    });
-
-    const duplicateFound = response.admissions?.some(admission => {
-      // Check if same course
-      return admission.course.toLowerCase() === course.toLowerCase();
-    });
-
-    if (duplicateFound) {
-      if (errorEl) {
-        errorEl.textContent = `⚠️ Student is already admitted for ${course}`;
-        errorEl.classList.remove('hidden');
-      }
-      if (submitBtn) submitBtn.disabled = true;
-    } else {
-      if (errorEl) errorEl.classList.add('hidden');
-      if (submitBtn) submitBtn.disabled = false;
-    }
-  } catch (error) {
-    console.error('Duplicate check failed:', error);
-    // Allow submission on error
-    if (errorEl) errorEl.classList.add('hidden');
-    if (submitBtn) submitBtn.disabled = false;
-  }
-}
 
 // ==================== TOAST SYSTEM ====================
 function showToast(title, message, type = 'success') {

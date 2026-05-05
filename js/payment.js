@@ -208,7 +208,7 @@ async function enrichPaymentsWithAdmissionData() {
     // Fetch each admission
     for (const admId of admissionIds) {
         try {
-            const admRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET_BY_ID(admId));
+            const admRes = await apiGet(API_ENDPOINTS.ADMISSIONS.GET(admId));
             // Handle nested response structure: { data: { admission: { admission: {...} } } }
             const admissionWrapper = admRes.data?.admission || admRes.data || admRes;
             const admission = admissionWrapper.admission || admissionWrapper;
