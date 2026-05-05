@@ -677,7 +677,8 @@ function renderInstallmentRows() {
         <i data-lucide="trash-2" class="w-4 h-4"></i>
       </button>
     </div>
-  `).join('');
+  `;
+  }).join('');
   
   lucide.createIcons();
 }
