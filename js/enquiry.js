@@ -194,11 +194,18 @@ async function loadStatusCounts() {
     console.log('API Endpoint:', API_ENDPOINTS.ENQUIRIES.LIST);
     console.log('Token exists:', !!localStorage.getItem('token'));
     
-    // Fetch first page to get total count
-    const firstRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 });
-    console.log('First page API Response:', firstRes);
+    // Fetch counts from API for accurate server-side logic
+    const [allRes, todayRes, pendingRes] = await Promise.all([
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 }),
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { filterType: 'today_followups', page: 1, limit: 1 }),
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { filterType: 'pending_followups', page: 1, limit: 1 })
+    ]);
     
-    const pagination = firstRes.pagination || {};
+    console.log('All API Response:', allRes);
+    console.log('Today Followups API Response:', todayRes);
+    console.log('Pending Followups API Response:', pendingRes);
+    
+    const pagination = allRes.pagination || {};
     const totalCount = pagination.totalCount || 0;
     const totalPages = pagination.totalPages || 1;
     console.log('Total count from pagination:', totalCount);
@@ -208,9 +215,9 @@ async function loadStatusCounts() {
     
     // If there's only one page, use the data we already have
     if (totalPages <= 1) {
-      allEnquiries = firstRes.data || firstRes.enquiries || [];
+      allEnquiries = allRes.data || allRes.enquiries || [];
     } else {
-      // Fetch all pages to get accurate counts
+      // Fetch all pages to get accurate counts for status-based filters
       const pagePromises = [];
       for (let page = 1; page <= totalPages; page++) {
         pagePromises.push(apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page, limit: 100 }));
@@ -228,34 +235,12 @@ async function loadStatusCounts() {
     statusCounts.CONTACTED = allEnquiries.filter(e => e.status === 'CONTACTED').length;
     statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
     
-    // Calculate today followups
-    console.log('Checking follow-up dates:');
-    allEnquiries.forEach(e => {
-      if (e.followUpDate) {
-        console.log(`Name: ${e.name}, FollowUpDate: ${e.followUpDate}, isToday: ${isToday(e.followUpDate)}`);
-      }
-    });
+    // Use server-side counts for followup filters to ensure accuracy
+    statusCounts.TODAY_FOLLOWUPS = (todayRes.pagination?.totalCount || 0);
+    statusCounts.PENDING_FOLLOWUPS = (pendingRes.pagination?.totalCount || 0);
     
-    statusCounts.TODAY_FOLLOWUPS = allEnquiries.filter(e => 
-      e.followUpDate && isToday(e.followUpDate)
-    ).length;
-    
-    console.log('Today Followups Count:', statusCounts.TODAY_FOLLOWUPS);
-    
-    // Calculate pending followups (overdue + no followup + new with no action)
-    statusCounts.PENDING_FOLLOWUPS = allEnquiries.filter(e => {
-      // A. Overdue followups
-      if (e.followUpDate && isPast(e.followUpDate)) return true;
-      
-      // B. No follow-up date set
-      if (!e.followUpDate) return true;
-      
-      // C. New enquiry created today with no action taken today
-      if (isCreatedToday(e) && !hasActionToday(e)) return true;
-      
-      return false;
-    }).length;
-    
+    console.log('Today Followups Count (from API):', statusCounts.TODAY_FOLLOWUPS);
+    console.log('Pending Followups Count (from API):', statusCounts.PENDING_FOLLOWUPS);
     console.log('Final status counts:', statusCounts);
     
     // Update UI

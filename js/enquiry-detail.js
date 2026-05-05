@@ -96,8 +96,13 @@ async function loadEnquiryDetail(id) {
             return;
         }
 
+        currentEnquiryData = enquiry;
         renderEnquiry(enquiry);
         renderTimeline(enquiry.statusHistory || []);
+
+        // NEW: Check if enquiry is locked due to admission for this course
+        const isLocked = await checkEnquiryLocking();
+        console.log('Enquiry locked status:', isLocked);
     } catch (error) {
         console.error('Error loading enquiry details:', error);
         showToast('error', 'Failed to load enquiry details');
@@ -225,6 +230,98 @@ function renderEnquiry(e) {
     } else {
         deleteBtn.classList.add('hidden');
     }
+}
+
+/**
+ * Check if this enquiry is locked due to existing admission
+ * Locking prevents course and status changes for (mobile + course)
+ * @returns {Promise<boolean>} true if locked, false if not
+ */
+async function checkEnquiryLocking() {
+  const enquiry = currentEnquiryData;
+  
+  if (!enquiry || !enquiry.mobile || !enquiry.course) return false;
+
+  try {
+    // Check if any admission exists for this mobile + course combination
+    const response = await listAdmissions({
+      search: enquiry.mobile,
+      course: enquiry.course,
+      limit: 100
+    });
+
+    const admissionExists = response.admissions?.some(admission => {
+      return admission.course === enquiry.course;
+    });
+
+    // Update UI based on locking status
+    updateEnquiryUI(admissionExists);
+
+    return admissionExists;
+  } catch (error) {
+    console.error('Failed to check enquiry locking:', error);
+    return false;
+  }
+}
+
+/**
+ * Update UI to show/hide locking status
+ */
+function updateEnquiryUI(isLocked) {
+  const lockWarning = document.getElementById('enquiryLockWarning');
+  const statusSection = document.getElementById('statusChangeFields');
+  const courseInput = document.getElementById('courseInput');
+  const statusInput = document.getElementById('statusInput');
+
+  if (isLocked) {
+    // Show warning
+    if (lockWarning) {
+      lockWarning.innerHTML = `
+        <div class="bg-yellow-50 border border-yellow-200 rounded-md p-3 mb-4">
+          <p class="text-yellow-800 text-sm font-medium">
+            ⚠️ <strong>Enquiry Locked:</strong> An admission exists for this course.
+          </p>
+          <p class="text-yellow-700 text-xs mt-1">
+            Status and course fields cannot be changed. You can still update notes and follow-up date.
+          </p>
+        </div>
+      `;
+    }
+
+    // Disable course and status fields
+    if (courseInput) {
+      courseInput.disabled = true;
+      courseInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+    }
+    if (statusInput) {
+      statusInput.disabled = true;
+      statusInput.classList.add('bg-gray-100', 'cursor-not-allowed');
+    }
+
+    // Visual dimming
+    if (statusSection) {
+      statusSection.classList.add('opacity-50');
+    }
+  } else {
+    // Hide warning
+    if (lockWarning) {
+      lockWarning.innerHTML = '';
+    }
+
+    // Enable fields
+    if (courseInput) {
+      courseInput.disabled = false;
+      courseInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+    }
+    if (statusInput) {
+      statusInput.disabled = false;
+      statusInput.classList.remove('bg-gray-100', 'cursor-not-allowed');
+    }
+
+    if (statusSection) {
+      statusSection.classList.remove('opacity-50');
+    }
+  }
 }
 
 function renderTimeline(statusHistory) {
@@ -572,6 +669,16 @@ async function submitUpdate() {
   isUpdating = true;
 
   const enquiryId = document.getElementById('updateEnquiryId').value;
+  
+  if (!enquiryId) {
+    showToast('error', 'Enquiry ID missing');
+    isUpdating = false;
+    return;
+  }
+
+  // Check if enquiry is locked BEFORE trying to update
+  const isLocked = await checkEnquiryLocking();
+
   const status = document.getElementById('updateStatus').value;
   const note = document.getElementById('updateNote').value.trim();
   const followUpDate = document.getElementById('updateFollowUpDate').value;
@@ -616,20 +723,25 @@ async function submitUpdate() {
     return;
   }
 
-  const payload = {
-    status: status,
+  const updateData = {
+    // Always allow notes update
     note: note
   };
 
+  // Only include status if NOT locked
+  if (!isLocked) {
+    updateData.status = status;
+  }
+
   // Handle follow-up date based on status
   if (status === 'NOT_INTERESTED') {
-    payload.followUpDate = null; // Always null for NOT_INTERESTED
+    updateData.followUpDate = null; // Always null for NOT_INTERESTED
   } else if (followUpDate) {
-    payload.followUpDate = followUpDate;
+    updateData.followUpDate = followUpDate;
   }
 
   try {
-    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), payload);
+    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), updateData);
     showToast('success', 'Status updated successfully');
     closeUpdateModal();
     loadEnquiryDetail(enquiryId);
@@ -646,7 +758,17 @@ async function submitUpdate() {
       errorMessage = error.message;
     }
     
-    showToast('error', errorMessage);
+    // Handle locked enquiry error
+    if (errorMessage.includes('Admission already exists') || 
+        errorMessage.includes('Cannot update enquiry') ||
+        errorMessage.includes('locked') ||
+        errorMessage.includes('already exists for this course')) {
+      showToast('warning', 'Course/Status locked - admission exists for this course', 'warning');
+      // Refresh to show current locked state
+      setTimeout(() => loadEnquiryDetail(enquiryId), 1000);
+    } else {
+      showToast('error', errorMessage);
+    }
   } finally {
     // Reset flag and button
     isUpdating = false;
@@ -1787,3 +1909,54 @@ window.confirmCancelAdmission = confirmCancelAdmission;
 window.openWhatsAppModal = openWhatsAppModal;
 window.closeWhatsAppModal = closeWhatsAppModal;
 window.openEnquiryWhatsApp = openEnquiryWhatsApp;
+
+// ====================
+// TOAST SYSTEM
+// ====================
+function showToast(title, message, type = 'success') {
+  console.log('=== TOAST DEBUG ===');
+  console.log('showToast called with:', { title, message, type });
+  
+  const container = document.getElementById('toastContainer');
+  if (!container) {
+    console.error('Toast container not found');
+    return;
+  }
+
+  const colors = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-amber-500',
+    info: 'bg-blue-500'
+  };
+
+  const icons = {
+    success: 'check-circle',
+    error: 'x-circle',
+    warning: 'alert-triangle',
+    info: 'info'
+  };
+
+  const toast = document.createElement('div');
+  toast.className = `${colors[type]} text-white px-4 py-3 rounded-xl shadow-lg flex items-center gap-3 min-w-[300px] max-w-[400px] toast-enter`;
+  toast.innerHTML = `
+    <i data-lucide="${icons[type]}" class="w-5 h-5 flex-shrink-0"></i>
+    <div class="flex-1">
+      <div class="font-medium text-sm">${title}</div>
+      <div class="text-xs opacity-90">${message}</div>
+    </div>
+    <button onclick="this.parentElement.remove()" class="opacity-70 hover:opacity-100">
+      <i data-lucide="x" class="w-4 h-4"></i>
+    </button>
+  `;
+
+  container.appendChild(toast);
+  lucide.createIcons();
+
+  // Auto remove
+  setTimeout(() => {
+    toast.classList.remove('toast-enter');
+    toast.classList.add('toast-exit');
+    setTimeout(() => toast.remove(), 300);
+  }, type === 'error' ? 4000 : 3000);
+}
