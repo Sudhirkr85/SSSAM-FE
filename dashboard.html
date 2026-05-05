@@ -24,9 +24,58 @@
     ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
     
-    /* Stat card hover */
-    .stat-card { transition: all 0.2s ease; }
-    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1); }
+    /* Premium gradient animations */
+    .stat-card { 
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); 
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s;
+    }
+    .stat-card:hover::before {
+      left: 100%;
+    }
+    .stat-card:hover { 
+      transform: translateY(-4px); 
+      box-shadow: 0 20px 40px -10px rgba(0,0,0,0.15); 
+    }
+    
+    /* Premium color scheme */
+    .gradient-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .gradient-success { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .gradient-warning { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    .gradient-info { background: linear-gradient(135deg, #30cfd0 0%, #330867 100%); }
+    .gradient-danger { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+    .gradient-dark { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); }
+    
+    /* Notification banner */
+    .notification-banner {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .notification-banner::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      animation: pulse 3s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.1); opacity: 0.8; }
+    }
   </style>
 </head>
 <body class="bg-gray-50 text-gray-800 font-sans">
@@ -89,12 +138,18 @@
     <!-- MAIN -->
     <main class="flex-1 flex flex-col lg:ml-0 overflow-hidden">
       
-      <!-- HEADER -->
-      <header class="bg-white px-6 py-4 flex justify-between items-center shadow-sm lg:pl-6 pl-16">
-        <div class="flex items-center gap-3">
-          <h1 class="text-lg font-semibold">Dashboard</h1>
+      <!-- HEADER WITH NOTIFICATION -->
+      <header class="notification-banner px-6 py-4 flex justify-between items-center shadow-xl lg:pl-6 pl-16 text-white relative">
+        <div class="flex items-center gap-4">
+          <div class="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center backdrop-blur-sm">
+            <i data-lucide="bell" class="w-5 h-5 text-white animate-pulse"></i>
+          </div>
+          <div>
+            <h1 class="text-xl font-bold text-white">Welcome back, <span id="headerUserName">User</span>!</h1>
+            <p class="text-sm text-white/80" id="welcomeMessage">Here's your dashboard overview</p>
+          </div>
         </div>
-        <button id="logoutBtn" class="flex items-center gap-2 text-gray-600 hover:text-red-600 transition-colors font-medium text-sm">
+        <button id="logoutBtn" class="flex items-center gap-2 text-white/90 hover:text-white transition-colors font-medium text-sm bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm hover:bg-white/20">
           <i data-lucide="log-out" class="w-5 h-5"></i>
           <span>Logout</span>
         </button>
@@ -107,25 +162,27 @@
         <div id="statsCards" class="grid grid-cols-2 lg:grid-cols-4 gap-4">
           
           <!-- Total Leads -->
-          <a href="enquiries.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+          <a href="enquiries.html" class="stat-card bg-white rounded-xl shadow-lg p-5 block border border-gray-100">
             <div class="flex items-center gap-3 mb-3">
-              <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="message-square" class="w-6 h-6 text-blue-600"></i>
+              <div class="w-12 h-12 gradient-info rounded-xl flex items-center justify-center shadow-lg">
+                <i data-lucide="message-square" class="w-6 h-6 text-white"></i>
               </div>
-              <span class="text-sm text-gray-500" id="leadsLabel">Total Leads</span>
+              <span class="text-sm font-medium text-gray-700" id="leadsLabel">Total Leads</span>
             </div>
-            <p id="totalLeads" class="text-3xl font-bold text-gray-800">0</p>
+            <p id="totalLeads" class="text-3xl font-bold text-blue-600">0</p>
+            <div class="mt-2 text-xs text-gray-500">All enquiries</div>
           </a>
 
           <!-- Admissions -->
-          <a href="admissions.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+          <a href="admissions.html" class="stat-card bg-white rounded-xl shadow-lg p-5 block border border-gray-100">
             <div class="flex items-center gap-3 mb-3">
-              <div class="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="user-check" class="w-6 h-6 text-purple-600"></i>
+              <div class="w-12 h-12 gradient-success rounded-xl flex items-center justify-center shadow-lg">
+                <i data-lucide="user-check" class="w-6 h-6 text-white"></i>
               </div>
-              <span class="text-sm text-gray-500" id="admissionsLabel">Admissions</span>
+              <span class="text-sm font-medium text-gray-700" id="admissionsLabel">Admissions</span>
             </div>
             <p id="totalAdmissions" class="text-3xl font-bold text-purple-600">0</p>
+            <div class="mt-2 text-xs text-gray-500">Converted students</div>
           </a>
 
           <!-- Revenue (Admin Only) -->
@@ -139,26 +196,40 @@
             <p id="totalRevenue" class="text-3xl font-bold text-green-600">₹0</p>
           </a>
 
-          <!-- Today's Calls -->
-          <a href="enquiries.html?filter=today" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+          <!-- New Leads -->
+          <a href="enquiries.html?status=NEW" class="stat-card bg-white rounded-xl shadow-lg p-5 block border border-gray-100">
             <div class="flex items-center gap-3 mb-3">
-              <div class="w-12 h-12 bg-orange-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="phone-call" class="w-6 h-6 text-orange-600"></i>
+              <div class="w-12 h-12 gradient-primary rounded-xl flex items-center justify-center shadow-lg">
+                <i data-lucide="users" class="w-6 h-6 text-white"></i>
               </div>
-              <span class="text-sm text-gray-500">Today's Calls</span>
+              <span class="text-sm font-medium text-gray-700">New Leads</span>
             </div>
-            <p id="todayCalls" class="text-3xl font-bold text-orange-600">0</p>
+            <p id="newLeads" class="text-3xl font-bold gradient-primary bg-clip-text text-transparent">0</p>
+            <div class="mt-2 text-xs text-gray-500">Fresh enquiries</div>
+          </a>
+
+          <!-- Today Follow-up -->
+          <a href="enquiries.html?filter=today" class="stat-card bg-white rounded-xl shadow-lg p-5 block border border-gray-100">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-12 h-12 gradient-warning rounded-xl flex items-center justify-center shadow-lg">
+                <i data-lucide="calendar-check" class="w-6 h-6 text-white"></i>
+              </div>
+              <span class="text-sm font-medium text-gray-700">Today Follow-up</span>
+            </div>
+            <p id="todayFollowups" class="text-3xl font-bold text-orange-600">0</p>
+            <div class="mt-2 text-xs text-gray-500">Scheduled for today</div>
           </a>
 
           <!-- Pending Follow-ups -->
-          <a href="enquiries.html" class="stat-card bg-white rounded-xl shadow-sm p-5 block">
+          <a href="enquiries.html?filter=overdue" class="stat-card bg-white rounded-xl shadow-lg p-5 block border border-gray-100">
             <div class="flex items-center gap-3 mb-3">
-              <div class="w-12 h-12 bg-red-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="clock" class="w-6 h-6 text-red-600"></i>
+              <div class="w-12 h-12 gradient-danger rounded-xl flex items-center justify-center shadow-lg">
+                <i data-lucide="alert-triangle" class="w-6 h-6 text-white"></i>
               </div>
-              <span class="text-sm text-gray-500" id="followupsLabel">Pending Follow-ups</span>
+              <span class="text-sm font-medium text-gray-700" id="followupsLabel">Pending Follow-ups</span>
             </div>
             <p id="pendingFollowups" class="text-3xl font-bold text-red-600">0</p>
+            <div class="mt-2 text-xs text-gray-500">Overdue tasks</div>
           </a>
 
           <!-- Conversion Rate -->
@@ -314,6 +385,28 @@
           </div>
         </div>
 
+        <!-- COURSE-WISE ADMISSIONS VIEW -->
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-purple-50 to-pink-50">
+            <h2 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <i data-lucide="graduation-cap" class="w-5 h-5 text-purple-600"></i>
+              <span>Course-wise Admissions</span>
+            </h2>
+            <div class="flex items-center gap-2">
+              <input type="text" id="courseSearch" placeholder="Search courses..." class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500">
+              <button onclick="refreshCourseAdmissions()" class="p-2 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors">
+                <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+          <div id="courseWiseAdmissions" class="divide-y divide-gray-100">
+            <div class="px-6 py-8 text-center text-gray-500">
+              <i data-lucide="loader-2" class="w-8 h-8 mx-auto mb-3 animate-spin text-purple-600"></i>
+              Loading admissions data...
+            </div>
+          </div>
+        </div>
+
         <!-- RECENT ENQUIRIES & UPCOMING FOLLOW-UPS -->
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           
@@ -385,8 +478,21 @@
     const userIsAdmin = user.role === 'admin';
     const userNameEl = document.getElementById('userName');
     const userRoleEl = document.getElementById('userRole');
+    const headerUserNameEl = document.getElementById('headerUserName');
+    const welcomeMessageEl = document.getElementById('welcomeMessage');
+    
     if (userNameEl) userNameEl.textContent = user.name || 'User';
     if (userRoleEl) userRoleEl.textContent = userIsAdmin ? 'Administrator' : 'Counselor';
+    if (headerUserNameEl) headerUserNameEl.textContent = user.name || 'User';
+    
+    // Set welcome message based on time of day
+    if (welcomeMessageEl) {
+      const hour = new Date().getHours();
+      let greeting = 'Good morning';
+      if (hour >= 12 && hour < 17) greeting = 'Good afternoon';
+      else if (hour >= 17) greeting = 'Good evening';
+      welcomeMessageEl.textContent = `${greeting}! Here's your dashboard overview`;
+    }
 
     // ==================== ROLE-BASED VISIBILITY ====================
     function applyRoleVisibility() {
@@ -449,6 +555,10 @@
 
     function getStatusColor(status) {
       const colors = {
+        'CONTACTED': 'bg-blue-100 text-blue-700',
+        'INTERESTED': 'bg-yellow-100 text-yellow-700',
+        'NOT_INTERESTED': 'bg-red-100 text-red-700',
+        'ADMITTED': 'bg-green-100 text-green-700',
         'New': 'bg-blue-100 text-blue-700',
         'NEW': 'bg-blue-100 text-blue-700',
         'Follow-up': 'bg-yellow-100 text-yellow-700',
@@ -467,6 +577,10 @@
 
     function formatStatus(status) {
       const statusMap = {
+        'CONTACTED': 'Contacted',
+        'INTERESTED': 'Interested',
+        'NOT_INTERESTED': 'Not Interested',
+        'ADMITTED': 'Admitted',
         'NEW': 'New',
         'FOLLOW_UP': 'Follow-up',
         'FOLLOW-UP': 'Follow-up',
@@ -493,75 +607,77 @@
         const data = res.data || res;
 
         if (data) {
-          // Stats cards
-          document.getElementById('totalLeads').textContent = data.totalEnquiries || data.enquiries?.totalAssigned || 0;
-          const admissionsData = data.admissions || {};
-          const totalAdmissions = admissionsData.totalAdmissions || data.totalConversions || data.conversions || 0;
+          // Stats cards - use actual backend field names
+          document.getElementById('totalLeads').textContent = data.totalEnquiries || 0;
+          const totalAdmissions = data.totalConversions || 0;
           document.getElementById('totalAdmissions').textContent = totalAdmissions;
-          const revenueData = data.revenue || data.fees || {};
-          const totalRevenue = revenueData.totalPaid || revenueData.yearlyRevenue || revenueData.totalRevenue || 0;
-          document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
-          // Calculate today's calls from enquiries API (same as enquiry page)
-          let todayCalls = data.today || data.todayCalls || 0;
           
-          // If no pre-calculated count, fetch from enquiries API
-          if (!todayCalls) {
-            try {
-              const today = new Date();
-              today.setHours(0, 0, 0, 0);
-              
-              // Fetch NEW enquiries
-              const newRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
-                page: 1, 
-                limit: 100, 
-                status: 'NEW' 
-              });
-              const newCount = newRes.enquiries?.length || newRes.pagination?.total || 0;
-              
-              // Fetch FOLLOW_UP enquiries  
-              const followUpRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
-                page: 1, 
-                limit: 100, 
-                status: 'FOLLOW_UP' 
-              });
-              const followUpList = followUpRes.enquiries || [];
-              
-              // Count FOLLOW_UP with followUpDate <= today
-              const followUpCount = followUpList.filter(e => {
-                if (e.followUpDate) {
-                  const followUpDate = new Date(e.followUpDate);
-                  followUpDate.setHours(0, 0, 0, 0);
-                  return followUpDate.getTime() <= today.getTime();
-                }
-                return false;
-              }).length;
-              
-              todayCalls = newCount + followUpCount;
-            } catch (err) {
-              console.error('Failed to calculate today calls:', err);
-            }
+          // New Leads count - fetch CONTACTED status enquiries
+          let newLeads = 0;
+          try {
+            const newRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
+              page: 1, 
+              limit: 100, 
+              status: 'CONTACTED' 
+            });
+            newLeads = newRes.pagination?.totalCount || 0;
+          } catch (err) {
+            console.error('Failed to fetch new leads:', err);
           }
+          document.getElementById('newLeads').textContent = newLeads;
+
+          // Today Follow-ups count - fetch INTERESTED status enquiries with today's followUpDate
+          let todayFollowups = 0;
+          try {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            
+            const followUpRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
+              page: 1, 
+              limit: 100 
+            });
+            const followUpList = followUpRes.data || [];
+            
+            todayFollowups = followUpList.filter(e => {
+              if (e.followUpDate) {
+                const followUpDate = new Date(e.followUpDate);
+                followUpDate.setHours(0, 0, 0, 0);
+                return followUpDate.getTime() === today.getTime();
+              }
+              return false;
+            }).length;
+          } catch (err) {
+            console.error('Failed to fetch today follow-ups:', err);
+          }
+          document.getElementById('todayFollowups').textContent = todayFollowups;
           
-          document.getElementById('todayCalls').textContent = todayCalls;
-          document.getElementById('pendingFollowups').textContent = data.pendingFollowups || data.followUps?.overdue || 0;
-          const totalLeads = data.totalEnquiries || data.enquiries?.totalAssigned || 0;
+          document.getElementById('pendingFollowups').textContent = data.pendingFollowups || 0;
+          const totalLeads = data.totalEnquiries || 0;
           const convRate = totalLeads > 0 ? ((totalAdmissions / totalLeads) * 100).toFixed(1) : 0;
           document.getElementById('conversionRate').textContent = convRate + '%';
-          document.getElementById('activeStudents').textContent = data.activeStudents || admissionsData.activeStudents || totalAdmissions || 0;
-          const pendingPayments = revenueData.pendingPayments || revenueData.pendingAmount || 0;
-          document.getElementById('pendingPayments').textContent = formatCurrency(pendingPayments);
+          document.getElementById('activeStudents').textContent = totalAdmissions;
 
-          // Conversion Funnel - use funnel object from backend
-          updateFunnel(data);
+          // Lists - use actual backend data structure
+          loadRecentEnquiries(data.enquiries || []);
+          loadUpcomingFollowups(data.upcomingFollowups || []);
 
-          // Lists
-          loadRecentEnquiries(data.recentEnquiries || data.enquiries || []);
-          loadUpcomingFollowups(data.upcomingFollowups || data.followups || []);
+          // Fetch full enquiries for recent list with mobile numbers
+          try {
+            const fullEnquiriesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
+              page: 1, 
+              limit: 5 
+            });
+            const fullEnquiries = fullEnquiriesRes.data || [];
+            loadRecentEnquiries(fullEnquiries);
+          } catch (err) {
+            console.error('Failed to fetch full enquiries:', err);
+          }
 
           // Admin-only: Charts & Course-wise
           if (userIsAdmin) {
-            renderRevenueChart(data.revenue?.monthly || data.monthlyRevenue || {});
-            renderSourceChart(data.sourceBreakdown || data.sources || {});
+            // For admin, we'd need admin dashboard endpoint
+            renderRevenueChart({});
+            renderSourceChart({});
             loadCourseWiseFromData(data.courseBreakdown || []);
           } else {
             loadCounselorCourseWiseFromData(data.courseBreakdown || []);
@@ -573,7 +689,8 @@
         document.getElementById('totalLeads').textContent = '42';
         document.getElementById('totalAdmissions').textContent = '9';
         document.getElementById('totalRevenue').textContent = '₹13,448';
-        document.getElementById('todayCalls').textContent = '8';
+        document.getElementById('newLeads').textContent = '8';
+        document.getElementById('todayFollowups').textContent = '5';
         document.getElementById('pendingFollowups').textContent = '12';
         document.getElementById('conversionRate').textContent = '21.4%';
         document.getElementById('activeStudents').textContent = '9';
@@ -581,9 +698,9 @@
 
         updateFunnel({ funnel: { enquiries: 42, followUps: 12, hotLeads: 6, admissions: 9 } });
         loadRecentEnquiries([
-          { name: 'Rahul Sharma', course: 'B.Tech', status: 'New', date: 'Today' },
-          { name: 'Priya Singh', course: 'MBA', status: 'Follow-up', date: 'Yesterday' },
-          { name: 'Amit Kumar', course: 'BCA', status: 'Hot Lead', date: '2 days ago' }
+          { name: 'Rahul Sharma', course: 'B.Tech', status: 'CONTACTED', date: 'Today' },
+          { name: 'Priya Singh', course: 'MBA', status: 'INTERESTED', date: 'Yesterday' },
+          { name: 'Amit Kumar', course: 'BCA', status: 'ADMITTED', date: '2 days ago' }
         ]);
         loadUpcomingFollowups([
           { name: 'Rahul Sharma', time: '10:00 AM', phone: '9876543210', date: '25 Apr' },
@@ -799,21 +916,21 @@
       }
 
       container.innerHTML = enquiries.slice(0, 5).map(enq => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+        <a href="enquiry-detail.html?id=${enq._id || enq.id}" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all hover:shadow-md group">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-              <span class="text-sm font-medium text-blue-600">${enq.name ? enq.name.charAt(0).toUpperCase() : 'U'}</span>
+            <div class="w-10 h-10 gradient-primary rounded-full flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform">
+              <span class="text-sm font-medium text-white">${enq.name ? enq.name.charAt(0).toUpperCase() : 'U'}</span>
             </div>
             <div>
-              <p class="font-medium text-gray-800 text-sm">${enq.name || 'Unknown'}</p>
+              <p class="font-medium text-gray-800 text-sm group-hover:text-purple-600 transition-colors">${enq.name || 'Unknown'}</p>
               <p class="text-xs text-gray-500">${enq.course || enq.subject || 'N/A'}</p>
             </div>
           </div>
           <div class="text-right">
             <span class="text-xs px-2 py-1 rounded-full ${getStatusColor(enq.status)}">${formatStatus(enq.status)}</span>
-            <p class="text-xs text-gray-400 mt-1">${enq.date || enq.createdAt || 'Today'}</p>
+            <p class="text-xs text-gray-400 mt-1">${enq.mobile || enq.phone || 'N/A'}</p>
           </div>
-        </div>
+        </a>
       `).join('');
     }
 
@@ -839,8 +956,8 @@
               <i data-lucide="phone" class="w-4 h-4 text-orange-600"></i>
             </div>
             <div>
-              <p class="font-medium text-gray-800 text-sm">${followup.name || followup.studentName || 'Unknown'}</p>
-              <p class="text-xs text-gray-500">${followup.phone || followup.contact || 'N/A'}</p>
+              <p class="font-medium text-gray-800 text-sm">${followup.name || 'Unknown'}</p>
+              <p class="text-xs text-gray-500">${followup.phone || 'N/A'}</p>
             </div>
           </div>
           <div class="text-right">
@@ -852,8 +969,141 @@
       lucide.createIcons();
     }
 
+    // ==================== COURSE-WISE ADMISSIONS ====================
+    async function loadCourseWiseAdmissions() {
+      const container = document.getElementById('courseWiseAdmissions');
+      if (!container) return;
+
+      try {
+        const admissions = await listAdmissions({ limit: 100 });
+        const admissionsList = admissions.data || admissions || [];
+        
+        if (!admissionsList.length) {
+          container.innerHTML = '<div class="px-6 py-8 text-center text-gray-500">No admissions found</div>';
+          return;
+        }
+
+        // Group admissions by course
+        const courseGroups = {};
+        admissionsList.forEach(admission => {
+          const course = admission.course || 'Unknown Course';
+          if (!courseGroups[course]) {
+            courseGroups[course] = [];
+          }
+          courseGroups[course].push(admission);
+        });
+
+        // Render course-wise admissions
+        container.innerHTML = Object.entries(courseGroups).map(([course, courseAdmissions]) => {
+          // Create a safe ID by removing all special characters and spaces
+          const safeCourseName = course.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase();
+          const totalStudents = courseAdmissions.length;
+          const activeStudents = courseAdmissions.filter(a => a.status === 'active').length;
+          const totalFees = courseAdmissions.reduce((sum, a) => sum + (a.totalFees || 0), 0);
+          const paidFees = courseAdmissions.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
+          
+          return `
+            <div class="course-section border-b border-gray-100 last:border-b-0">
+              <div class="px-6 py-4 bg-gradient-to-r from-purple-50 to-pink-50 cursor-pointer hover:from-purple-100 hover:to-pink-100 transition-colors" onclick="toggleCourseSection('${course}')">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 gradient-primary rounded-lg flex items-center justify-center">
+                      <i data-lucide="book-open" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                      <h3 class="font-semibold text-gray-800">${course}</h3>
+                      <p class="text-sm text-gray-600">${totalStudents} students • ${activeStudents} active</p>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-4">
+                    <div class="text-right">
+                      <p class="text-sm font-medium text-gray-800">₹${paidFees.toLocaleString('en-IN')} / ₹${totalFees.toLocaleString('en-IN')}</p>
+                      <p class="text-xs text-gray-500">Fees collected</p>
+                    </div>
+                    <i data-lucide="chevron-down" class="w-5 h-5 text-gray-400 transition-transform course-chevron-${safeCourseName}"></i>
+                  </div>
+                </div>
+              </div>
+              <div id="course-${safeCourseName}" class="hidden">
+                <div class="px-6 py-4 space-y-3">
+                  ${courseAdmissions.map(admission => `
+                    <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+                      <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 gradient-info rounded-full flex items-center justify-center">
+                          <span class="text-xs font-medium text-white">${(admission.name || 'Unknown').charAt(0).toUpperCase()}</span>
+                        </div>
+                        <div>
+                          <p class="font-medium text-gray-800 text-sm">${admission.name || 'Unknown'}</p>
+                          <p class="text-xs text-gray-500">Admitted: ${admission.admissionDate ? new Date(admission.admissionDate).toLocaleDateString('en-IN') : 'N/A'}</p>
+                        </div>
+                      </div>
+                      <div class="flex items-center gap-2">
+                        <span class="text-xs px-2 py-1 rounded-full ${admission.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">
+                          ${admission.status || 'active'}
+                        </span>
+                        <a href="admission-detail.html?id=${admission._id}" class="text-purple-600 hover:text-purple-700">
+                          <i data-lucide="eye" class="w-4 h-4"></i>
+                        </a>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        // Re-initialize Lucide icons
+        lucide.createIcons();
+        
+      } catch (error) {
+        console.error('Failed to load course-wise admissions:', error);
+        container.innerHTML = '<div class="px-6 py-8 text-center text-red-500">Failed to load admissions data</div>';
+      }
+    }
+
+    // Toggle course section visibility
+    function toggleCourseSection(course) {
+      // Create a safe ID by removing all special characters and spaces
+      const safeCourseName = course.replace(/[^a-zA-Z0-9\s]/g, '').replace(/\s+/g, '-').toLowerCase();
+      const sectionId = `course-${safeCourseName}`;
+      const section = document.getElementById(sectionId);
+      const chevron = document.querySelector(`.course-chevron-${safeCourseName}`);
+      
+      if (section && chevron) {
+        section.classList.toggle('hidden');
+        chevron.classList.toggle('rotate-180');
+      }
+    }
+
+    // Refresh course admissions
+    function refreshCourseAdmissions() {
+      loadCourseWiseAdmissions();
+    }
+
+    // Search courses
+    document.addEventListener('DOMContentLoaded', () => {
+      const searchInput = document.getElementById('courseSearch');
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          const searchTerm = e.target.value.toLowerCase();
+          const courseSections = document.querySelectorAll('.course-section');
+          
+          courseSections.forEach(section => {
+            const courseName = section.querySelector('h3')?.textContent.toLowerCase() || '';
+            if (courseName.includes(searchTerm)) {
+              section.style.display = 'block';
+            } else {
+              section.style.display = 'none';
+            }
+          });
+        });
+      }
+    });
+
     // ==================== INIT ====================
     loadDashboardStats();
+    loadCourseWiseAdmissions();
   </script>
 
   <script src="js/sidebar.js"></script>
