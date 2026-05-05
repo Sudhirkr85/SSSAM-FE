@@ -8,6 +8,10 @@ const BASE_URL = 'http://localhost:5000/api'
 API ENDPOINTS (Updated to match new documentation)
 ====================== */
 const API_ENDPOINTS = {
+    DASHBOARD: {
+        COUNSELOR: '/dashboard/counselor',
+        ADMIN: '/dashboard/admin'
+    },
     ENQUIRIES: {
         CREATE: '/enquiries',
         LIST: '/enquiries',

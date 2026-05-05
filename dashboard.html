@@ -661,13 +661,24 @@
     // ==================== LOAD DASHBOARD ====================
     async function loadDashboardStats() {
       try {
-        const endpoint = getDashboardEndpoint();
+        const endpoint = userIsAdmin ? API_ENDPOINTS.DASHBOARD.ADMIN : API_ENDPOINTS.DASHBOARD.COUNSELOR;
         const res = await apiGet(endpoint);
         const data = res.data || res;
 
         if (data) {
-          // Stats cards - use actual backend field names
-          document.getElementById('totalLeads').textContent = data.totalEnquiries || 0;
+          // Stats cards - fetch total leads from enquiries API for accuracy
+          let totalLeads = 0;
+          try {
+            const allEnquiriesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.ALL, { 
+              page: 1, 
+              limit: 100 
+            });
+            totalLeads = allEnquiriesRes.pagination?.totalCount || allEnquiriesRes.data?.length || 0;
+          } catch (err) {
+            console.error('Failed to fetch total leads:', err);
+            totalLeads = data.totalEnquiries || 0;
+          }
+          document.getElementById('totalLeads').textContent = totalLeads;
           
           // Admissions count - fetch from admissions API
           let totalAdmissions = data.totalConversions || 0;
@@ -678,6 +689,33 @@
             console.error('Failed to fetch admissions:', err);
           }
           document.getElementById('totalAdmissions').textContent = totalAdmissions;
+          
+          // Admin-specific: Revenue data
+          if (userIsAdmin) {
+            let totalRevenue = 0;
+            try {
+              const admissionsRes = await listAdmissions({ limit: 100 });
+              const admissionsList = admissionsRes.data || [];
+              totalRevenue = admissionsList.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
+            } catch (err) {
+              console.error('Failed to fetch revenue:', err);
+            }
+            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+            
+            // Active students
+            document.getElementById('activeStudents').textContent = totalAdmissions;
+            
+            // Pending payments
+            let pendingPayments = 0;
+            try {
+              const admissionsRes = await listAdmissions({ limit: 100 });
+              const admissionsList = admissionsRes.data || [];
+              pendingPayments = admissionsList.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
+            } catch (err) {
+              console.error('Failed to fetch pending payments:', err);
+            }
+            document.getElementById('pendingPayments').textContent = formatCurrency(pendingPayments);
+          }
           
           // New Leads count - fetch from NEW filter endpoint
           let newLeads = 0;
@@ -717,10 +755,8 @@
             console.error('Failed to fetch pending follow-ups:', err);
           }
           document.getElementById('pendingFollowups').textContent = pendingFollowups;
-          const totalLeads = data.totalEnquiries || 0;
           const convRate = totalLeads > 0 ? ((totalAdmissions / totalLeads) * 100).toFixed(1) : 0;
           document.getElementById('conversionRate').textContent = convRate + '%';
-          document.getElementById('activeStudents').textContent = totalAdmissions;
 
           // Lists - use actual backend data structure
           loadRecentEnquiries(data.enquiries || []);
@@ -754,7 +790,7 @@
             fullEnquiries.forEach(enq => {
               const course = enq.course || 'Unknown Course';
               if (!courseGroups[course]) {
-                courseGroups[course] = { enquiries: 0, converted: 0 };
+                courseGroups[course] = { enquiries: 0, converted: 0, revenue: 0 };
               }
               courseGroups[course].enquiries++;
               if (enq.status === 'ADMITTED') {
@@ -767,6 +803,8 @@
               course,
               enquiries: data.enquiries,
               converted: data.converted,
+              admissions: data.converted,
+              revenue: data.revenue,
               conversionRate: data.enquiries > 0 ? ((data.converted / data.enquiries) * 100).toFixed(1) : 0
             }));
             
@@ -777,6 +815,14 @@
             }
           } catch (err) {
             console.error('Failed to fetch course breakdown:', err);
+          }
+          
+          // Admin-specific: Load charts
+          if (userIsAdmin) {
+            // Revenue chart - use mock data for now
+            renderRevenueChart({ 'Nov': '₹80,000', 'Dec': '₹90,000', 'Jan': '₹85,000', 'Feb': '₹95,000' });
+            // Source chart - use mock data for now
+            renderSourceChart({ 'Website': 30, 'Walk-in': 25, 'Referral': 20, 'Social Media': 15 });
           }
         }
       } catch (err) {
@@ -820,30 +866,48 @@
 
     // ==================== CONVERSION FUNNEL ====================
     async function updateFunnel(data) {
-      // Use actual data from dashboard API and admissions API
-      const totalLeads = data.totalEnquiries || 0;
+      // Get accurate total leads from enquiries API
+      let totalLeads = 0;
+      try {
+        const allEnquiriesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.ALL, { 
+          page: 1, 
+          limit: 100 
+        });
+        totalLeads = allEnquiriesRes.pagination?.totalCount || allEnquiriesRes.data?.length || 0;
+      } catch (err) {
+        console.error('Failed to fetch total leads for funnel:', err);
+        totalLeads = data.totalEnquiries || 0;
+      }
       
       // Get actual admissions count from admissions API
-      let totalAdmissions = data.totalConversions || 0;
+      let totalAdmissions = 0;
       try {
         const admissionsRes = await listAdmissions({ limit: 100 });
         totalAdmissions = admissionsRes.pagination?.totalCount || admissionsRes.data?.length || 0;
       } catch (err) {
         console.error('Failed to fetch admissions for funnel:', err);
+        totalAdmissions = data.totalConversions || 0;
       }
       
-      // Count statuses from enquiries data
+      // Get follow-ups count from PENDING_FOLLOWUPS endpoint
       let followupsCount = 0;
-      let hotLeadsCount = 0;
-      
-      if (data.enquiries && Array.isArray(data.enquiries)) {
-        followupsCount = data.enquiries.filter(e => e.status === 'INTERESTED' || e.status === 'CONTACTED').length;
-        hotLeadsCount = data.enquiries.filter(e => e.status === 'INTERESTED' && e.followUpDate).length;
+      try {
+        const pendingRes = await apiGet(API_ENDPOINTS.ENQUIRIES.PENDING_FOLLOWUPS, { 
+          page: 1, 
+          limit: 100 
+        });
+        followupsCount = pendingRes.pagination?.totalCount || pendingRes.data?.length || 0;
+      } catch (err) {
+        console.error('Failed to fetch follow-ups for funnel:', err);
+        followupsCount = data.pendingFollowups || 0;
       }
+      
+      // Calculate hot leads as 50% of follow-ups
+      const hotLeadsCount = Math.round(followupsCount * 0.5);
       
       document.getElementById('funnelEnquiries').textContent = totalLeads;
-      document.getElementById('funnelFollowups').textContent = followupsCount || data.pendingFollowups || 0;
-      document.getElementById('funnelHotLeads').textContent = hotLeadsCount || Math.round((followupsCount || data.pendingFollowups || 0) * 0.5);
+      document.getElementById('funnelFollowups').textContent = followupsCount;
+      document.getElementById('funnelHotLeads').textContent = hotLeadsCount;
       document.getElementById('funnelConverted').textContent = totalAdmissions;
     }
 
