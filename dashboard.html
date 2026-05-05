@@ -661,193 +661,190 @@
     // ==================== LOAD DASHBOARD ====================
     async function loadDashboardStats() {
       try {
-        const endpoint = userIsAdmin ? API_ENDPOINTS.DASHBOARD.ADMIN : API_ENDPOINTS.DASHBOARD.COUNSELOR;
-        const res = await apiGet(endpoint);
-        const data = res.data || res;
+        // Fetch ALL data from consistent APIs for both admin and counselor
+        
+        // 1. Total Leads - from ALL enquiries
+        let totalLeads = 0;
+        try {
+          const allRes = await apiGet(API_ENDPOINTS.ENQUIRIES.ALL, { page: 1, limit: 1 });
+          totalLeads = allRes.pagination?.totalCount || 0;
+        } catch (err) {
+          console.error('Failed to fetch total leads:', err);
+        }
+        document.getElementById('totalLeads').textContent = totalLeads;
 
-        if (data) {
-          // Stats cards - fetch total leads from enquiries API for accuracy
-          let totalLeads = 0;
-          try {
-            const allEnquiriesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.ALL, { 
-              page: 1, 
-              limit: 100 
-            });
-            totalLeads = allEnquiriesRes.pagination?.totalCount || allEnquiriesRes.data?.length || 0;
-          } catch (err) {
-            console.error('Failed to fetch total leads:', err);
-            totalLeads = data.totalEnquiries || 0;
-          }
-          document.getElementById('totalLeads').textContent = totalLeads;
-          
-          // Admissions count - fetch from admissions API
-          let totalAdmissions = data.totalConversions || 0;
+        // 2. Admissions - from admissions API
+        let totalAdmissions = 0;
+        try {
+          const admissionsRes = await listAdmissions({ limit: 1 });
+          totalAdmissions = admissionsRes.pagination?.totalCount || 0;
+        } catch (err) {
+          console.error('Failed to fetch admissions:', err);
+        }
+        document.getElementById('totalAdmissions').textContent = totalAdmissions;
+
+        // 3. New Leads - from NEW filter
+        let newLeads = 0;
+        try {
+          const newRes = await apiGet(API_ENDPOINTS.ENQUIRIES.NEW, { page: 1, limit: 1 });
+          newLeads = newRes.pagination?.totalCount || 0;
+        } catch (err) {
+          console.error('Failed to fetch new leads:', err);
+        }
+        document.getElementById('newLeads').textContent = newLeads;
+
+        // 4. Today Follow-ups - from TODAY_FOLLOWUPS filter
+        let todayFollowups = 0;
+        try {
+          const todayRes = await apiGet(API_ENDPOINTS.ENQUIRIES.TODAY_FOLLOWUPS, { page: 1, limit: 1 });
+          todayFollowups = todayRes.pagination?.totalCount || 0;
+        } catch (err) {
+          console.error('Failed to fetch today follow-ups:', err);
+        }
+        document.getElementById('todayFollowups').textContent = todayFollowups;
+
+        // 5. Pending Follow-ups - from PENDING_FOLLOWUPS filter
+        let pendingFollowups = 0;
+        try {
+          const pendingRes = await apiGet(API_ENDPOINTS.ENQUIRIES.PENDING_FOLLOWUPS, { page: 1, limit: 1 });
+          pendingFollowups = pendingRes.pagination?.totalCount || 0;
+        } catch (err) {
+          console.error('Failed to fetch pending follow-ups:', err);
+        }
+        document.getElementById('pendingFollowups').textContent = pendingFollowups;
+
+        // 6. Conversion Rate - calculated from leads and admissions
+        const convRate = totalLeads > 0 ? ((totalAdmissions / totalLeads) * 100).toFixed(1) : 0;
+        document.getElementById('conversionRate').textContent = convRate + '%';
+
+        // Admin-specific stats
+        if (userIsAdmin) {
+          // Revenue from admissions
+          let totalRevenue = 0;
+          let pendingPayments = 0;
           try {
             const admissionsRes = await listAdmissions({ limit: 100 });
-            totalAdmissions = admissionsRes.pagination?.totalCount || admissionsRes.data?.length || 0;
+            const admissionsList = admissionsRes.data || [];
+            totalRevenue = admissionsList.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
+            pendingPayments = admissionsList.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
           } catch (err) {
-            console.error('Failed to fetch admissions:', err);
+            console.error('Failed to fetch revenue data:', err);
           }
-          document.getElementById('totalAdmissions').textContent = totalAdmissions;
+          document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
+          document.getElementById('activeStudents').textContent = totalAdmissions;
+          document.getElementById('pendingPayments').textContent = formatCurrency(pendingPayments);
+        }
+
+        // Conversion Funnel - use consistent data
+        updateFunnel({
+          totalEnquiries: totalLeads,
+          totalConversions: totalAdmissions,
+          pendingFollowups: pendingFollowups
+        });
+
+        // Recent Enquiries - fetch full data for display
+        try {
+          const fullEnquiriesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 5 });
+          loadRecentEnquiries(fullEnquiriesRes.data || []);
+        } catch (err) {
+          console.error('Failed to fetch recent enquiries:', err);
+        }
+
+        // Upcoming Follow-ups
+        try {
+          const followupsRes = await apiGet(API_ENDPOINTS.ENQUIRIES.TODAY_FOLLOWUPS, { page: 1, limit: 5 });
+          loadUpcomingFollowups(followupsRes.data || []);
+        } catch (err) {
+          console.error('Failed to fetch follow-ups:', err);
+        }
+
+        // Course-wise breakdown - from full enquiries AND admissions for revenue
+        try {
+          const [fullEnquiriesRes, admissionsRes] = await Promise.all([
+            apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 }),
+            listAdmissions({ limit: 100 })
+          ]);
           
-          // Admin-specific: Revenue data
+          const fullEnquiries = fullEnquiriesRes.data || [];
+          const admissionsList = admissionsRes.data || [];
+          
+          const courseGroups = {};
+          
+          // Process enquiries
+          fullEnquiries.forEach(enq => {
+            const course = enq.course || 'Unknown Course';
+            if (!courseGroups[course]) {
+              courseGroups[course] = { enquiries: 0, converted: 0, revenue: 0 };
+            }
+            courseGroups[course].enquiries++;
+            if (enq.status === 'ADMITTED') {
+              courseGroups[course].converted++;
+            }
+          });
+          
+          // Process admissions for revenue
+          admissionsList.forEach(adm => {
+            const course = adm.course || adm.enquiry?.course || 'Unknown Course';
+            if (courseGroups[course]) {
+              courseGroups[course].revenue += (adm.totalPaid || 0);
+            }
+          });
+          
+          const courseBreakdown = Object.entries(courseGroups).map(([course, data]) => ({
+            course,
+            enquiries: data.enquiries,
+            converted: data.converted,
+            admissions: data.converted,
+            revenue: data.revenue,
+            conversionRate: data.enquiries > 0 ? ((data.converted / data.enquiries) * 100).toFixed(1) : 0
+          }));
+          
           if (userIsAdmin) {
-            let totalRevenue = 0;
-            try {
-              const admissionsRes = await listAdmissions({ limit: 100 });
-              const admissionsList = admissionsRes.data || [];
-              totalRevenue = admissionsList.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
-            } catch (err) {
-              console.error('Failed to fetch revenue:', err);
-            }
-            document.getElementById('totalRevenue').textContent = formatCurrency(totalRevenue);
-            
-            // Active students
-            document.getElementById('activeStudents').textContent = totalAdmissions;
-            
-            // Pending payments
-            let pendingPayments = 0;
-            try {
-              const admissionsRes = await listAdmissions({ limit: 100 });
-              const admissionsList = admissionsRes.data || [];
-              pendingPayments = admissionsList.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
-            } catch (err) {
-              console.error('Failed to fetch pending payments:', err);
-            }
-            document.getElementById('pendingPayments').textContent = formatCurrency(pendingPayments);
+            loadCourseWiseFromData(courseBreakdown);
+          } else {
+            loadCounselorCourseWiseFromData(courseBreakdown);
           }
-          
-          // New Leads count - fetch from NEW filter endpoint
-          let newLeads = 0;
-          try {
-            const newRes = await apiGet(API_ENDPOINTS.ENQUIRIES.NEW, { 
-              page: 1, 
-              limit: 100 
-            });
-            newLeads = newRes.pagination?.totalCount || 0;
-          } catch (err) {
-            console.error('Failed to fetch new leads:', err);
-          }
-          document.getElementById('newLeads').textContent = newLeads;
+        } catch (err) {
+          console.error('Failed to fetch course breakdown:', err);
+        }
 
-          // Today Follow-ups count - fetch from TODAY_FOLLOWUPS endpoint
-          let todayFollowups = 0;
+        // Admin-specific: Charts
+        if (userIsAdmin) {
           try {
-            const todayFollowRes = await apiGet(API_ENDPOINTS.ENQUIRIES.TODAY_FOLLOWUPS, { 
-              page: 1, 
-              limit: 100 
-            });
-            todayFollowups = todayFollowRes.pagination?.totalCount || 0;
-          } catch (err) {
-            console.error('Failed to fetch today follow-ups:', err);
-          }
-          document.getElementById('todayFollowups').textContent = todayFollowups;
-          
-          // Pending Follow-ups - fetch from PENDING_FOLLOWUPS endpoint
-          let pendingFollowups = 0;
-          try {
-            const pendingRes = await apiGet(API_ENDPOINTS.ENQUIRIES.PENDING_FOLLOWUPS, { 
-              page: 1, 
-              limit: 100 
-            });
-            pendingFollowups = pendingRes.pagination?.totalCount || 0;
-          } catch (err) {
-            console.error('Failed to fetch pending follow-ups:', err);
-          }
-          document.getElementById('pendingFollowups').textContent = pendingFollowups;
-          const convRate = totalLeads > 0 ? ((totalAdmissions / totalLeads) * 100).toFixed(1) : 0;
-          document.getElementById('conversionRate').textContent = convRate + '%';
-
-          // Lists - use actual backend data structure
-          loadRecentEnquiries(data.enquiries || []);
-          loadUpcomingFollowups(data.upcomingFollowups || []);
-
-          // Conversion Funnel - use actual data from API
-          updateFunnel(data);
-
-          // Fetch full enquiries for recent list with mobile numbers
-          try {
-            const fullEnquiriesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
-              page: 1, 
-              limit: 5 
-            });
-            const fullEnquiries = fullEnquiriesRes.data || [];
-            loadRecentEnquiries(fullEnquiries);
-          } catch (err) {
-            console.error('Failed to fetch full enquiries:', err);
-          }
-
-          // Fetch full enquiries for course-wise breakdown with actual course names
-          try {
-            const fullEnquiriesForCoursesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { 
-              page: 1, 
-              limit: 100 
-            });
-            const fullEnquiries = fullEnquiriesForCoursesRes.data || [];
+            const endpoint = API_ENDPOINTS.DASHBOARD.ADMIN;
+            const res = await apiGet(endpoint);
+            const data = res.data || res;
             
-            // Group by course for course-wise table
-            const courseGroups = {};
-            fullEnquiries.forEach(enq => {
-              const course = enq.course || 'Unknown Course';
-              if (!courseGroups[course]) {
-                courseGroups[course] = { enquiries: 0, converted: 0, revenue: 0 };
-              }
-              courseGroups[course].enquiries++;
-              if (enq.status === 'ADMITTED') {
-                courseGroups[course].converted++;
-              }
-            });
-            
-            // Convert to courseBreakdown format
-            const courseBreakdown = Object.entries(courseGroups).map(([course, data]) => ({
-              course,
-              enquiries: data.enquiries,
-              converted: data.converted,
-              admissions: data.converted,
-              revenue: data.revenue,
-              conversionRate: data.enquiries > 0 ? ((data.converted / data.enquiries) * 100).toFixed(1) : 0
-            }));
-            
-            if (userIsAdmin) {
-              loadCourseWiseFromData(courseBreakdown);
-            } else {
-              loadCounselorCourseWiseFromData(courseBreakdown);
+            if (data) {
+              if (data.monthlyRevenue) renderRevenueChart(data.monthlyRevenue);
+              if (data.sourceBreakdown) renderSourceChart(data.sourceBreakdown);
             }
           } catch (err) {
-            console.error('Failed to fetch course breakdown:', err);
-          }
-          
-          // Admin-specific: Load charts
-          if (userIsAdmin) {
-            // Revenue chart - use mock data for now
-            renderRevenueChart({ 'Nov': '₹80,000', 'Dec': '₹90,000', 'Jan': '₹85,000', 'Feb': '₹95,000' });
-            // Source chart - use mock data for now
-            renderSourceChart({ 'Website': 30, 'Walk-in': 25, 'Referral': 20, 'Social Media': 15 });
+            console.error('Failed to fetch admin charts:', err);
           }
         }
+
       } catch (err) {
         console.error('Failed to load dashboard stats:', err);
         // Mock data fallback
-        document.getElementById('totalLeads').textContent = '42';
-        document.getElementById('totalAdmissions').textContent = '9';
-        document.getElementById('totalRevenue').textContent = '₹13,448';
-        document.getElementById('newLeads').textContent = '8';
-        document.getElementById('todayFollowups').textContent = '5';
-        document.getElementById('pendingFollowups').textContent = '12';
-        document.getElementById('conversionRate').textContent = '21.4%';
-        document.getElementById('activeStudents').textContent = '9';
-        document.getElementById('pendingPayments').textContent = '₹5,000';
+        document.getElementById('totalLeads').textContent = '10';
+        document.getElementById('totalAdmissions').textContent = '3';
+        document.getElementById('totalRevenue').textContent = '₹67';
+        document.getElementById('newLeads').textContent = '3';
+        document.getElementById('todayFollowups').textContent = '1';
+        document.getElementById('pendingFollowups').textContent = '0';
+        document.getElementById('conversionRate').textContent = '30.0%';
+        document.getElementById('activeStudents').textContent = '3';
+        document.getElementById('pendingPayments').textContent = '₹2,348';
 
-        updateFunnel({ funnel: { enquiries: 42, followUps: 12, hotLeads: 6, admissions: 9 } });
+        updateFunnel({ totalEnquiries: 10, totalConversions: 3, pendingFollowups: 0 });
         loadRecentEnquiries([
-          { name: 'Rahul Sharma', course: 'B.Tech', status: 'CONTACTED', date: 'Today' },
-          { name: 'Priya Singh', course: 'MBA', status: 'INTERESTED', date: 'Yesterday' },
-          { name: 'Amit Kumar', course: 'BCA', status: 'ADMITTED', date: '2 days ago' }
+          { name: 'Rahul Sharma', course: 'B.Tech', status: 'CONTACTED', mobile: '9876543210' },
+          { name: 'Priya Singh', course: 'MBA', status: 'INTERESTED', mobile: '9876543211' },
+          { name: 'Amit Kumar', course: 'BCA', status: 'ADMITTED', mobile: '9876543212' }
         ]);
         loadUpcomingFollowups([
-          { name: 'Rahul Sharma', time: '10:00 AM', phone: '9876543210', date: '25 Apr' },
-          { name: 'Sneha Gupta', time: '2:30 PM', phone: '9876543211', date: '25 Apr' },
-          { name: 'Vikram Patel', time: '4:00 PM', phone: '9876543212', date: '26 Apr' }
+          { name: 'Rahul Sharma', time: '10:00 AM', phone: '9876543210', date: '25 Apr' }
         ]);
 
         if (userIsAdmin) {
@@ -865,45 +862,13 @@
     }
 
     // ==================== CONVERSION FUNNEL ====================
-    async function updateFunnel(data) {
-      // Get accurate total leads from enquiries API
-      let totalLeads = 0;
-      try {
-        const allEnquiriesRes = await apiGet(API_ENDPOINTS.ENQUIRIES.ALL, { 
-          page: 1, 
-          limit: 100 
-        });
-        totalLeads = allEnquiriesRes.pagination?.totalCount || allEnquiriesRes.data?.length || 0;
-      } catch (err) {
-        console.error('Failed to fetch total leads for funnel:', err);
-        totalLeads = data.totalEnquiries || 0;
-      }
-      
-      // Get actual admissions count from admissions API
-      let totalAdmissions = 0;
-      try {
-        const admissionsRes = await listAdmissions({ limit: 100 });
-        totalAdmissions = admissionsRes.pagination?.totalCount || admissionsRes.data?.length || 0;
-      } catch (err) {
-        console.error('Failed to fetch admissions for funnel:', err);
-        totalAdmissions = data.totalConversions || 0;
-      }
-      
-      // Get follow-ups count from PENDING_FOLLOWUPS endpoint
-      let followupsCount = 0;
-      try {
-        const pendingRes = await apiGet(API_ENDPOINTS.ENQUIRIES.PENDING_FOLLOWUPS, { 
-          page: 1, 
-          limit: 100 
-        });
-        followupsCount = pendingRes.pagination?.totalCount || pendingRes.data?.length || 0;
-      } catch (err) {
-        console.error('Failed to fetch follow-ups for funnel:', err);
-        followupsCount = data.pendingFollowups || 0;
-      }
-      
-      // Calculate hot leads as 50% of follow-ups
-      const hotLeadsCount = Math.round(followupsCount * 0.5);
+    function updateFunnel(data) {
+      // Use admin API funnel data directly if available
+      const funnel = data.funnel || {};
+      const totalLeads = funnel.enquiries || data.totalEnquiries || 0;
+      const followupsCount = funnel.followUps || data.pendingFollowups || 0;
+      const hotLeadsCount = funnel.hotLeads || Math.round(followupsCount * 0.5);
+      const totalAdmissions = funnel.admissions || data.totalConversions || 0;
       
       document.getElementById('funnelEnquiries').textContent = totalLeads;
       document.getElementById('funnelFollowups').textContent = followupsCount;
@@ -958,7 +923,11 @@
             y: {
               beginAtZero: true,
               ticks: {
-                callback: function(val) { return '₹' + (val / 1000).toFixed(0) + 'K'; }
+                callback: function(val) {
+                  if (val >= 100000) return '₹' + (val / 100000).toFixed(1) + 'L';
+                  if (val >= 1000) return '₹' + (val / 1000).toFixed(0) + 'K';
+                  return '₹' + val;
+                }
               }
             }
           }
@@ -980,9 +949,10 @@
       }
 
       const sourceColors = ['#3b82f6', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#06b6d4', '#6b7280'];
-      const labels = Object.keys(sources);
+      const rawLabels = Object.keys(sources);
+      const labels = rawLabels.map(label => label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()));
       const values = Object.values(sources);
-      const colors = labels.map((_, i) => sourceColors[i % sourceColors.length]);
+      const colors = rawLabels.map((_, i) => sourceColors[i % sourceColors.length]);
 
       sourceChartInstance = new Chart(canvas, {
         type: 'doughnut',
@@ -1011,7 +981,8 @@
             tooltip: {
               callbacks: {
                 label: function(ctx) {
-                  return ctx.label + ': ' + (ctx.raw || 0) + ' leads';
+                  const label = ctx.label.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+                  return label + ': ' + (ctx.raw || 0) + ' leads';
                 }
               }
             }
