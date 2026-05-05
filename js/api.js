@@ -14,7 +14,12 @@ const API_ENDPOINTS = {
         GET_ALL: '/enquiries',
         GET: (id) => `/enquiries/${id}`,
         UPDATE: (id) => `/enquiries/${id}`,
-        ASSIGN: (id) => `/enquiries/${id}/assign`
+        ASSIGN: (id) => `/enquiries/${id}/assign`,
+        // Filter endpoints
+        PENDING_FOLLOWUPS: '/enquiries?filterType=pending_followups',
+        ALL: '/enquiries?filterType=all',
+        TODAY_FOLLOWUPS: '/enquiries?filterType=today_followups',
+        NEW: '/enquiries?filterType=new'
     },
     ADMISSIONS: {
         CREATE: '/admissions',
