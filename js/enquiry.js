@@ -99,11 +99,8 @@ function initUserProfile() {
   const name = user.name || user.fullName || 'User';
   const role = user.role || 'counselor';
   
-  const initials = name.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
-  
   document.getElementById('userName').textContent = name;
   document.getElementById('userRole').textContent = role.charAt(0).toUpperCase() + role.slice(1);
-  document.getElementById('userInitials').textContent = initials;
 }
 
 function initEventListeners() {
