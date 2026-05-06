@@ -121,6 +121,7 @@ const activityConfig = {
   'payment': { icon: 'credit-card', color: 'text-green-600', bg: 'bg-green-100' },
   'installment_set': { icon: 'calendar', color: 'text-amber-600', bg: 'bg-amber-100' },
   'refund': { icon: 'arrow-left', color: 'text-red-600', bg: 'bg-red-100' },
+  'dropped': { icon: 'user-x', color: 'text-orange-600', bg: 'bg-orange-100' },
   'note': { icon: 'message-square', color: 'text-gray-600', bg: 'bg-gray-100' }
 };
 
@@ -153,6 +154,9 @@ function renderAdmissionDetail() {
   if (paymentType === 'ONE_TIME') {
     typeBadge.className = 'px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium';
     typeBadge.textContent = 'One Time';
+  } else if (paymentType === 'DROPPED') {
+    typeBadge.className = 'px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium';
+    typeBadge.textContent = 'Dropped';
   } else {
     typeBadge.className = 'px-3 py-1 bg-amber-100 text-amber-700 rounded-lg text-sm font-medium';
     typeBadge.textContent = 'Installment';
@@ -932,6 +936,102 @@ async function submitRefund() {
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Process Refund';
+    lucide.createIcons();
+  }
+}
+
+// ==================== DROP STUDENT MODAL ====================
+function openDropStudentModal() {
+  if (!admissionData) return;
+  
+  // Reset form
+  document.getElementById('dropReason').value = '';
+  document.getElementById('dropDate').value = new Date().toISOString().split('T')[0];
+  document.getElementById('clearDues').checked = false;
+  document.getElementById('dropNote').value = '';
+  document.getElementById('dropError').classList.add('hidden');
+  
+  // Show modal
+  const modal = document.getElementById('dropStudentModal');
+  const content = document.getElementById('dropStudentModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  
+  lucide.createIcons();
+}
+
+function closeDropStudentModal() {
+  const modal = document.getElementById('dropStudentModal');
+  const content = document.getElementById('dropStudentModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+}
+
+async function submitDropStudent() {
+  const reason = document.getElementById('dropReason').value.trim();
+  const dropDate = document.getElementById('dropDate').value;
+  const clearDues = document.getElementById('clearDues').checked;
+  const note = document.getElementById('dropNote').value.trim();
+  
+  // Validation
+  const errorEl = document.getElementById('dropError');
+  
+  if (!reason) {
+    errorEl.textContent = 'Please provide a reason for dropping the student';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  if (!dropDate) {
+    errorEl.textContent = 'Please select a drop date';
+    errorEl.classList.remove('hidden');
+    return;
+  }
+  
+  errorEl.classList.add('hidden');
+  
+  // Submit
+  const submitBtn = document.getElementById('dropSubmitBtn');
+  submitBtn.disabled = true;
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Dropping...';
+  lucide.createIcons();
+  
+  try {
+    const payload = {
+      reason: reason,
+      dropDate: dropDate,
+      clearDues: clearDues,
+      note: note || `Student dropped: ${reason}`
+    };
+    
+    await dropStudent(admissionId, payload);
+    
+    closeDropStudentModal();
+    showToast('Success', 'Student dropped successfully', 'success');
+    
+    // Reload data
+    await loadAdmissionDetail();
+  } catch (err) {
+    console.error('Failed to drop student:', err);
+    const message = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to drop student';
+    errorEl.textContent = message;
+    errorEl.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = '<i data-lucide="user-x" class="w-4 h-4"></i> Drop Student';
     lucide.createIcons();
   }
 }

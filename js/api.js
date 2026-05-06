@@ -27,12 +27,15 @@ const API_ENDPOINTS = {
         NEW: '/enquiries?filterType=new'
     },
     ADMISSIONS: {
-        CREATE: '/admissions',
         LIST: '/admissions',
         GET: (id) => `/admissions/${id}`,
         UPDATE: (id) => `/admissions/${id}`,
-        RECORD_PAYMENT: (id) => `/admissions/${id}/payments`,
-        LIST_PAYMENTS: (id) => `/admissions/${id}/payments`
+        DELETE: (id) => `/admissions/${id}`,
+        RECORD_PAYMENT: (id) => `/admissions/${id}/payment`,
+        LIST_PAYMENTS: (id) => `/admissions/${id}/payments`,
+        INSTALLMENTS: (id) => `/admissions/${id}/installments`,
+        INSTALLMENT_ALERTS: '/admissions/installment-alerts',
+        DROP: (id) => `/admissions/${id}/drop`
     },
     PAYMENTS: {
         LIST: '/payments',
@@ -228,6 +231,10 @@ async function checkOverdueInstallments() {
 
 async function processRefund(paymentId, refundData) {
     return await apiPost(API_ENDPOINTS.PAYMENTS.REFUND(paymentId), refundData);
+}
+
+async function dropStudent(admissionId, dropData) {
+    return await apiPost(API_ENDPOINTS.ADMISSIONS.DROP(admissionId), dropData);
 }
 
 /* ======================
