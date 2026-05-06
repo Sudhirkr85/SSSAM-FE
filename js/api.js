@@ -37,7 +37,8 @@ const API_ENDPOINTS = {
     PAYMENTS: {
         LIST: '/payments',
         GET_ALL: '/payments',
-        CHECK_OVERDUE: '/payments/check-overdue'
+        CHECK_OVERDUE: '/payments/check-overdue',
+        REFUND: (paymentId) => `/payments/${paymentId}/refund`
     },
     AUTH: {
         LOGIN: '/auth/login'
@@ -223,6 +224,10 @@ async function listPayments(filters = {}) {
 
 async function checkOverdueInstallments() {
     return await apiPost(API_ENDPOINTS.PAYMENTS.CHECK_OVERDUE, {});
+}
+
+async function processRefund(paymentId, refundData) {
+    return await apiPost(API_ENDPOINTS.PAYMENTS.REFUND(paymentId), refundData);
 }
 
 /* ======================

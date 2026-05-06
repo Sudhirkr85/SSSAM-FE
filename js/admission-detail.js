@@ -139,6 +139,9 @@ function renderAdmissionDetail() {
   const paidAmount = admissionData.totalPaid ?? payments
     .filter(p => p.type !== 'refund')
     .reduce((sum, p) => sum + (p.amount || 0), 0);
+  const totalRefunded = admissionData.totalRefunded ?? payments
+    .filter(p => p.type === 'refund')
+    .reduce((sum, p) => sum + (p.amount || 0), 0);
   const remaining = admissionData.remainingAmount ?? (totalFees - paidAmount);
   
   // Student info
@@ -166,6 +169,7 @@ function renderAdmissionDetail() {
   // Finance summary cards
   document.getElementById('totalFees').textContent = formatCurrency(totalFees);
   document.getElementById('totalPaid').textContent = formatCurrency(paidAmount);
+  document.getElementById('totalRefunded').textContent = formatCurrency(totalRefunded);
   document.getElementById('remainingAmount').textContent = formatCurrency(Math.max(0, remaining));
   
   // Calculate next due
@@ -808,6 +812,7 @@ function openRefundModal() {
   // Reset form
   document.getElementById('refundAmount').value = '';
   document.getElementById('refundMode').value = 'CASH';
+  document.getElementById('refundReason').value = '';
   document.getElementById('refundNote').value = '';
   document.getElementById('refundAmountError').classList.add('hidden');
   
@@ -847,6 +852,7 @@ function closeRefundModal() {
 async function submitRefund() {
   const amount = parseFloat(document.getElementById('refundAmount').value) || 0;
   const mode = document.getElementById('refundMode').value;
+  const reason = document.getElementById('refundReason').value.trim();
   const note = document.getElementById('refundNote').value.trim();
   
   const paidAmount = admissionData?.totalPaid || 0;
@@ -868,6 +874,12 @@ async function submitRefund() {
     errorEl.classList.remove('hidden');
     return;
   }
+
+  if (!reason) {
+    errorEl.textContent = 'Please provide a reason for the refund';
+    errorEl.classList.remove('hidden');
+    return;
+  }
   
   errorEl.classList.add('hidden');
   
@@ -878,13 +890,34 @@ async function submitRefund() {
   lucide.createIcons();
   
   try {
+    // Find the most recent successful payment to refund
+    // Accept payments with status 'success' or no status field (assume successful)
+    const successfulPayments = payments
+      .filter(p => {
+        // Exclude refunds
+        if (p.type === 'refund') return false;
+        // Include if status is success, completed, or not set (assume successful)
+        const status = (p.status || '').toLowerCase();
+        return !status || status === 'success' || status === 'completed';
+      })
+      .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
+    
+    if (successfulPayments.length === 0) {
+      errorEl.textContent = 'No successful payments found to refund';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+
+    const originalPaymentId = successfulPayments[0]._id || successfulPayments[0].id;
+    
     const payload = {
       amount: amount,
-      paymentMode: mode,
-      note: note || 'Refund processed'
+      reason: reason,
+      refundMode: mode,
+      note: note || 'Refund processed per student request'
     };
     
-    await apiPost(API_ENDPOINTS.ADMISSIONS.RECORD_PAYMENT(admissionId), payload);
+    await processRefund(originalPaymentId, payload);
     
     closeRefundModal();
     showToast('Success', 'Refund processed successfully', 'success');
@@ -893,7 +926,7 @@ async function submitRefund() {
     await loadAdmissionDetail();
   } catch (err) {
     console.error('Failed to process refund:', err);
-    const message = err.response?.data?.message || 'Failed to process refund';
+    const message = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to process refund';
     errorEl.textContent = message;
     errorEl.classList.remove('hidden');
   } finally {

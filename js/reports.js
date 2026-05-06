@@ -312,11 +312,26 @@ function buildSummaryData(admissionsRes, feesRes) {
   const feeSummary = feesData.summary || {};
   const periodPayments = feesData.periodPayments || [];
 
-  // Calculate totalPaid from periodPayments if backend returns null
+  // Calculate totalPaid from periodPayments if backend returns null (excluding refunds)
   let totalPaid = feeSummary.totalPaid;
+  let totalRefunds = 0;
+  
   if (totalPaid === null || totalPaid === undefined) {
-    totalPaid = periodPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    totalPaid = 0;
+    totalRefunds = 0;
+    periodPayments.forEach(p => {
+      if (p.type === 'refund') {
+        totalRefunds += p.amount || 0;
+      } else {
+        totalPaid += p.amount || 0;
+      }
+    });
+  } else if (feeSummary.totalRefunds !== undefined && feeSummary.totalRefunds !== null) {
+    totalRefunds = feeSummary.totalRefunds;
   }
+
+  // Calculate net revenue
+  const netRevenue = totalPaid - totalRefunds;
 
   // Calculate totalPending if backend returns null
   let totalPending = feeSummary.totalPending;
@@ -329,6 +344,8 @@ function buildSummaryData(admissionsRes, feesRes) {
     totalEnquiries: summary.totalEnquiries || 0,
     convertedEnquiries: summary.enquiriesConverted || summary.totalAdmissions || 0,
     totalRevenue: totalPaid || 0,
+    totalRefunds: totalRefunds || 0,
+    netRevenue: netRevenue || 0,
     pendingAmount: totalPending || 0,
     overdueAmount: 0 // Will be fetched from installment alerts
   };
@@ -373,6 +390,25 @@ function renderSummaryCards(data) {
   document.getElementById('totalEnquiries').textContent = data.totalEnquiries || 0;
   document.getElementById('convertedCount').textContent = data.convertedEnquiries || 0;
   document.getElementById('totalRevenue').textContent = formatCurrency(data.totalRevenue || 0);
+  
+  // Show net revenue and refunds
+  const grossRevenue = data.totalRevenue || 0;
+  const refunds = data.totalRefunds || 0;
+  const netRevenue = data.netRevenue || grossRevenue - refunds;
+  
+  document.getElementById('totalRevenue').textContent = formatCurrency(grossRevenue);
+  
+  // Update revenue display to show gross and net
+  const revenueElement = document.getElementById('totalRevenue');
+  if (refunds > 0) {
+    revenueElement.innerHTML = `
+      <div class="text-lg font-bold text-gray-800">${formatCurrency(netRevenue)}</div>
+      <div class="text-xs text-gray-500">Gross: ${formatCurrency(grossRevenue)} - Refunds: ${formatCurrency(refunds)}</div>
+    `;
+  } else {
+    revenueElement.textContent = formatCurrency(grossRevenue);
+  }
+  
   document.getElementById('pendingAmount').textContent = formatCurrency(data.pendingAmount || 0);
   document.getElementById('overdueAmount').textContent = formatCurrency(data.overdueAmount || 0);
 }

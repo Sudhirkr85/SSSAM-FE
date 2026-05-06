@@ -18,7 +18,20 @@ async function loadDashboard() {
         document.getElementById('totalAdmissions').textContent = admissionsData.totalAdmissions || data.totalConversions || 0;
 
         const revenueData = data.revenue || {};
-        document.getElementById('totalRevenue').textContent = formatCurrency(revenueData.yearlyRevenue || 0);
+        const grossRevenue = revenueData.yearlyRevenue || 0;
+        const totalRefunds = revenueData.totalRefunds || 0;
+        const netRevenue = grossRevenue - totalRefunds;
+
+        // Show net revenue with refund breakdown if refunds exist
+        const revenueElement = document.getElementById('totalRevenue');
+        if (totalRefunds > 0) {
+            revenueElement.innerHTML = `
+                <div class="text-3xl font-bold text-green-600">${formatCurrency(netRevenue)}</div>
+                <div class="text-xs text-gray-500">Gross: ${formatCurrency(grossRevenue)} - Refunds: ${formatCurrency(totalRefunds)}</div>
+            `;
+        } else {
+            revenueElement.textContent = formatCurrency(grossRevenue);
+        }
     } catch (error) {
         // Check for 403 access denied
         if (error.response?.status === 403) {

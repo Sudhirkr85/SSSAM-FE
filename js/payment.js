@@ -19,7 +19,16 @@ const paymentModeStyles = {
     'UPI': { bg: 'bg-purple-100', text: 'text-purple-700', icon: '📱' },
     'CARD': { bg: 'bg-amber-100', text: 'text-amber-700', icon: '💳' },
     'ONLINE': { bg: 'bg-blue-100', text: 'text-blue-700', icon: '🏦' },
-    'CHEQUE': { bg: 'bg-gray-100', text: 'text-gray-700', icon: '📝' }
+    'CHEQUE': { bg: 'bg-gray-100', text: 'text-gray-700', icon: '📝' },
+    'BANK_TRANSFER': { bg: 'bg-indigo-100', text: 'text-indigo-700', icon: '🏛️' }
+};
+
+// Payment type badge styles
+const paymentTypeStyles = {
+    'initial': { bg: 'bg-blue-100', text: 'text-blue-700', label: 'Registration' },
+    'installment': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Installment' },
+    'full': { bg: 'bg-green-100', text: 'text-green-700', label: 'Full Payment' },
+    'refund': { bg: 'bg-red-100', text: 'text-red-700', label: 'Refund' }
 };
 
 /* ======================
@@ -285,6 +294,8 @@ function renderTable() {
     table.innerHTML = sortedPayments.map(p => {
         const mode = p.paymentMode || 'CASH';
         const style = paymentModeStyles[mode] || paymentModeStyles['CASH'];
+        const isRefund = p.type === 'refund';
+        const typeStyle = paymentTypeStyles[p.type] || null;
 
         // Get admission data from enriched payment
         const admission = p._admissionData;
@@ -294,19 +305,24 @@ function renderTable() {
         const mobile = enquiry.mobile || '';
         const course = enquiry.courseInterested || admission?.course || '-';
 
+        const amountClass = isRefund ? 'text-red-600' : 'text-green-600';
+        const amountPrefix = isRefund ? '-' : '';
+        const rowClass = isRefund ? 'bg-red-50/30' : 'hover:bg-gray-50';
+
         return `
-            <tr class="hover:bg-gray-50 transition-colors border-b border-gray-50 last:border-0">
+            <tr class="${rowClass} transition-colors border-b border-gray-50 last:border-0">
                 <td class="px-6 py-4">
                     <div class="font-medium text-gray-900">${studentName}</div>
                     ${mobile ? `<div class="text-xs text-gray-500">${mobile}</div>` : ''}
                 </td>
                 <td class="px-6 py-4 text-gray-700">${course}</td>
-                <td class="px-6 py-4 text-green-600 font-semibold">${formatCurrency(p.amount)}</td>
+                <td class="px-6 py-4 ${amountClass} font-semibold">${amountPrefix}${formatCurrency(p.amount)}</td>
                 <td class="px-6 py-4">
                     <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${style.bg} ${style.text}">
                         <span>${style.icon}</span>
                         ${mode}
                     </span>
+                    ${typeStyle ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${typeStyle.bg} ${typeStyle.text} ml-1">${typeStyle.label}</span>` : ''}
                 </td>
                 <td class="px-6 py-4 text-gray-600">${formatDate(p.paymentDate || p.createdAt)}</td>
             </tr>
@@ -376,31 +392,44 @@ async function renderStatsFromDashboard() {
         // Calculate stats from the loaded payments data instead of dashboard API
         const totalPayments = payments.length;
         
-        // Calculate totals by payment mode
+        // Calculate totals by payment mode (excluding refunds)
         const modeStats = {
             'CASH': { count: 0, amount: 0 },
             'UPI': { count: 0, amount: 0 },
             'CARD': { count: 0, amount: 0 },
             'ONLINE': { count: 0, amount: 0 },
-            'CHEQUE': { count: 0, amount: 0 }
+            'CHEQUE': { count: 0, amount: 0 },
+            'BANK_TRANSFER': { count: 0, amount: 0 }
         };
         
         let totalAmount = 0;
+        let totalRefunds = 0;
         
         payments.forEach(p => {
             const mode = p.paymentMode || 'CASH';
             const amount = p.amount || 0;
+            const isRefund = p.type === 'refund';
             
             if (modeStats[mode]) {
-                modeStats[mode].count++;
-                modeStats[mode].amount += amount;
+                if (!isRefund) {
+                    modeStats[mode].count++;
+                    modeStats[mode].amount += amount;
+                }
             }
-            totalAmount += amount;
+            
+            if (isRefund) {
+                totalRefunds += amount;
+            } else {
+                totalAmount += amount;
+            }
         });
+
+        const netRevenue = totalAmount - totalRefunds;
+        const refundCount = payments.filter(p => p.type === 'refund').length;
 
         // Update stats display
         document.getElementById('totalPayments').textContent = totalPayments;
-        document.getElementById('totalAmount').textContent = formatCurrency(totalAmount);
+        document.getElementById('totalAmount').textContent = formatCurrency(netRevenue);
 
         document.getElementById('cashCount').textContent = modeStats.CASH.count;
         document.getElementById('cashAmount').textContent = formatCurrency(modeStats.CASH.amount);
@@ -410,6 +439,10 @@ async function renderStatsFromDashboard() {
 
         document.getElementById('cardCount').textContent = modeStats.CARD.count;
         document.getElementById('cardAmount').textContent = formatCurrency(modeStats.CARD.amount);
+
+        // Update refund stats
+        document.getElementById('refundCount').textContent = refundCount;
+        document.getElementById('refundAmount').textContent = formatCurrency(totalRefunds);
     } catch (err) {
         console.error('Failed to load payment stats:', err);
     }
