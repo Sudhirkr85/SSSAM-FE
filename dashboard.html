@@ -752,7 +752,12 @@
 
         // Upcoming Follow-ups
         try {
-          const followupsRes = await apiGet(API_ENDPOINTS.ENQUIRIES.TODAY_FOLLOWUPS, { page: 1, limit: 5 });
+          // Use the dedicated upcoming follow-ups API
+          const followupsRes = await apiGet(API_ENDPOINTS.ENQUIRIES.UPCOMING_FOLLOWUPS, { 
+            page: 1, 
+            limit: 5,
+            daysAhead: 30 // Optional: get follow-ups for next 30 days
+          });
           loadUpcomingFollowups(followupsRes.data || []);
         } catch (err) {
           console.error('Failed to fetch follow-ups:', err);
@@ -1080,13 +1085,30 @@
     }
 
     // ==================== UPCOMING FOLLOW-UPS ====================
+    function formatFollowUpDate(dateString) {
+      if (!dateString) return 'N/A';
+      const date = new Date(dateString);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+
+      if (date.toDateString() === today.toDateString()) {
+        return 'Today';
+      } else if (date.toDateString() === tomorrow.toDateString()) {
+        return 'Tomorrow';
+      } else {
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      }
+    }
+
     function loadUpcomingFollowups(followups) {
       const container = document.getElementById('upcomingFollowupsList');
       if (!container) return;
 
       // Ensure followups is an array
       if (!Array.isArray(followups)) {
-        followups = followups?.list || followups?.data || [];
+        followups = followups?.list || followups?.data || followups?.enquiries || [];
       }
 
       if (!followups || followups.length === 0) {
@@ -1094,22 +1116,30 @@
         return;
       }
 
-      container.innerHTML = followups.slice(0, 5).map(followup => `
-        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
+      container.innerHTML = followups.slice(0, 5).map(followup => {
+        // Handle different data structures
+        const name = followup.name || followup.studentName || 'Unknown';
+        const phone = followup.mobile || followup.phone || followup.contactNumber || 'N/A';
+        const date = formatFollowUpDate(followup.followUpDate);
+        const enquiryId = followup._id || followup.id;
+        
+        return `
+        <a href="enquiry-detail.html?id=${enquiryId}" class="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors group">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+            <div class="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center group-hover:scale-110 transition-transform">
               <i data-lucide="phone" class="w-4 h-4 text-orange-600"></i>
             </div>
             <div>
-              <p class="font-medium text-gray-800 text-sm">${followup.name || 'Unknown'}</p>
-              <p class="text-xs text-gray-500">${followup.phone || 'N/A'}</p>
+              <p class="font-medium text-gray-800 text-sm group-hover:text-orange-600 transition-colors">${name}</p>
+              <p class="text-xs text-gray-500">${phone}</p>
             </div>
           </div>
           <div class="text-right">
-            <p class="text-xs text-gray-500">${followup.date || 'Today'}</p>
+            <p class="text-xs text-gray-500">${date}</p>
           </div>
-        </div>
-      `).join('');
+        </a>
+      `;
+      }).join('');
       
       lucide.createIcons();
     }

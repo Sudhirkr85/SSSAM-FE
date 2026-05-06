@@ -23,6 +23,7 @@ const API_ENDPOINTS = {
         PENDING_FOLLOWUPS: '/enquiries?filterType=pending_followups',
         ALL: '/enquiries?filterType=all',
         TODAY_FOLLOWUPS: '/enquiries?filterType=today_followups',
+        UPCOMING_FOLLOWUPS: '/enquiries?filterType=upcoming_followups',
         NEW: '/enquiries?filterType=new'
     },
     ADMISSIONS: {
@@ -40,6 +41,9 @@ const API_ENDPOINTS = {
     },
     AUTH: {
         LOGIN: '/auth/login'
+    },
+    USERS: {
+        GET_COUNSELORS: '/users/counselors'
     },
     REPORTS: {
         ADMISSIONS: '/reports/admissions',
