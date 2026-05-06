@@ -1148,8 +1148,8 @@ async function openViewPaymentsModal(admissionId) {
   lucide.createIcons();
   
   try {
-    const payments = await apiGet(API_ENDPOINTS.PAYMENTS.GET_BY_ADMISSION(admissionId));
-    renderPaymentsList(payments.payments || []);
+    const payments = await listAdmissionPayments(admissionId);
+    renderPaymentsList(payments.data?.payments || []);
   } catch (err) {
     console.error('Failed to load payments:', err);
     list.innerHTML = `
@@ -1208,7 +1208,7 @@ function renderPaymentsList(payments) {
           </div>
         </div>
         <span class="px-2.5 py-1 rounded-lg text-xs font-medium ${typeColors[p.type] || 'bg-gray-100 text-gray-600'}">
-          ${typeLabels[p.type] || p.type}
+          ${typeLabels[p.type] || p.type || p.paymentMode || 'Payment'}
         </span>
       </div>
     `;
