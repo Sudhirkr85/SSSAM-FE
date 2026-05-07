@@ -1288,34 +1288,17 @@ async function submitAddEnquiry() {
     
     console.log('Create enquiry response:', res);
     
+    // Check for duplicate mobile first (even if success is false)
+    if (res.errors && res.errors.existingEnquiry) {
+        console.log('Duplicate mobile detected, showing duplicate modal...');
+        showDuplicateModal(res.errors.existingEnquiry);
+        return;
+    }
+    
     // Check if response is successful
     if (!res.success) {
         console.log('Create enquiry failed:', res.error?.message);
-        
-        // Check if it's a duplicate mobile error (409 status)
-        if (res.statusCode === 409) {
-            console.log('Duplicate mobile detected, fetching existing enquiry...');
-            try {
-                // Get existing enquiry by mobile number
-                const mobile = payload.mobile;
-                const checkResponse = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { mobile: mobile, limit: 1 });
-                
-                console.log('Duplicate check response:', checkResponse);
-                
-                if (checkResponse.success && checkResponse.data && checkResponse.data.length > 0) {
-                    const existingEnquiry = checkResponse.data[0];
-                    console.log('Found existing enquiry:', existingEnquiry);
-                    showDuplicateEnquiryPopup(existingEnquiry);
-                    return;
-                } else {
-                    console.log('No existing enquiry found');
-                }
-            } catch (checkError) {
-                console.log('Error checking for duplicate:', checkError);
-            }
-        }
-        
-        const message = res.error?.message || 'Failed to add enquiry';
+        const message = res.message || res.error?.message || 'Failed to add enquiry';
         showError(message);
         return;
     }
@@ -1351,12 +1334,14 @@ async function submitAddEnquiry() {
     console.log('=== DUPLICATE DETECTION DEBUG ===');
     console.log('Error response structure:', err.response?.data);
     console.log('Error status:', err.response?.status);
-    console.log('Errors object:', err.response?.data?.errors);
     
-    if (err.response?.status === 409 && err.response?.data?.errors?.duplicate && err.response?.data?.errors?.existingEnquiry) {
-      console.log('Duplicate mobile detected in catch block, showing popup');
-      showDuplicateEnquiryPopup(err.response.data.errors.existingEnquiry);
-      return;
+    if (err.response?.status === 409) {
+      console.log('Duplicate mobile detected in catch block, showing modal');
+      const responseData = err.response?.data;
+      if (responseData && responseData.errors && responseData.errors.existingEnquiry) {
+        showDuplicateModal(responseData.errors.existingEnquiry);
+        return;
+      }
     }
     
     console.log('Not a duplicate error, showing regular error message');
@@ -1371,10 +1356,10 @@ async function submitAddEnquiry() {
   }
 }
 
-// ==================== DUPLICATE ENQUIRY POPUP ====================
-function showDuplicateEnquiryPopup(existingEnquiry) {
-  console.log('=== DUPLICATE POPUP DEBUG ===');
-  console.log('showDuplicateEnquiryPopup called with:', existingEnquiry);
+// ==================== DUPLICATE ENQUIRY MODAL ====================
+function showDuplicateModal(existingEnquiry) {
+  console.log('=== DUPLICATE MODAL DEBUG ===');
+  console.log('showDuplicateModal called with:', existingEnquiry);
   
   const modal = document.getElementById('duplicateEnquiryModal');
   const content = document.getElementById('duplicateEnquiryModalContent');
@@ -1386,7 +1371,7 @@ function showDuplicateEnquiryPopup(existingEnquiry) {
     details: !!details
   });
   
-  // Populate existing enquiry details
+  // Populate existing enquiry details according to requirements
   details.innerHTML = `
     <div class="space-y-3">
       <div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-lg p-3">
@@ -1395,7 +1380,7 @@ function showDuplicateEnquiryPopup(existingEnquiry) {
             <i data-lucide="user-x" class="text-amber-600 w-4 h-4"></i>
           </div>
           <div>
-            <h3 class="font-semibold text-amber-800 text-sm">Existing Student</h3>
+            <h3 class="font-semibold text-amber-800 text-sm">Student Already Registered</h3>
           </div>
         </div>
       </div>
@@ -1403,7 +1388,7 @@ function showDuplicateEnquiryPopup(existingEnquiry) {
       <div class="bg-white rounded-lg p-3 border border-gray-200">
         <h4 class="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm">
           <i data-lucide="file-text" class="w-3.5 h-3.5 text-gray-600"></i>
-          Details
+          Student Details
         </h4>
         <div class="space-y-2 text-xs">
           <div class="flex justify-between items-center py-2 border-b border-gray-100">
@@ -1415,7 +1400,7 @@ function showDuplicateEnquiryPopup(existingEnquiry) {
             <span class="font-medium text-gray-900">${existingEnquiry.mobile}</span>
           </div>
           <div class="flex justify-between items-center py-2 border-b border-gray-100">
-            <span class="text-gray-500">Course</span>
+            <span class="text-gray-500">Current Course</span>
             <span class="font-medium text-gray-900">${existingEnquiry.course}</span>
           </div>
           <div class="flex justify-between items-center py-2 border-b border-gray-100">
@@ -1423,15 +1408,22 @@ function showDuplicateEnquiryPopup(existingEnquiry) {
             <span class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
               existingEnquiry.status === 'NEW' ? 'bg-blue-100 text-blue-800' :
               existingEnquiry.status === 'CONTACTED' ? 'bg-green-100 text-green-800' :
-              existingEnquiry.status === 'CONVERTED' ? 'bg-purple-100 text-purple-800' :
+              existingEnquiry.status === 'ADMITTED' ? 'bg-emerald-100 text-emerald-800' :
+              existingEnquiry.status === null ? 'bg-gray-100 text-gray-800' :
               'bg-gray-100 text-gray-800'
             }">
-              ${existingEnquiry.status}
+              ${existingEnquiry.status === 'ADMITTED' ? 'Admission Done' : 
+                existingEnquiry.status === null ? 'New' : 
+                existingEnquiry.status}
             </span>
           </div>
+          <div class="flex justify-between items-center py-2 border-b border-gray-100">
+            <span class="text-gray-500">Assigned To</span>
+            <span class="font-medium text-gray-900">${existingEnquiry.assignedTo?.name || 'Unassigned'}</span>
+          </div>
           <div class="flex justify-between items-center py-2">
-            <span class="text-gray-500">Created</span>
-            <span class="font-medium text-gray-900">${formatDateForDisplay(existingEnquiry.createdAt)}</span>
+            <span class="text-gray-500">Follow-up Date</span>
+            <span class="font-medium text-gray-900">${existingEnquiry.followUpDate ? formatDateForDisplay(existingEnquiry.followUpDate) : 'Not set'}</span>
           </div>
         </div>
       </div>
@@ -1498,87 +1490,174 @@ function updateExistingEnquiry() {
   openEditModal(enquiryId);
 }
 
+function createNewCourseEnquiry() {
+  console.log('=== NEW COURSE ENQUIRY DEBUG ===');
+  console.log('Creating new course enquiry...');
+
+  // Store existing enquiry data for pre-filling
+  const existingEnquiry = {
+    name: document.getElementById('duplicateEnquiryDetails').querySelector('.font-medium.text-gray-900').textContent,
+    mobile: document.getElementById('duplicateEnquiryDetails').querySelectorAll('.font-medium.text-gray-900')[1].textContent,
+    email: '' // Will be filled if available
+  };
+
+  // Store in sessionStorage for pre-filling
+  sessionStorage.setItem('newCourseEnquiryData', JSON.stringify(existingEnquiry));
+
+  // Close duplicate modal
+  closeDuplicateModal();
+
+  // Close add modal
+  closeAddModal();
+
+  // Open add modal with pre-filled data
+  setTimeout(() => {
+    openAddModalForNewCourse(existingEnquiry);
+  }, 300);
+}
+
+function openAddModalForNewCourse(prefillData) {
+  console.log('=== OPEN ADD MODAL FOR NEW COURSE DEBUG ===');
+  console.log('Pre-filling with:', prefillData);
+
+  // Open the add modal
+  const modal = document.getElementById('addModal');
+  const content = document.getElementById('addModalContent');
+
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+
+  // Pre-fill the form
+  setTimeout(() => {
+    document.getElementById('addName').value = prefillData.name || '';
+    document.getElementById('addMobile').value = prefillData.mobile || '';
+    document.getElementById('addEmail').value = prefillData.email || '';
+
+    // Make name, mobile, and email read-only
+    document.getElementById('addName').readOnly = true;
+    document.getElementById('addName').classList.add('bg-gray-100', 'cursor-not-allowed');
+    document.getElementById('addMobile').readOnly = true;
+    document.getElementById('addMobile').classList.add('bg-gray-100', 'cursor-not-allowed');
+    if (prefillData.email) {
+      document.getElementById('addEmail').readOnly = true;
+      document.getElementById('addEmail').classList.add('bg-gray-100', 'cursor-not-allowed');
+    }
+
+    // Clear course field - counselor must enter new course
+    document.getElementById('addCourse').value = '';
+
+    // Focus on course field
+    document.getElementById('addCourse').focus();
+
+    // Show a hint message
+    showToast('Info', 'Student details pre-filled. Please select a new course for this enquiry.', 'info');
+
+    lucide.createIcons();
+  }, 100);
+}
+
 function createNewEnquiryAnyway() {
   // Close duplicate modal and proceed with creation
   closeDuplicateModal();
-  
-  // Call submitAddEnquiry again but skip duplicate check
   submitAddEnquirySkipDuplicate();
 }
 
-async function submitAddEnquirySkipDuplicate() {
-  // Get submit button and show loading state
-  const submitBtn = document.querySelector('#addModal button[onclick="submitAddEnquiry()"]');
+// ==================== COURSE CHANGE WARNING MODAL ====================
+let pendingCourseChange = null;
+
+function showCourseChangeWarning(currentCourse, newCourse, formData) {
+  pendingCourseChange = formData;
+  
+  // Update modal content with course names
+  document.getElementById('currentCourseName').textContent = currentCourse;
+  document.getElementById('currentCourseName2').textContent = currentCourse;
+  document.getElementById('newCourseName').textContent = newCourse;
+  document.getElementById('newCourseName2').textContent = newCourse;
+  
+  // Show modal
+  const modal = document.getElementById('courseChangeWarningModal');
+  const content = document.getElementById('courseChangeWarningModalContent');
+  
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  lucide.createIcons();
+}
+
+function closeCourseChangeWarning() {
+  const modal = document.getElementById('courseChangeWarningModal');
+  const content = document.getElementById('courseChangeWarningModalContent');
+  
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 200);
+  
+  pendingCourseChange = null;
+}
+
+function confirmCourseChange() {
+  if (!pendingCourseChange) return;
+  
+  closeCourseChangeWarning();
+  
+  // Proceed with the course change
+  submitEditEnquiryWithCourseChange(pendingCourseChange);
+}
+
+async function submitEditEnquiryWithCourseChange(formData) {
+  const submitBtn = document.querySelector('#editModal button[onclick="submitEditEnquiry()"]');
   const originalBtnContent = submitBtn.innerHTML;
   submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Creating New...';
   lucide.createIcons();
-
+  
   try {
-    const source = document.getElementById('addSource').value;
-    const email = document.getElementById('addEmail').value.trim();
-    const mobileRaw = document.getElementById('addMobile').value;
-    const cleanMobile = getCleanMobile(mobileRaw);
-    const courses = getSelectedCourses();
-
-    const payload = {
-      name: document.getElementById('addName').value.trim(),
-      mobile: cleanMobile,
-      course: courses[0] || courses,
-      source: source
-    };
-
-    if (email) payload.email = email;
-    if (source === 'referral') {
-      payload.referenceName = document.getElementById('addRefName').value.trim();
-      payload.referenceContact = document.getElementById('addRefContact').value.trim();
-    }
-    if (source === 'walk_in') {
-      const broughtBy = document.getElementById('addWalkInBroughtBy').value.trim();
-      if (broughtBy) payload.walkInBroughtBy = broughtBy;
-    }
-
-    const res = await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
+    const enquiryId = document.getElementById('editEnquiryId').value;
+    const response = await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), formData);
     
-    if (!res.success) {
-      const message = res.error?.message || 'Failed to add enquiry';
-      showError(message);
-      return;
+    // Check if this is a NEW enquiry (different _id) - indicates course change for admitted student
+    const updatedEnquiry = response.data?.enquiry;
+    if (updatedEnquiry && updatedEnquiry._id !== enquiryId) {
+      closeEditModal();
+      showToast('Success', 'New enquiry created for new course!', 'success');
+      // Redirect to the new enquiry page
+      setTimeout(() => {
+        window.location.href = `enquiry-detail.html?id=${updatedEnquiry._id}`;
+      }, 1500);
+    } else {
+      closeEditModal();
+      showToast('Success', 'Enquiry updated successfully', 'success');
+      loadEnquiries();
     }
-
-    // Reset form and close modal
-    resetAddForm();
-    closeAddModal();
-    showToast('Success', 'Enquiry added successfully', 'success');
-    loadStatusCounts();
-    loadEnquiries();
   } catch (err) {
-    console.error('Failed to create enquiry:', err);
-    const message = err.response?.data?.message || 'Failed to add enquiry';
-    showError(message);
+    console.error('Failed to update enquiry:', err);
+    const message = err.response?.data?.message || 'Failed to update enquiry';
+    
+    // Handle specific error for admission already exists
+    if (message.includes('Admission already exists for this course')) {
+      showToast('Error', 'Admission already exists for this course. Cannot change.', 'error');
+    } else {
+      showToast('Error', message, 'error');
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalBtnContent;
     lucide.createIcons();
   }
-}
-
-function resetAddForm() {
-  document.getElementById('addName').value = '';
-  document.getElementById('addMobile').value = '';
-  document.getElementById('addEmail').value = '';
-  document.getElementById('addSource').value = '';
-  document.getElementById('addRefName').value = '';
-  document.getElementById('addRefContact').value = '';
-  document.getElementById('addWalkInBroughtBy').value = '';
-  document.getElementById('addCustomCourse').value = '';
-  document.getElementById('referralContainer').classList.add('hidden');
-  document.getElementById('walkInContainer').classList.add('hidden');
-  document.getElementById('customCourseContainer').classList.add('hidden');
-  document.querySelectorAll('.course-checkbox').forEach(cb => cb.checked = false);
-  selectedCourses = [];
-  updateSelectedCoursesDisplay();
-  clearFieldErrors();
 }
 
 // ==================== EDIT ENQUIRY MODAL ====================
@@ -1798,53 +1877,104 @@ function validateEditForm() {
 
 async function submitEditEnquiry() {
   if (!validateEditForm()) return;
+  
+  const enquiryId = document.getElementById('editEnquiryId').value;
+  const source = document.getElementById('editSource').value;
+  const email = document.getElementById('editEmail').value.trim();
+  const mobileRaw = document.getElementById('editMobile').value;
+  const cleanMobile = getCleanMobile(mobileRaw);
+  const course = document.getElementById('editCourse').value;
+  const customCourse = course === 'Other' ? document.getElementById('editCustomCourse').value.trim() : null;
+  const newCourse = customCourse || course;
+  
+  // Get current enquiry data to check if admitted
+  const currentEnquiry = await getCurrentEnquiryData(enquiryId);
+  const currentCourse = currentEnquiry?.course || '';
+  const isAdmitted = currentEnquiry?.status === 'ADMITTED';
+  
+  // Check if course is being changed for admitted student
+  if (isAdmitted && currentCourse !== newCourse) {
+    const payload = {
+      name: document.getElementById('editName').value.trim() || undefined,
+      email: email || undefined,
+      mobile: cleanMobile || undefined,
+      course: newCourse || undefined,
+      source: source || undefined,
+      referenceName: (source === 'referral' ? document.getElementById('editRefName').value.trim() : undefined) || undefined,
+      referenceContact: (source === 'referral' ? document.getElementById('editRefContact').value.trim() : undefined) || undefined,
+      walkInBroughtBy: (source === 'walk_in' ? document.getElementById('editWalkInBroughtBy')?.value.trim() : undefined) || undefined,
+      status: undefined,  // Explicitly undefined since this is edit modal, not status update
+      note: undefined,   // Explicitly undefined since no note is being added
+      assignedTo: undefined  // Explicitly undefined since assignment isn't changing
+    };
+    
+    // Show warning dialog
+    showCourseChangeWarning(currentCourse, newCourse, payload);
+    return;
+  }
+  
+  // Normal update flow
   const submitBtn = document.querySelector('#editModal button[onclick="submitEditEnquiry()"]');
   const originalBtnContent = submitBtn.innerHTML;
   submitBtn.disabled = true;
   submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
   lucide.createIcons();
+  
   try {
-    const enquiryId = document.getElementById('editEnquiryId').value;
-    const source = document.getElementById('editSource').value;
-    const email = document.getElementById('editEmail').value.trim();
-    const mobileRaw = document.getElementById('editMobile').value;
-    const cleanMobile = getCleanMobile(mobileRaw);
-    const course = document.getElementById('editCourse').value;
-    const customCourse = course === 'Other' ? document.getElementById('editCustomCourse').value.trim() : null;
-    
     const payload = {
-      name: document.getElementById('editName').value.trim(),
-      mobile: cleanMobile,
-      course: customCourse || course, // Send custom course if 'Other', otherwise send selected course
-      source: source
+      name: document.getElementById('editName').value.trim() || undefined,
+      email: email || undefined,
+      mobile: cleanMobile || undefined,
+      course: newCourse || undefined,
+      source: source || undefined,
+      referenceName: (source === 'referral' ? document.getElementById('editRefName').value.trim() : undefined) || undefined,
+      referenceContact: (source === 'referral' ? document.getElementById('editRefContact').value.trim() : undefined) || undefined,
+      walkInBroughtBy: (source === 'walk_in' ? document.getElementById('editWalkInBroughtBy')?.value.trim() : undefined) || undefined,
+      status: undefined,  // Explicitly undefined since this is edit modal, not status update
+      note: undefined,   // Explicitly undefined since no note is being added
+      assignedTo: undefined  // Explicitly undefined since assignment isn't changing
     };
     
-    if (email) payload.email = email;
+    const response = await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), payload);
     
-    if (source === 'referral') {
-      payload.referenceName = document.getElementById('editRefName').value.trim();
-      payload.referenceContact = document.getElementById('editRefContact').value.trim();
+    // Check if this is a NEW enquiry (different _id) - indicates course change for admitted student
+    const updatedEnquiry = response.data?.enquiry;
+    if (updatedEnquiry && updatedEnquiry._id !== enquiryId) {
+      closeEditModal();
+      showToast('Success', 'New enquiry created for new course!', 'success');
+      // Redirect to the new enquiry page
+      setTimeout(() => {
+        window.location.href = `enquiry-detail.html?id=${updatedEnquiry._id}`;
+      }, 1500);
+    } else {
+      closeEditModal();
+      showToast('Success', 'Enquiry updated successfully', 'success');
+      loadEnquiries();
     }
-    
-    if (source === 'walk_in') {
-      const broughtBy = document.getElementById('editWalkInBroughtBy')?.value.trim();
-      if (broughtBy) {
-        payload.walkInBroughtBy = broughtBy;
-      }
-    }
-    
-    await apiPut(API_ENDPOINTS.ENQUIRIES.UPDATE(enquiryId), payload);
-    closeEditModal();
-    showToast('Success', 'Enquiry updated successfully', 'success');
-    loadEnquiries();
   } catch (err) {
     console.error('Failed to update enquiry:', err);
     const message = err.response?.data?.message || 'Failed to update enquiry';
-    showToast('Error', message, 'error');
+    
+    // Handle specific error for admission already exists
+    if (message.includes('Admission already exists for this course')) {
+      showToast('Error', 'Admission already exists for this course. Cannot change.', 'error');
+    } else {
+      showToast('Error', message, 'error');
+    }
   } finally {
     submitBtn.disabled = false;
     submitBtn.innerHTML = originalBtnContent;
     lucide.createIcons();
+  }
+}
+
+async function getCurrentEnquiryData(enquiryId) {
+  try {
+    const response = await apiGet(API_ENDPOINTS.ENQUIRIES.GET(enquiryId));
+    return response.data?.enquiry || response.data || response;
+  } catch (err) {
+    console.error('Failed to get current enquiry data:', err);
+    return null;
   }
 }
 
@@ -1853,15 +1983,22 @@ function openUpdateModal(enquiryId, currentStatus) {
   const modal = document.getElementById('updateModal');
   const content = document.getElementById('updateModalContent');
 
-  // Set values
-  document.getElementById('updateEnquiryId').value = enquiryId;
-  document.getElementById('updateStatus').value = ''; // Reset to placeholder
-  document.getElementById('updateNote').value = '';
-  document.getElementById('updateFollowUpDate').value = '';
+  // Set values with null checks
+  const updateEnquiryIdEl = document.getElementById('updateEnquiryId');
+  const updateStatusEl = document.getElementById('updateStatus');
+  const updateNoteEl = document.getElementById('updateNote');
+  const updateFollowUpDateEl = document.getElementById('updateFollowUpDate');
+  const updateNoteErrorEl = document.getElementById('updateNoteError');
+  const followUpErrorEl = document.getElementById('followUpError');
+
+  if (updateEnquiryIdEl) updateEnquiryIdEl.value = enquiryId;
+  if (updateStatusEl) updateStatusEl.value = ''; // Reset to placeholder
+  if (updateNoteEl) updateNoteEl.value = '';
+  if (updateFollowUpDateEl) updateFollowUpDateEl.value = '';
 
   // Hide errors
-  document.getElementById('updateNoteError').classList.add('hidden');
-  document.getElementById('followUpError').classList.add('hidden');
+  if (updateNoteErrorEl) updateNoteErrorEl.classList.add('hidden');
+  if (followUpErrorEl) followUpErrorEl.classList.add('hidden');
 
   // Handle follow-up date visibility
   handleUpdateStatusChange();

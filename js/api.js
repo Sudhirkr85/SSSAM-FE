@@ -28,6 +28,7 @@ const API_ENDPOINTS = {
     },
     ADMISSIONS: {
         LIST: '/admissions',
+        CREATE: '/admissions',
         GET: (id) => `/admissions/${id}`,
         UPDATE: (id) => `/admissions/${id}`,
         DELETE: (id) => `/admissions/${id}`,
@@ -271,6 +272,16 @@ function handleApiError(error) {
             localStorage.removeItem('token');
             localStorage.removeItem('user');
             window.location.href = 'index.html';
+        }
+
+        // For 409 duplicate errors, preserve the original response structure
+        if (status === 409 && data.errors) {
+            return {
+                success: false,
+                message: data.message,
+                errors: data.errors,
+                statusCode: status
+            };
         }
 
         return {
