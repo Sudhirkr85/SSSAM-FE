@@ -178,7 +178,7 @@
         </div>
 
         <!-- SUMMARY CARDS -->
-        <div id="summaryCards" class="grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <div id="summaryCards" class="grid grid-cols-2 lg:grid-cols-6 gap-4">
           
           <!-- Total Enquiries -->
           <div class="stat-card bg-white rounded-xl shadow-sm p-5">
@@ -202,26 +202,37 @@
             <p id="convertedCount" class="text-2xl font-bold text-green-600">0</p>
           </div>
 
-          <!-- Revenue -->
+          <!-- Total Collected -->
           <div class="stat-card bg-white rounded-xl shadow-sm p-5">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="wallet" class="w-5 h-5 text-emerald-600"></i>
+                <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Total Collected</span>
+            </div>
+            <p id="totalCollected" class="text-2xl font-bold text-emerald-600">₹0</p>
+          </div>
+
+          <!-- Total Due -->
+          <div class="stat-card bg-white rounded-xl shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="credit-card" class="w-5 h-5 text-orange-600"></i>
+              </div>
+              <span class="text-sm text-gray-500">Total Due</span>
+            </div>
+            <p id="totalDue" class="text-2xl font-bold text-orange-600">₹0</p>
+          </div>
+
+          <!-- Revenue -->
+          <div class="stat-card bg-white rounded-xl shadow-sm p-5">
+            <div class="flex items-center gap-3 mb-3">
+              <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                <i data-lucide="wallet" class="w-5 h-5 text-purple-600"></i>
               </div>
               <span class="text-sm text-gray-500">Revenue</span>
             </div>
-            <p id="totalRevenue" class="text-2xl font-bold text-emerald-600">₹0</p>
-          </div>
-
-          <!-- Pending -->
-          <div class="stat-card bg-white rounded-xl shadow-sm p-5">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="clock" class="w-5 h-5 text-amber-600"></i>
-              </div>
-              <span class="text-sm text-gray-500">Pending</span>
-            </div>
-            <p id="pendingAmount" class="text-2xl font-bold text-amber-600">₹0</p>
+            <p id="totalRevenue" class="text-2xl font-bold text-purple-600">₹0</p>
           </div>
 
           <!-- Overdue -->

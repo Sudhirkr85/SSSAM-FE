@@ -316,7 +316,7 @@ function buildSummaryData(admissionsRes, feesRes) {
   let totalPaid = feeSummary.totalPaid;
   let totalRefunds = 0;
   
-  if (totalPaid === null || totalPaid === undefined) {
+  if (totalPaid === null || totalPaid === undefined || totalPaid === 0) {
     totalPaid = 0;
     totalRefunds = 0;
     periodPayments.forEach(p => {
@@ -330,6 +330,11 @@ function buildSummaryData(admissionsRes, feesRes) {
     totalRefunds = feeSummary.totalRefunds;
   }
 
+  // Fallback: if still no revenue, try to get from admissions data
+  if (totalPaid === 0 && admissionsData.admissions) {
+    totalPaid = admissionsData.admissions.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
+  }
+
   // Calculate net revenue
   const netRevenue = totalPaid - totalRefunds;
 
@@ -339,6 +344,19 @@ function buildSummaryData(admissionsRes, feesRes) {
     const totalFeesExpected = feeSummary.totalFeesExpected || 0;
     totalPending = Math.max(0, totalFeesExpected - totalPaid);
   }
+
+  // Fallback: calculate pending from admissions if no data
+  if (totalPending === 0 && admissionsData.admissions) {
+    totalPending = admissionsData.admissions.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
+  }
+
+  console.log('[Reports] Summary data calculated:', {
+    totalPaid,
+    totalRefunds,
+    netRevenue,
+    totalPending,
+    totalEnquiries: summary.totalEnquiries || 0
+  });
 
   return {
     totalEnquiries: summary.totalEnquiries || 0,
@@ -389,28 +407,45 @@ function buildSourceStats(admissionsRes) {
 function renderSummaryCards(data) {
   document.getElementById('totalEnquiries').textContent = data.totalEnquiries || 0;
   document.getElementById('convertedCount').textContent = data.convertedEnquiries || 0;
-  document.getElementById('totalRevenue').textContent = formatCurrency(data.totalRevenue || 0);
   
-  // Show net revenue and refunds
+  // Get revenue data with fallbacks
   const grossRevenue = data.totalRevenue || 0;
   const refunds = data.totalRefunds || 0;
-  const netRevenue = data.netRevenue || grossRevenue - refunds;
+  const netRevenue = data.netRevenue || (grossRevenue - refunds);
   
-  document.getElementById('totalRevenue').textContent = formatCurrency(grossRevenue);
+  // Calculate total collected (net revenue after refunds)
+  const totalCollected = netRevenue;
   
-  // Update revenue display to show gross and net
+  // Calculate total due (pending + overdue)
+  const pendingAmount = data.pendingAmount || 0;
+  const overdueAmount = data.overdueAmount || 0;
+  const totalDue = pendingAmount + overdueAmount;
+  
+  // Calculate total revenue (collected + due)
+  const totalRevenue = totalCollected + totalDue;
+  
+  // Update Total Collected card
+  document.getElementById('totalCollected').textContent = formatCurrency(totalCollected);
+  
+  // Update Total Due card
+  document.getElementById('totalDue').textContent = formatCurrency(totalDue);
+  
+  // Update Revenue display to show total revenue (collected + due)
   const revenueElement = document.getElementById('totalRevenue');
   if (refunds > 0) {
     revenueElement.innerHTML = `
-      <div class="text-lg font-bold text-gray-800">${formatCurrency(netRevenue)}</div>
-      <div class="text-xs text-gray-500">Gross: ${formatCurrency(grossRevenue)} - Refunds: ${formatCurrency(refunds)}</div>
+      <div class="text-lg font-bold text-purple-600">${formatCurrency(totalRevenue)}</div>
+      <div class="text-xs text-gray-500">Collected: ${formatCurrency(totalCollected)} + Due: ${formatCurrency(totalDue)}</div>
     `;
   } else {
-    revenueElement.textContent = formatCurrency(grossRevenue);
+    revenueElement.innerHTML = `
+      <div class="text-lg font-bold text-purple-600">${formatCurrency(totalRevenue)}</div>
+      <div class="text-xs text-gray-500">Collected: ${formatCurrency(totalCollected)} + Due: ${formatCurrency(totalDue)}</div>
+    `;
   }
   
-  document.getElementById('pendingAmount').textContent = formatCurrency(data.pendingAmount || 0);
-  document.getElementById('overdueAmount').textContent = formatCurrency(data.overdueAmount || 0);
+  // Update Overdue card
+  document.getElementById('overdueAmount').textContent = formatCurrency(overdueAmount);
 }
 
 function renderCourseTable(courses) {
