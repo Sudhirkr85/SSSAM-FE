@@ -119,7 +119,7 @@ async function loadReports() {
       apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, dateRange).catch(err => {
         return null;
       }),
-      apiGet(API_ENDPOINTS.ENQUIRIES_REPORTS.WALKIN_BROUGHT_BY).catch(err => {
+      apiGet(API_ENDPOINTS.ENQUIRIES_REPORTS.WALKIN_BROUGHT_BY, dateRange).catch(err => {
         return null;
       })
     ]);
@@ -181,7 +181,7 @@ async function loadReportsFromRegularApis(dateRange) {
     // Fetch from regular APIs
     const [enquiriesRes, admissionsRes] = await Promise.all([
       apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { ...dateRange, limit: 1000 }).catch(() => null),
-      listAdmissions({ limit: 1000 }).catch(() => null)
+      listAdmissions({ ...dateRange, limit: 1000 }).catch(() => null)
     ]);
 
     const enquiries = enquiriesRes?.data || [];
