@@ -19,11 +19,15 @@ let admissionInstallmentRows = []; // For add admission modal
 let sortColumn = null;
 let sortDirection = 'asc'; // 'asc' or 'desc'
 
+// Date filter state
+let currentAdmissionFilter = 'thisMonth';
+
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   initUserInfo();
   initEventListeners();
-  loadAdmissions();
+  const filters = getActiveFilters();
+  loadAdmissions('', filters);
 });
 
 function initUserInfo() {
@@ -72,6 +76,85 @@ function initEventListeners() {
   });
 
   }
+
+// ==================== DATE FILTER LOGIC ====================
+function getDateRangeForFilter(filterType) {
+  const today = new Date();
+  const startDate = new Date();
+  const endDate = new Date();
+
+  switch (filterType) {
+    case 'today':
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'last7days':
+      startDate.setDate(today.getDate() - 6);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'thisMonth':
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'thisYear':
+      startDate.setMonth(0, 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    case 'allTime':
+      startDate.setFullYear(2020, 0, 1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+      break;
+    default:
+      startDate.setDate(1);
+      startDate.setHours(0, 0, 0, 0);
+      endDate.setHours(23, 59, 59, 999);
+  }
+
+  // Format dates as YYYY-MM-DD in local timezone (not UTC)
+  const formatDateLocal = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  return {
+    dateFrom: formatDateLocal(startDate),
+    dateTo: formatDateLocal(endDate)
+  };
+}
+
+function setAdmissionDateFilter(filterType) {
+  currentAdmissionFilter = filterType;
+
+  // Update tab styles
+  document.querySelectorAll('.admission-filter-tab').forEach(tab => {
+    if (tab.dataset.filter === filterType) {
+      tab.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+      tab.classList.add('bg-blue-600', 'text-white');
+    } else {
+      tab.classList.remove('bg-blue-600', 'text-white');
+      tab.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+    }
+  });
+
+  // Reload admissions with new filter
+  currentPage = 1;
+  const filters = getActiveFilters();
+  loadAdmissions('', filters);
+}
+
+function getActiveFilters() {
+  const dateRange = getDateRangeForFilter(currentAdmissionFilter);
+  return {
+    dateFrom: dateRange.dateFrom,
+    dateTo: dateRange.dateTo
+  };
+}
 
 // ==================== API CALLS ====================
 async function loadAdmissions(search = '', filters = {}) {

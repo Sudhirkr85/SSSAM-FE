@@ -168,6 +168,33 @@
       <!-- CONTENT -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
         
+        <!-- DATE FILTER TABS -->
+        <div class="bg-white rounded-xl shadow-sm p-4">
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="flex items-center gap-2 mr-4">
+              <i data-lucide="calendar" class="w-5 h-5 text-gray-400"></i>
+              <span class="text-sm font-medium text-gray-700">Date Range:</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="setAdmissionDateFilter('today')" data-filter="today" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
+                Today
+              </button>
+              <button onclick="setAdmissionDateFilter('last7days')" data-filter="last7days" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                Last 7 Days
+              </button>
+              <button onclick="setAdmissionDateFilter('thisMonth')" data-filter="thisMonth" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                This Month
+              </button>
+              <button onclick="setAdmissionDateFilter('thisYear')" data-filter="thisYear" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                This Year
+              </button>
+              <button onclick="setAdmissionDateFilter('allTime')" data-filter="allTime" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+                All Time
+              </button>
+            </div>
+          </div>
+        </div>
+        
         <!-- TOP BAR -->
         <div class="flex flex-wrap items-center justify-between gap-4">
           <div class="flex items-center gap-3 flex-1 max-w-md">
