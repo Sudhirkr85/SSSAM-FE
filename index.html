@@ -30,7 +30,7 @@
 
   <div class="w-full max-w-md px-6">
 
-    
+
     <div class="bg-white/10 backdrop-blur-xl border border-white/20 rounded-2xl shadow-2xl p-8">
 
       <!-- LOGO -->
@@ -84,7 +84,7 @@
       </form>
 
     </div>
-    
+
 
   </div>
 
@@ -130,16 +130,25 @@
         const messaging = firebase.messaging();
 
         // Request permission and get FCM token
-        Notification.requestPermission().then(permission => {
+        Notification.requestPermission().then(async permission => {
           if (permission === 'granted') {
-            messaging.getToken({ vapidKey: VAPID_KEY }).then(token => {
+            try {
+              const swReg = await navigator.serviceWorker.register(
+                '/SSSAM-FE/firebase-messaging-sw.js'
+              );
+
+              const token = await messaging.getToken({
+                vapidKey: VAPID_KEY,
+                serviceWorkerRegistration: swReg
+              });
+
               if (token) {
                 localStorage.setItem('fcmToken', token);
                 console.log('FCM Token saved for login');
               }
-            }).catch(err => {
+            } catch (err) {
               console.log('FCM token error:', err);
-            });
+            }
           }
         });
       } catch (error) {
