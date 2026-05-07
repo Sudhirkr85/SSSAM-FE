@@ -56,6 +56,9 @@ const API_ENDPOINTS = {
         COURSE_PERFORMANCE: '/reports/course-performance',
         COUNSELOR_PERFORMANCE: '/reports/counselor-performance',
         SUMMARY: '/reports/summary'
+    },
+    ENQUIRIES_REPORTS: {
+        WALKIN_BROUGHT_BY: '/enquiries/walkin-brought-by'
     }
 };
 

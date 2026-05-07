@@ -379,6 +379,67 @@
           </div>
         </div>
 
+        <!-- WALK-IN BROUGHT BY SUMMARY -->
+        <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+          <div class="px-6 py-4 border-b border-gray-100">
+            <h3 class="font-semibold text-gray-800 flex items-center gap-2">
+              <i data-lucide="footprints" class="w-5 h-5 text-teal-600"></i>
+              Walk-in Enquiries - Brought By
+            </h3>
+          </div>
+          
+          <!-- Summary Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 p-4 bg-gray-50">
+            <div class="bg-white rounded-lg p-4 border border-gray-200">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-8 h-8 bg-teal-100 rounded-lg flex items-center justify-center">
+                  <i data-lucide="users" class="w-4 h-4 text-teal-600"></i>
+                </div>
+                <span class="text-xs text-gray-500">Total Enquiries</span>
+              </div>
+              <p id="walkinTotal" class="text-2xl font-bold text-gray-800">0</p>
+            </div>
+            <div class="bg-white rounded-lg p-4 border border-gray-200">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                  <i data-lucide="user-check" class="w-4 h-4 text-green-600"></i>
+                </div>
+                <span class="text-xs text-gray-500">With Brought By Info</span>
+              </div>
+              <p id="walkinWithInfo" class="text-2xl font-bold text-green-600">0</p>
+            </div>
+            <div class="bg-white rounded-lg p-4 border border-gray-200">
+              <div class="flex items-center gap-3 mb-2">
+                <div class="w-8 h-8 bg-orange-100 rounded-lg flex items-center justify-center">
+                  <i data-lucide="help-circle" class="w-4 h-4 text-orange-600"></i>
+                </div>
+                <span class="text-xs text-gray-500">Without Brought By Info</span>
+              </div>
+              <p id="walkinWithoutInfo" class="text-2xl font-bold text-orange-600">0</p>
+            </div>
+          </div>
+
+          <!-- Detailed Table -->
+          <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+              <thead class="bg-gray-50 text-gray-600">
+                <tr>
+                  <th class="px-4 py-3 text-left">Brought By</th>
+                  <th class="px-4 py-3 text-center">Count</th>
+                  <th class="px-4 py-3 text-left">Courses Interested</th>
+                </tr>
+              </thead>
+              <tbody id="walkinBroughtByTable" class="divide-y divide-gray-100">
+                <tr>
+                  <td colspan="3" class="px-4 py-8 text-center text-gray-500">
+                    No data available
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
       </div>
     </main>
   </div>

@@ -106,7 +106,7 @@ async function loadReports() {
   try {
     // Fetch all reports in parallel using date range parameters
     
-    const [admissionsRes, feesRes, courseRes, counselorRes] = await Promise.all([
+    const [admissionsRes, feesRes, courseRes, counselorRes, walkinBroughtByRes] = await Promise.all([
       apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, dateRange).catch(err => {
         return null;
       }),
@@ -117,6 +117,9 @@ async function loadReports() {
         return null;
       }),
       apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, dateRange).catch(err => {
+        return null;
+      }),
+      apiGet(API_ENDPOINTS.ENQUIRIES_REPORTS.WALKIN_BROUGHT_BY).catch(err => {
         return null;
       })
     ]);
@@ -148,6 +151,10 @@ async function loadReports() {
     // Counselor performance table
     const counselorStats = counselorRes?.counselorStats || counselorRes?.data?.counselorStats || [];
     renderCounselorTable(counselorStats);
+
+    // Walk-in brought by data
+    const walkinBroughtByData = walkinBroughtByRes?.data || walkinBroughtByRes || {};
+    renderWalkinBroughtBy(walkinBroughtByData);
 
     // Calculate total revenue from all counselors
     const totalCounselorRevenue = counselorStats.reduce((sum, c) => {
@@ -696,6 +703,61 @@ function renderCounselorTable(counselors) {
       <td class="px-4 py-3 text-right font-medium text-gray-800">${formatCurrency(period.revenue || 0)}</td>
     </tr>
   `}).join('');
+}
+
+function renderWalkinBroughtBy(data) {
+  const summary = data.summary || [];
+  const totalEnquiries = data.totalEnquiries || 0;
+  const withWalkInBroughtBy = data.withWalkInBroughtBy || 0;
+  const withoutWalkInBroughtBy = data.withoutWalkInBroughtBy || 0;
+
+  // Update summary cards
+  document.getElementById('walkinTotal').textContent = totalEnquiries;
+  document.getElementById('walkinWithInfo').textContent = withWalkInBroughtBy;
+  document.getElementById('walkinWithoutInfo').textContent = withoutWalkInBroughtBy;
+
+  // Render table
+  const table = document.getElementById('walkinBroughtByTable');
+
+  if (!summary || summary.length === 0) {
+    table.innerHTML = `
+      <tr>
+        <td colspan="3" class="px-4 py-8 text-center text-gray-500">
+          No data available
+        </td>
+      </tr>
+    `;
+    return;
+  }
+
+  table.innerHTML = summary.map(item => {
+    const broughtBy = item.broughtBy || 'Not Specified';
+    const count = item.count || 0;
+    const courses = item.courses || [];
+
+    // Format courses as badges
+    const coursesHtml = courses.length > 0
+      ? courses.map(course => `
+          <span class="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-teal-100 text-teal-700 mr-1 mb-1">
+            ${escapeHtml(course)}
+          </span>
+        `).join('')
+      : '<span class="text-gray-400 text-xs">No courses</span>';
+
+    return `
+      <tr class="hover:bg-gray-50 transition-colors">
+        <td class="px-4 py-3 font-medium text-gray-800">
+          ${broughtBy === 'Not Specified' ? '<span class="text-gray-400 italic">Not Specified</span>' : escapeHtml(broughtBy)}
+        </td>
+        <td class="px-4 py-3 text-center text-gray-600 font-medium">${count}</td>
+        <td class="px-4 py-3 text-gray-600">
+          <div class="flex flex-wrap">
+            ${coursesHtml}
+          </div>
+        </td>
+      </tr>
+    `;
+  }).join('');
 }
 
 function navigateToCounselorStudents(counselorName, counselorId) {
