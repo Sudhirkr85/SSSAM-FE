@@ -340,9 +340,9 @@ function renderNotificationBell() {
     bellContainer.innerHTML = `
         <button id="notificationBell" class="relative p-2.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all duration-200 hover:shadow-md" onclick="toggleNotificationDropdown()">
             <i data-lucide="bell" class="w-5 h-5"></i>
-            <span id="notificationBadge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg shadow-red-500/30 animate-bounce">0</span>
+            <span id="notificationBadge" class="hidden absolute -top-1 -right-1 min-w-[20px] h-5 px-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs rounded-full flex items-center justify-center font-bold shadow-lg shadow-red-500/30 animate-bounce">0</span>
         </button>
-        <div id="notificationDropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-50 max-h-96 overflow-hidden">
+        <div id="notificationDropdown" class="hidden fixed w-80 bg-white rounded-xl shadow-2xl border border-gray-200 z-[100] max-h-96 overflow-hidden" style="top: 60px; right: 20px;">
             <div class="p-4 border-b border-gray-100 flex items-center justify-between bg-gradient-to-r from-blue-50 to-white">
                 <h3 class="font-semibold text-gray-800">Notifications</h3>
                 <div class="flex items-center gap-2">
@@ -396,7 +396,7 @@ function updateNotificationBell() {
 
     if (badge) {
         if (unreadCount > 0) {
-            badge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+            badge.textContent = unreadCount > 99 ? '99+' : unreadCount;
             badge.classList.remove('hidden');
         } else {
             badge.classList.add('hidden');
@@ -475,8 +475,9 @@ function renderNotificationDropdown() {
     const recentNotifications = notifications.slice(0, 10);
 
     list.innerHTML = recentNotifications.map(notification => {
-        const isEnquiry = notification.type === 'enquiry';
-        const isAdmission = notification.type === 'admission';
+        const isEnquiry = notification.type === 'enquiry' || notification.type === 'enquiry_created';
+        const isAdmission = notification.type === 'admission' || notification.type === 'admission_created';
+        const isPayment = notification.type === 'payment' || notification.type === 'payment_received';
         let colorClass, icon;
 
         if (isEnquiry) {
@@ -485,9 +486,12 @@ function renderNotificationDropdown() {
         } else if (isAdmission) {
             colorClass = 'bg-purple-100 text-purple-600';
             icon = 'user-check';
-        } else {
+        } else if (isPayment) {
             colorClass = 'bg-green-100 text-green-600';
             icon = 'wallet';
+        } else {
+            colorClass = 'bg-gray-100 text-gray-600';
+            icon = 'bell';
         }
 
         const readClass = notification.read ? 'opacity-60' : 'bg-blue-50';
@@ -533,25 +537,34 @@ function handleNotificationClick(notificationId) {
     markAsRead(notificationId);
 
     // Navigate based on type
-    if (notification.type === 'enquiry') {
-        const enquiryId = notification.data._id || notification.data.id;
+    const isEnquiry = notification.type === 'enquiry' || notification.type === 'enquiry_created';
+    const isPayment = notification.type === 'payment' || notification.type === 'payment_received';
+    const isAdmission = notification.type === 'admission' || notification.type === 'admission_created';
+
+    if (isEnquiry) {
+        const enquiryId = notification.data._id || notification.data.id || notification.data.enquiryId;
         if (enquiryId) {
             window.location.href = `enquiry-detail.html?id=${enquiryId}`;
+        } else {
+            window.location.href = 'enquiries.html';
         }
-    } else if (notification.type === 'payment') {
-        const admissionId = notification.data.admissionId;
+    } else if (isPayment) {
+        const admissionId = notification.data.admissionId || notification.data._id || notification.data.id;
         if (admissionId) {
             window.location.href = `admission-detail.html?id=${admissionId}`;
         } else {
             window.location.href = 'payments.html';
         }
-    } else if (notification.type === 'admission') {
-        const admissionId = notification.data._id || notification.data.id;
+    } else if (isAdmission) {
+        const admissionId = notification.data._id || notification.data.id || notification.data.admissionId;
         if (admissionId) {
             window.location.href = `admission-detail.html?id=${admissionId}`;
         } else {
             window.location.href = 'admissions.html';
         }
+    } else {
+        // Default to dashboard for unknown types
+        window.location.href = 'dashboard.html';
     }
 
     // Close dropdown
