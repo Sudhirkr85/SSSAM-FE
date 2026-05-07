@@ -54,10 +54,9 @@ SERVICE WORKER REGISTRATION
 ====================== */
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/firebase-messaging-sw.js')
-            .then((registration) => {
-                console.log('Service Worker registered:', registration);
-            })
+        navigator.serviceWorker.register('/SSSAM-FE/firebase-messaging-sw.js').then((registration) => {
+            console.log('Service Worker registered:', registration);
+        })
             .catch((error) => {
                 console.error('Service Worker registration failed:', error);
             });
@@ -125,8 +124,13 @@ async function requestFCMPermission() {
 async function getFCMToken() {
     try {
         // Get FCM token
+        const swReg = await navigator.serviceWorker.register(
+            '/SSSAM-FE/firebase-messaging-sw.js'
+        );
+
         const currentToken = await messaging.getToken({
-            vapidKey: VAPID_KEY
+            vapidKey: VAPID_KEY,
+            serviceWorkerRegistration: swReg
         });
 
         if (currentToken) {
@@ -953,7 +957,7 @@ async function showLoginWelcomePopup() {
         // Removed unnecessary API call to today-summary endpoint
         // The welcome popup will now show without requiring additional API call
         console.log('Login welcome popup shown');
-        
+
         // You can add a custom welcome message here if needed
         renderWelcomeModal(null); // Show welcome without summary data
     } catch (error) {
