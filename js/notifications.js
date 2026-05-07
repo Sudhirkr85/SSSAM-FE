@@ -55,10 +55,8 @@ SERVICE WORKER REGISTRATION
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/SSSAM-FE/firebase-messaging-sw.js').then((registration) => {
-            console.log('Service Worker registered:', registration);
         })
             .catch((error) => {
-                console.error('Service Worker registration failed:', error);
             });
     }
 }
@@ -76,7 +74,6 @@ function initFirebase() {
 
     // Check if Firebase is loaded
     if (typeof firebase === 'undefined') {
-        console.log('Firebase SDK not loaded, retrying in 1s...');
         setTimeout(initFirebase, 1000);
         return;
     }
@@ -93,13 +90,9 @@ function initFirebase() {
 
         // Handle foreground messages
         messaging.onMessage((payload) => {
-            console.log('Firebase message received:', payload);
             handleFirebaseNotification(payload);
         });
-
-        console.log('Firebase initialized successfully');
     } catch (error) {
-        console.error('Firebase initialization error:', error);
     }
 }
 
@@ -111,13 +104,9 @@ async function requestFCMPermission() {
         const permission = await Notification.requestPermission();
 
         if (permission === 'granted') {
-            console.log('Notification permission granted');
             await getFCMToken();
-        } else {
-            console.log('Notification permission denied');
         }
     } catch (error) {
-        console.error('Error requesting permission:', error);
     }
 }
 
@@ -134,17 +123,12 @@ async function getFCMToken() {
         });
 
         if (currentToken) {
-            console.log('FCM Token received');
             fcmToken = currentToken;
 
             // Store token in localStorage for login/logout to use
             localStorage.setItem('fcmToken', currentToken);
-            console.log('FCM token stored locally for login/logout');
-        } else {
-            console.log('No registration token available');
         }
     } catch (error) {
-        console.error('Error getting FCM token:', error);
     }
 }
 
@@ -153,12 +137,10 @@ async function removeFCMTokenOnLogout() {
         if (fcmToken) {
             // Delete token from Firebase
             await messaging.deleteToken();
-            console.log('FCM token removed from Firebase');
         }
         // Clear local storage
         localStorage.removeItem('fcmToken');
     } catch (error) {
-        console.error('Error removing FCM token:', error);
     }
 }
 
@@ -320,7 +302,6 @@ function loadNotifications() {
         try {
             notifications = JSON.parse(stored);
         } catch (e) {
-            console.error('Failed to load notifications:', e);
             notifications = [];
         }
     }
@@ -342,19 +323,15 @@ UI COMPONENTS
 function renderNotificationBell() {
     // Check if bell already exists
     if (document.getElementById('notificationBell')) {
-        console.log('Notification bell already exists');
         return;
     }
 
     // Find header in all pages
     const header = document.querySelector('header');
     if (!header) {
-        console.log('Header not found, retrying in 100ms...');
         setTimeout(renderNotificationBell, 100);
         return;
     }
-
-    console.log('Header found, rendering notification bell...');
 
     // Create notification bell container
     const bellContainer = document.createElement('div');
@@ -389,7 +366,6 @@ function renderNotificationBell() {
     // Insert bell container before logout button
     const logoutBtn = header.querySelector('#logoutBtn') || header.querySelector('button[onclick="logout()"]');
     if (logoutBtn) {
-        console.log('Found logout button, inserting bell before it');
         // If logout button is direct child of header, insert before it
         if (logoutBtn.parentElement === header) {
             header.insertBefore(bellContainer, logoutBtn);
@@ -398,7 +374,6 @@ function renderNotificationBell() {
         }
     } else {
         // If no logout button, append to header
-        console.log('No logout button found, appending to header');
         header.appendChild(bellContainer);
     }
 
@@ -413,8 +388,6 @@ function renderNotificationBell() {
     // Render notifications
     updateNotificationBell();
     renderNotificationDropdown();
-
-    console.log('Notification bell rendered successfully');
 }
 
 function updateNotificationBell() {
@@ -675,9 +648,7 @@ function playNotificationSound() {
 
         if (playPromise !== undefined) {
             playPromise.then(() => {
-                console.log('Sound played successfully');
             }).catch(error => {
-                console.log('Sound play failed:', error);
                 // Try to create audio context and play - single beep
                 const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                 const oscillator = audioContext.createOscillator();
@@ -695,7 +666,6 @@ function playNotificationSound() {
             });
         }
     } catch (e) {
-        console.log('Sound error:', e);
     }
 }
 
@@ -723,9 +693,6 @@ BROWSER NOTIFICATIONS
 function requestBrowserNotificationPermission() {
     if ('Notification' in window && Notification.permission === 'default') {
         Notification.requestPermission().then(permission => {
-            if (permission === 'granted') {
-                console.log('Browser notification permission granted');
-            }
         });
     }
 }
@@ -956,12 +923,9 @@ async function showLoginWelcomePopup() {
 
         // Removed unnecessary API call to today-summary endpoint
         // The welcome popup will now show without requiring additional API call
-        console.log('Login welcome popup shown');
-
         // You can add a custom welcome message here if needed
         renderWelcomeModal(null); // Show welcome without summary data
     } catch (error) {
-        console.log('Error showing welcome popup:', error);
     }
 }
 
@@ -971,7 +935,6 @@ function renderWelcomeModal(summary) {
 
     // Check if summary is valid
     if (!summary || typeof summary !== 'object') {
-        console.log('Invalid summary data for welcome modal:', summary);
         return;
     }
 
@@ -1120,7 +1083,6 @@ if (document.readyState === 'loading') {
 // Also try to render bell after a delay in case DOM is not ready
 setTimeout(() => {
     if (!document.getElementById('notificationBell')) {
-        console.log('Notification bell not found after initial load, rendering now...');
         renderNotificationBell();
     }
 }, 500);

@@ -44,20 +44,13 @@ const sourceMap = {
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('DOM Loaded - Enquiry Detail Page');
-    console.log('Current URL:', window.location.href);
-    console.log('URL Search:', window.location.search);
-
     // Get enquiry ID from URL
     const urlParams = new URLSearchParams(window.location.search);
     currentId = urlParams.get('id');
-    console.log('Extracted ID from URL:', currentId);
 
     if (currentId) {
-        console.log('Calling loadEnquiryDetail with ID:', currentId);
         loadEnquiryDetail(currentId);
     } else {
-        console.error('No enquiry ID in URL');
         showToast('error', 'No enquiry ID provided');
     }
 
@@ -81,17 +74,13 @@ document.addEventListener('DOMContentLoaded', () => {
 LOAD DATA
 ====================== */
 async function loadEnquiryDetail(id) {
-    console.log('Loading enquiry detail for ID:', id);
     try {
         const res = await apiGet(API_ENDPOINTS.ENQUIRIES.GET(id));
-        console.log('API Response:', res);
 
         // Handle different API response structures
         const enquiry = res.data?.enquiry || res.data || res.enquiry || res;
-        console.log('Extracted enquiry:', enquiry);
 
         if (!enquiry) {
-            console.error('Enquiry not found in response');
             showToast('error', 'Enquiry not found');
             return;
         }
@@ -101,10 +90,8 @@ async function loadEnquiryDetail(id) {
         renderTimeline(enquiry.statusHistory || []);
 
         // NEW: Check if enquiry is locked due to admission for this course
-        const isLocked = await checkEnquiryLocking();
-        console.log('Enquiry locked status:', isLocked);
+        await checkEnquiryLocking();
     } catch (error) {
-        console.error('Error loading enquiry details:', error);
         showToast('error', 'Failed to load enquiry details');
     }
 }

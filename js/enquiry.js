@@ -187,10 +187,6 @@ function checkAdminFeatures() {
 // ==================== STATUS COUNTS ====================
 async function loadStatusCounts() {
   try {
-    console.log('Loading status counts...');
-    console.log('API Endpoint:', API_ENDPOINTS.ENQUIRIES.LIST);
-    console.log('Token exists:', !!localStorage.getItem('token'));
-    
     // Fetch counts from API for accurate server-side logic
     const [allRes, todayRes, pendingRes] = await Promise.all([
       apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 }),
@@ -198,15 +194,9 @@ async function loadStatusCounts() {
       apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { filterType: 'pending_followups', page: 1, limit: 1 })
     ]);
     
-    console.log('All API Response:', allRes);
-    console.log('Today Followups API Response:', todayRes);
-    console.log('Pending Followups API Response:', pendingRes);
-    
     const pagination = allRes.pagination || {};
     const totalCount = pagination.totalCount || 0;
     const totalPages = pagination.totalPages || 1;
-    console.log('Total count from pagination:', totalCount);
-    console.log('Total pages:', totalPages);
     
     let allEnquiries = [];
     
@@ -224,8 +214,6 @@ async function loadStatusCounts() {
       allEnquiries = pageResults.flatMap(res => res.data || res.enquiries || []);
     }
     
-    console.log('All enquiries count:', allEnquiries.length);
-    
     // Count by status from available data (3-status system)
     statusCounts.all = totalCount;
     statusCounts.NEW = allEnquiries.filter(e => isCreatedToday(e)).length;
@@ -236,14 +224,9 @@ async function loadStatusCounts() {
     statusCounts.TODAY_FOLLOWUPS = (todayRes.pagination?.totalCount || 0);
     statusCounts.PENDING_FOLLOWUPS = (pendingRes.pagination?.totalCount || 0);
     
-    console.log('Today Followups Count (from API):', statusCounts.TODAY_FOLLOWUPS);
-    console.log('Pending Followups Count (from API):', statusCounts.PENDING_FOLLOWUPS);
-    console.log('Final status counts:', statusCounts);
-    
     // Update UI
     updateCountDisplay();
   } catch (err) {
-    console.error('Failed to load status counts:', err);
     // Set default values on error
     statusCounts.all = 0;
     statusCounts.NEW = 0;
@@ -280,13 +263,10 @@ function updateStatusCountsFromCurrentData() {
     return false;
   }).length;
   
-  console.log('Updated status counts from current data:', statusCounts);
   updateCountDisplay();
 }
 
 function updateCountDisplay() {
-  console.log('Updating count display with:', statusCounts);
-  
   const countAll = document.getElementById('count-all');
   const countNew = document.getElementById('count-NEW');
   const countContacted = document.getElementById('count-CONTACTED');
@@ -295,16 +275,12 @@ function updateCountDisplay() {
   const countPendingFollowups = document.getElementById('count-PENDING_FOLLOWUPS');
   const totalDisplay = document.getElementById('totalCountDisplay');
   
-  console.log('DOM Elements found:', { countAll, countContacted, countNotInterested, countTodayFollowups, countPendingFollowups, totalDisplay });
-  
   if (countAll) countAll.textContent = statusCounts.all;
   if (countNew) countNew.textContent = statusCounts.NEW;
   if (countContacted) countContacted.textContent = statusCounts.CONTACTED;
   if (countNotInterested) countNotInterested.textContent = statusCounts.NOT_INTERESTED;
   if (countTodayFollowups) countTodayFollowups.textContent = statusCounts.TODAY_FOLLOWUPS;
   if (countPendingFollowups) countPendingFollowups.textContent = statusCounts.PENDING_FOLLOWUPS;
-  
-  console.log('Count display updated');
 }
 
 // ==================== QUICK FILTER FUNCTIONS ====================
@@ -509,34 +485,18 @@ async function loadEnquiries(requestId = null) {
       params.filterType = 'all';
     }
 
-    console.log('Loading enquiries with params:', params);
-    console.log('Full API URL:', 'https://sssam-r3pz.onrender.com/api' + API_ENDPOINTS.ENQUIRIES.LIST);
-    
     const res = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, params);
     
     // Ignore stale responses from previous filter requests
     if (requestId !== null && requestId !== lastFilterRequestId) {
-      console.log('Ignoring stale filter response');
       return;
     }
-    
-    console.log('Load enquiries response:', res);
-    console.log('Response data structure:', {
-        'res.data': res.data,
-        'res.enquiries': res.enquiries,
-        'res.pagination': res.pagination,
-        'data type': typeof res.data,
-        'data isArray': Array.isArray(res.data)
-    });
 
     // Extract data based on response structure
     enquiries = res.data || res.enquiries || [];
     const pagination = res.pagination || {};
     totalPages = pagination.totalPages || 1;
     totalCount = pagination.totalCount || 0;
-    
-    console.log('Extracted enquiries:', enquiries.length);
-    console.log('Pagination:', pagination);
 
     renderTable();
     renderMobileCards();
@@ -555,7 +515,6 @@ async function loadEnquiries(requestId = null) {
       btn.classList.remove('opacity-50', 'cursor-not-allowed');
     });
   } catch (err) {
-    console.error('Failed to load enquiries:', err);
     showError('Failed to load enquiries. Please try again.');
     renderEmptyState();
     
@@ -1286,25 +1245,19 @@ async function submitAddEnquiry() {
     }
 
     const res = await apiPost(API_ENDPOINTS.ENQUIRIES.CREATE, payload);
-    
-    console.log('Create enquiry response:', res);
-    
+
     // Check for duplicate mobile first (even if success is false)
     if (res.errors && res.errors.existingEnquiry) {
-        console.log('Duplicate mobile detected, showing duplicate modal...');
         showDuplicateModal(res.errors.existingEnquiry);
         return;
     }
     
     // Check if response is successful
     if (!res.success) {
-        console.log('Create enquiry failed:', res.error?.message);
         const message = res.message || res.error?.message || 'Failed to add enquiry';
         showError(message);
-        return;
+      return;
     }
-    
-    console.log('Create enquiry successful');
 
     // Reset form
     document.getElementById('addName').value = '';
@@ -1329,23 +1282,15 @@ async function submitAddEnquiry() {
     loadStatusCounts(); // Refresh counts after adding new enquiry
     loadEnquiries();
   } catch (err) {
-    console.error('Failed to create enquiry:', err);
-    
     // Check if it's a duplicate mobile error (409 status)
-    console.log('=== DUPLICATE DETECTION DEBUG ===');
-    console.log('Error response structure:', err.response?.data);
-    console.log('Error status:', err.response?.status);
     
     if (err.response?.status === 409) {
-      console.log('Duplicate mobile detected in catch block, showing modal');
       const responseData = err.response?.data;
       if (responseData && responseData.errors && responseData.errors.existingEnquiry) {
         showDuplicateModal(responseData.errors.existingEnquiry);
         return;
       }
     }
-    
-    console.log('Not a duplicate error, showing regular error message');
     
     const message = err.response?.data?.message || err.message || 'Failed to add enquiry';
     showError(message);
@@ -1359,18 +1304,9 @@ async function submitAddEnquiry() {
 
 // ==================== DUPLICATE ENQUIRY MODAL ====================
 function showDuplicateModal(existingEnquiry) {
-  console.log('=== DUPLICATE MODAL DEBUG ===');
-  console.log('showDuplicateModal called with:', existingEnquiry);
-  
   const modal = document.getElementById('duplicateEnquiryModal');
   const content = document.getElementById('duplicateEnquiryModalContent');
   const details = document.getElementById('duplicateEnquiryDetails');
-  
-  console.log('Modal elements found:', {
-    modal: !!modal,
-    content: !!content,
-    details: !!details
-  });
   
   // Populate existing enquiry details according to requirements
   details.innerHTML = `
@@ -1435,20 +1371,15 @@ function showDuplicateModal(existingEnquiry) {
   const duplicateIdInput = document.getElementById('duplicateEnquiryId');
   if (duplicateIdInput) {
     duplicateIdInput.value = existingEnquiry._id;
-    console.log('Set duplicateEnquiryId to:', existingEnquiry._id);
-  } else {
-    console.error('duplicateEnquiryId input not found');
   }
   
   // Show modal
-  console.log('Showing duplicate modal...');
   modal.classList.remove('hidden');
   modal.classList.add('flex');
   setTimeout(() => {
     modal.classList.remove('opacity-0');
     content.classList.remove('scale-95');
     content.classList.add('scale-100');
-    console.log('Modal should now be visible');
   }, 10);
   lucide.createIcons();
 }
@@ -1471,11 +1402,7 @@ function updateExistingEnquiry() {
   const duplicateIdInput = document.getElementById('duplicateEnquiryId');
   const enquiryId = duplicateIdInput ? duplicateIdInput.value : null;
   
-  console.log('=== UPDATE EXISTING ENQUIRY DEBUG ===');
-  console.log('User chose to update existing enquiry:', enquiryId);
-  
   if (!enquiryId) {
-    console.error('No enquiry ID found for update');
     showError('Unable to update enquiry - missing ID');
     return;
   }
@@ -1487,13 +1414,10 @@ function updateExistingEnquiry() {
   closeAddModal();
   
   // Open edit modal with existing enquiry data (same as table row edit)
-  console.log('Opening edit modal for enquiry:', enquiryId);
   openEditModal(enquiryId);
 }
 
 function createNewCourseEnquiry() {
-  console.log('=== NEW COURSE ENQUIRY DEBUG ===');
-  console.log('Creating new course enquiry...');
 
   // Store existing enquiry data for pre-filling
   const existingEnquiry = {
@@ -1518,8 +1442,6 @@ function createNewCourseEnquiry() {
 }
 
 function openAddModalForNewCourse(prefillData) {
-  console.log('=== OPEN ADD MODAL FOR NEW COURSE DEBUG ===');
-  console.log('Pre-filling with:', prefillData);
 
   // Open the add modal
   const modal = document.getElementById('addModal');
@@ -1645,7 +1567,6 @@ async function submitEditEnquiryWithCourseChange(formData) {
       loadEnquiries();
     }
   } catch (err) {
-    console.error('Failed to update enquiry:', err);
     const message = err.response?.data?.message || 'Failed to update enquiry';
     
     // Handle specific error for admission already exists
@@ -1687,9 +1608,6 @@ async function openEditModal(enquiryId) {
     const customCourseContainer = document.getElementById('editCustomCourseContainer');
     const customCourseField = document.getElementById('editCustomCourse');
     
-    console.log('Course data:', enquiry.course, enquiry.courseInterested);
-    console.log('Full enquiry object:', enquiry);
-    
     // Try different possible course field names and handle various data structures
     let courseValue = enquiry.course || enquiry.courseInterested || '';
     
@@ -1706,15 +1624,11 @@ async function openEditModal(enquiryId) {
     // Ensure courseValue is a string
     courseValue = String(courseValue || '').trim();
     
-    console.log('Final course value:', courseValue);
-    
     // Get all available options from the dropdown
     const availableOptions = Array.from(courseField.options).map(option => option.value);
-    console.log('Available course options:', availableOptions);
     
     // Check if the course value exists in the dropdown options
     const courseExistsInDropdown = availableOptions.includes(courseValue);
-    console.log('Course exists in dropdown:', courseExistsInDropdown);
     
     if (courseExistsInDropdown) {
       // Set the dropdown to the matching course
@@ -1725,7 +1639,6 @@ async function openEditModal(enquiryId) {
       courseField.value = 'Other';
       customCourseContainer.classList.remove('hidden');
       customCourseField.value = courseValue; // Set the custom course value
-      console.log('Showing custom course field with value:', courseValue);
     }
     
     // Manually trigger the change event to ensure UI is consistent
@@ -1757,8 +1670,6 @@ async function openEditModal(enquiryId) {
       walkInBroughtByField.value = enquiry.walkInBroughtBy || '';
     }
     
-    console.log('All fields populated successfully');
-    
     // Show modal
     const modal = document.getElementById('editModal');
     const content = document.getElementById('editModalContent');
@@ -1772,7 +1683,6 @@ async function openEditModal(enquiryId) {
     }, 10);
     lucide.createIcons();
   } catch (err) {
-    console.error('Failed to load enquiry:', err);
     showToast('Error', 'Failed to load enquiry details', 'error');
   }
 }
@@ -1827,19 +1737,13 @@ function showEditFieldError(fieldId, errorId) {
 }
 
 function handleEditCourseChange(e) {
-  console.log('Edit Course changed to:', e.target.value);
   const container = document.getElementById('editCustomCourseContainer');
-  console.log('Edit Container found:', container);
-  console.log('Container classes before:', container ? container.className : 'null');
+  const courseValue = e.target.value;
   
-  if (e.target.value === 'Other') {
+  if (courseValue === 'Other') {
     container.classList.remove('hidden');
-    console.log('Showing edit custom course container');
-    console.log('Container classes after:', container ? container.className : 'null');
   } else {
     container.classList.add('hidden');
-    console.log('Hiding edit custom course container');
-    console.log('Container classes after:', container ? container.className : 'null');
   }
 }
 
@@ -2001,7 +1905,6 @@ async function submitEditEnquiry() {
       loadEnquiries();
     }
   } catch (err) {
-    console.error('Failed to update enquiry:', err);
     const message = err.response?.data?.message || 'Failed to update enquiry';
     
     // Handle specific error for admission already exists
@@ -2022,7 +1925,6 @@ async function getCurrentEnquiryData(enquiryId) {
     const response = await apiGet(API_ENDPOINTS.ENQUIRIES.GET(enquiryId));
     return response.data?.enquiry || response.data || response;
   } catch (err) {
-    console.error('Failed to get current enquiry data:', err);
     return null;
   }
 }
@@ -2182,7 +2084,6 @@ async function submitUpdate() {
     showToast('Success', 'Status updated successfully', 'success');
     loadEnquiries();
   } catch (err) {
-    console.error('Failed to update status:', err);
     const message = err.response?.data?.message || 'Failed to update status';
     showError(message);
   } finally {
@@ -2340,7 +2241,6 @@ async function submitBulkUpload() {
     }, 5000);
   } catch (err) {
     clearInterval(progressInterval);
-    console.error('Bulk upload failed:', err);
     const message = err.response?.data?.message || 'Bulk upload failed';
     showError(message);
   } finally {
@@ -2448,20 +2348,11 @@ function viewEnquiryDetail(enquiryId) {
 }
 
 function showToast(title, message, type = 'success') {
-  console.log('=== TOAST DEBUG ===');
-  console.log('showToast called with:', { title, message, type });
   
   const toast = document.getElementById('toast');
   const icon = document.getElementById('toastIcon');
   const titleEl = document.getElementById('toastTitle');
   const messageEl = document.getElementById('toastMessage');
-  
-  console.log('Toast elements found:', {
-    toast: !!toast,
-    icon: !!icon,
-    titleEl: !!titleEl,
-    messageEl: !!messageEl
-  });
 
   // Set icon based on type
   if (type === 'success') {
@@ -2475,15 +2366,11 @@ function showToast(title, message, type = 'success') {
   titleEl.textContent = title;
   messageEl.textContent = message;
 
-  console.log('Setting toast content and showing...');
   toast.classList.remove('hidden');
   lucide.createIcons();
 
-  console.log('Toast should now be visible');
-  
   // Auto hide after 3 seconds
   setTimeout(() => {
-    console.log('Auto-hiding toast...');
     hideToast();
   }, 3000);
 }
@@ -2566,8 +2453,6 @@ async function loadCounselors() {
       select.appendChild(option);
     });
   } catch (err) {
-    console.error('Failed to load counselors:', err);
-    // Fallback: show error in dropdown
     const select = document.getElementById('counselorSelect');
     select.innerHTML = '<option value="">Failed to load counselors</option>';
   }
@@ -2644,7 +2529,6 @@ async function submitAssign() {
     // Reload enquiries to show updated assignment
     loadEnquiries();
   } catch (err) {
-    console.error('Failed to assign enquiry:', err);
     showToast('Error', err.response?.data?.message || 'Failed to assign enquiry');
   } finally {
     isAssigning = false;

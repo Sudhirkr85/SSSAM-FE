@@ -9,7 +9,6 @@ function safeParseLocalStorage(key, defaultValue = null) {
     const item = localStorage.getItem(key);
     return item ? JSON.parse(item) : defaultValue;
   } catch (e) {
-    console.error(`Error parsing localStorage key "${key}":`, e);
     return defaultValue;
   }
 }
@@ -31,7 +30,6 @@ let currentFilter = 'thisMonth';
 
 function setDateFilter(filterType) {
   currentFilter = filterType;
-  console.log('[Reports] Filter changed to:', filterType);
 
   // Update tab styles
   document.querySelectorAll('.filter-tab').forEach(tab => {
@@ -104,36 +102,28 @@ async function loadReports() {
 
   // Get date range for the selected filter
   const dateRange = getDateRangeForFilter(currentFilter);
-  console.log('[Reports] Loading with dateRange:', dateRange);
 
   try {
     // Fetch all reports in parallel using date range parameters
-    console.log('[Reports] Calling APIs with params:', dateRange);
     
     const [admissionsRes, feesRes, courseRes, counselorRes] = await Promise.all([
       apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, dateRange).catch(err => {
-        console.error('[Reports] Admissions API error:', err?.response?.status, err?.response?.data);
         return null;
       }),
       apiGet(API_ENDPOINTS.REPORTS.FEES, dateRange).catch(err => {
-        console.error('[Reports] Fees API error:', err?.response?.status, err?.response?.data);
         return null;
       }),
       apiGet(API_ENDPOINTS.REPORTS.COURSE_PERFORMANCE, dateRange).catch(err => {
-        console.error('[Reports] Course API error:', err?.response?.status, err?.response?.data);
         return null;
       }),
       apiGet(API_ENDPOINTS.REPORTS.COUNSELOR_PERFORMANCE, dateRange).catch(err => {
-        console.error('[Reports] Counselor API error:', err?.response?.status, err?.response?.data);
         return null;
       })
     ]);
 
-    console.log('[Reports] API responses:', { admissionsRes, feesRes, courseRes, counselorRes });
 
     // If reports APIs fail, fallback to regular APIs
     if (!admissionsRes && !feesRes && !courseRes && !counselorRes) {
-      console.log('[Reports] Falling back to regular APIs');
       await loadReportsFromRegularApis(dateRange);
       hideLoadingState();
       return;
@@ -173,7 +163,6 @@ async function loadReports() {
 
     hideLoadingState();
   } catch (err) {
-    console.error('Failed to load reports:', err);
     hideLoadingState();
     showToast('Error', 'Failed to load reports', 'error');
   }
@@ -239,7 +228,6 @@ async function loadReportsFromRegularApis(dateRange) {
       revenue: data.revenue
     }));
     
-    console.log('[Reports] Course stats calculated:', courseStats);
     renderCourseTable(courseStats);
 
     // Payment stats (simplified)
@@ -295,11 +283,9 @@ async function loadReportsFromRegularApis(dateRange) {
     }
     
     const counselorStats = Object.values(counselorGroups);
-    console.log('[Reports] Counselor stats calculated:', counselorStats);
     renderCounselorTable(counselorStats);
 
   } catch (err) {
-    console.error('Failed to load fallback reports:', err);
   }
 }
 
@@ -349,14 +335,6 @@ function buildSummaryData(admissionsRes, feesRes) {
   if (totalPending === 0 && admissionsData.admissions) {
     totalPending = admissionsData.admissions.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
   }
-
-  console.log('[Reports] Summary data calculated:', {
-    totalPaid,
-    totalRefunds,
-    netRevenue,
-    totalPending,
-    totalEnquiries: summary.totalEnquiries || 0
-  });
 
   return {
     totalEnquiries: summary.totalEnquiries || 0,
