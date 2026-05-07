@@ -443,7 +443,8 @@ function formatDateOnly(dateStr) {
     const date = new Date(dateStr);
     const day = date.getDate();
     const month = date.toLocaleDateString('en-IN', { month: 'short' });
-    return `${day} ${month}`;
+    const year = date.getFullYear();
+    return `${day} ${month} ${year}`;
 }
 
 // Toggle More Details section

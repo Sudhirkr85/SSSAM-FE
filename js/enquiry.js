@@ -349,7 +349,8 @@ function formatDate(dateStr) {
   const date = new Date(dateStr);
   const day = date.getDate();
   const month = date.toLocaleDateString('en-IN', { month: 'short' });
-  return `${day} ${month}`;
+  const year = date.getFullYear();
+  return `${day} ${month} ${year}`;
 }
 
 function getFollowUpTooltip(enquiry) {
