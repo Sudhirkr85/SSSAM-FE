@@ -1687,23 +1687,49 @@ async function openEditModal(enquiryId) {
     const customCourseField = document.getElementById('editCustomCourse');
     
     console.log('Course data:', enquiry.course, enquiry.courseInterested);
+    console.log('Full enquiry object:', enquiry);
     
-    // Try different possible course field names
+    // Try different possible course field names and handle various data structures
     let courseValue = enquiry.course || enquiry.courseInterested || '';
+    
+    // Handle if course is an object with value property
+    if (courseValue && typeof courseValue === 'object') {
+      courseValue = courseValue.value || courseValue.name || courseValue;
+    }
+    
+    // Handle if course is an array
     if (Array.isArray(courseValue)) {
       courseValue = courseValue[0] || '';
     }
     
-    courseField.value = courseValue;
+    // Ensure courseValue is a string
+    courseValue = String(courseValue || '').trim();
     
-    // Handle custom course
-    if (courseValue === 'Other') {
-      customCourseContainer.classList.remove('hidden');
-      const customCourse = enquiry.customCourse || (Array.isArray(enquiry.courseInterested) ? enquiry.courseInterested[1] : '') || '';
-      customCourseField.value = customCourse;
-    } else {
+    console.log('Final course value:', courseValue);
+    
+    // Get all available options from the dropdown
+    const availableOptions = Array.from(courseField.options).map(option => option.value);
+    console.log('Available course options:', availableOptions);
+    
+    // Check if the course value exists in the dropdown options
+    const courseExistsInDropdown = availableOptions.includes(courseValue);
+    console.log('Course exists in dropdown:', courseExistsInDropdown);
+    
+    if (courseExistsInDropdown) {
+      // Set the dropdown to the matching course
+      courseField.value = courseValue;
       customCourseContainer.classList.add('hidden');
+    } else {
+      // Course doesn't exist in dropdown, set to "Other" and show custom course field
+      courseField.value = 'Other';
+      customCourseContainer.classList.remove('hidden');
+      customCourseField.value = courseValue; // Set the custom course value
+      console.log('Showing custom course field with value:', courseValue);
     }
+    
+    // Manually trigger the change event to ensure UI is consistent
+    const changeEvent = new Event('change', { bubbles: true });
+    courseField.dispatchEvent(changeEvent);
     
     // Source field
     const sourceField = document.getElementById('editSource');
@@ -1753,6 +1779,17 @@ async function openEditModal(enquiryId) {
 function closeEditModal() {
   const modal = document.getElementById('editModal');
   const content = document.getElementById('editModalContent');
+  
+  // Reset custom course field
+  const customCourseContainer = document.getElementById('editCustomCourseContainer');
+  const customCourseField = document.getElementById('editCustomCourse');
+  if (customCourseContainer) {
+    customCourseContainer.classList.add('hidden');
+  }
+  if (customCourseField) {
+    customCourseField.value = '';
+  }
+  
   modal.classList.add('opacity-0');
   content.classList.remove('scale-100');
   content.classList.add('scale-95');
@@ -1789,9 +1826,20 @@ function showEditFieldError(fieldId, errorId) {
 }
 
 function handleEditCourseChange(e) {
+  console.log('Edit Course changed to:', e.target.value);
   const container = document.getElementById('editCustomCourseContainer');
-  if (e.target.value === 'Other') container.classList.remove('hidden');
-  else container.classList.add('hidden');
+  console.log('Edit Container found:', container);
+  console.log('Container classes before:', container ? container.className : 'null');
+  
+  if (e.target.value === 'Other') {
+    container.classList.remove('hidden');
+    console.log('Showing edit custom course container');
+    console.log('Container classes after:', container ? container.className : 'null');
+  } else {
+    container.classList.add('hidden');
+    console.log('Hiding edit custom course container');
+    console.log('Container classes after:', container ? container.className : 'null');
+  }
 }
 
 function handleEditSourceChange(e) {
@@ -1837,8 +1885,8 @@ function validateEditForm() {
   if (course === 'Other') {
     const customCourse = document.getElementById('editCustomCourse').value.trim();
     if (!customCourse) {
-      document.getElementById('editCourseError').textContent = 'Please enter custom course name';
-      showEditFieldError('editCustomCourse', 'editCourseError');
+      document.getElementById('editCustomCourseError').textContent = 'Please enter custom course name';
+      showEditFieldError('editCustomCourse', 'editCustomCourseError');
       isValid = false;
     }
   }

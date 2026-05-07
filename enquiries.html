@@ -638,6 +638,7 @@
             class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
             placeholder="Enter course name"
           >
+          <p id="editCustomCourseError" class="hidden text-red-500 text-xs mt-1">Custom course name is required</p>
         </div>
 
         <!-- Source -->
@@ -1145,9 +1146,7 @@
     document.getElementById('addCourse')?.addEventListener('change', handleCourseChange);
     document.getElementById('addSource')?.addEventListener('change', handleSourceChange);
     
-    // Edit modal event listeners
-    document.getElementById('editCourse')?.addEventListener('change', handleEditCourseChange);
-    document.getElementById('editSource')?.addEventListener('change', handleEditSourceChange);
+    // Edit modal event listeners are handled in enquiry.js
     
     // Set minimum date to today for follow-up date inputs
     const today = new Date().toISOString().split('T')[0];

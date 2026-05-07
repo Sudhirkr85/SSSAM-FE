@@ -965,6 +965,12 @@ function renderWelcomeModal(summary) {
     // Check if modal already exists
     if (document.getElementById('welcomeModal')) return;
 
+    // Check if summary is valid
+    if (!summary || typeof summary !== 'object') {
+        console.log('Invalid summary data for welcome modal:', summary);
+        return;
+    }
+
     const totalPending = (summary.pendingFollowUps || 0) +
         (summary.todayPaymentDues || 0) +
         (summary.overdueInstallments || 0) +
