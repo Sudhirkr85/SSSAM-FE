@@ -1161,13 +1161,20 @@ function onInitialPaymentChange() {
 function updateRemainingAmount() {
     const totalFees = parseFloat(document.getElementById('totalFees')?.value) || 0;
     const initialPayment = parseFloat(document.getElementById('initialPayment')?.value) || 0;
+    const paymentType = document.getElementById('paymentType')?.value || 'ONE_TIME';
 
     // Calculate total installments
     const installments = getInstallmentsData();
     const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
 
-    // Remaining = Total - Initial - Installments
-    const remaining = Math.max(0, totalFees - initialPayment - totalInstallments);
+    // For INSTALLMENT: show remaining after initial payment (what needs to be covered by installments)
+    // For ONE_TIME: show remaining after all planned payments
+    let remaining;
+    if (paymentType === 'INSTALLMENT') {
+        remaining = Math.max(0, totalFees - initialPayment);
+    } else {
+        remaining = Math.max(0, totalFees - initialPayment - totalInstallments);
+    }
 
     // Update remaining display
     const remainingDisplay = document.getElementById('remainingAmountDisplay');
@@ -1180,6 +1187,9 @@ function updateRemainingAmount() {
 
     // Validate that total doesn't exceed
     validateTotalAmount();
+
+    // Real-time validation for installments
+    validateInstallmentsRealTime(totalFees, initialPayment, paymentType);
 }
 
 // Add Installment Row
@@ -1334,6 +1344,37 @@ function validateTotalAmount() {
     }
 }
 
+// Real-time validation for installments - shows error and disables save button
+function validateInstallmentsRealTime(totalFees, initialPayment, paymentType) {
+    const installments = getInstallmentsData();
+    const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
+    const expectedRemaining = totalFees - initialPayment;
+    const installmentsTotalError = document.getElementById('installmentsTotalError');
+    const submitBtn = document.getElementById('setupFeesSubmitBtn');
+
+    // Only validate for INSTALLMENT payment type with valid totalFees
+    if (paymentType === 'INSTALLMENT' && !isNaN(totalFees) && totalFees > 0) {
+        if (totalInstallments !== expectedRemaining) {
+            const difference = expectedRemaining - totalInstallments;
+            if (difference > 0) {
+                installmentsTotalError.textContent = `Installments total (₹${totalInstallments.toLocaleString('en-IN')}) is ₹${difference.toLocaleString('en-IN')} less than remaining amount (₹${expectedRemaining.toLocaleString('en-IN')}). Please add installments to cover the full remaining amount.`;
+            } else {
+                installmentsTotalError.textContent = `Installments total (₹${totalInstallments.toLocaleString('en-IN')}) exceeds remaining amount (₹${expectedRemaining.toLocaleString('en-IN')}) by ₹${Math.abs(difference).toLocaleString('en-IN')}`;
+            }
+            installmentsTotalError.classList.remove('hidden');
+            // Disable save button
+            if (submitBtn) submitBtn.disabled = true;
+        } else {
+            installmentsTotalError.classList.add('hidden');
+            // Enable save button only if all other validations pass
+            if (submitBtn) submitBtn.disabled = false;
+        }
+    } else {
+        installmentsTotalError.classList.add('hidden');
+        if (submitBtn) submitBtn.disabled = false;
+    }
+}
+
 function validateSetupFeesForm() {
     let valid = true;
 
@@ -1426,6 +1467,29 @@ function validateSetupFeesForm() {
             valid = false;
         } else {
             document.getElementById('installmentsError').classList.add('hidden');
+        }
+
+        // Validate that installments sum equals remaining amount (Total Fees - Initial Payment)
+        const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
+        const expectedRemaining = totalFees - initialPayment;
+        const installmentsTotalError = document.getElementById('installmentsTotalError');
+
+        // Only validate if totalFees is a valid number
+        if (!isNaN(totalFees) && totalFees > 0) {
+            if (totalInstallments !== expectedRemaining) {
+                const difference = expectedRemaining - totalInstallments;
+                if (difference > 0) {
+                    installmentsTotalError.textContent = `Installments total (₹${totalInstallments.toLocaleString('en-IN')}) is ₹${difference.toLocaleString('en-IN')} less than remaining amount (₹${expectedRemaining.toLocaleString('en-IN')}). Please add installments to cover the full remaining amount.`;
+                } else {
+                    installmentsTotalError.textContent = `Installments total (₹${totalInstallments.toLocaleString('en-IN')}) exceeds remaining amount (₹${expectedRemaining.toLocaleString('en-IN')}) by ₹${Math.abs(difference).toLocaleString('en-IN')}`;
+                }
+                installmentsTotalError.classList.remove('hidden');
+                valid = false;
+            } else {
+                installmentsTotalError.classList.add('hidden');
+            }
+        } else {
+            installmentsTotalError.classList.add('hidden');
         }
 
         // Validate each installment has a date
