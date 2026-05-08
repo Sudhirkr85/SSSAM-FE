@@ -1,8 +1,8 @@
 // Import axios
 const axios = window.axios;
 
-const BASE_URL = 'https://sssam-r3pz.onrender.com/api';
-// const BASE_URL = 'http://localhost:5000/api'
+// const BASE_URL = 'https://sssam-r3pz.onrender.com/api';
+const BASE_URL = 'http://localhost:5000/api'
 
 /* ======================
 API ENDPOINTS (Updated to match new documentation)
@@ -18,6 +18,7 @@ const API_ENDPOINTS = {
         GET_ALL: '/enquiries',
         GET: (id) => `/enquiries/${id}`,
         UPDATE: (id) => `/enquiries/${id}`,
+        DELETE: (id) => `/enquiries/${id}`,
         ASSIGN: (id) => `/enquiries/${id}/assign`,
         // Filter endpoints
         PENDING_FOLLOWUPS: '/enquiries?filterType=pending_followups',

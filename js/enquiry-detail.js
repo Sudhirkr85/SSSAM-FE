@@ -855,13 +855,20 @@ async function confirmDeleteEnquiry() {
     }
 
     try {
-        await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(currentId));
-        showToast('success', 'Enquiry deleted successfully');
+        const res = await apiDelete(API_ENDPOINTS.ENQUIRIES.DELETE(currentId));
+        if (res.success === false) {
+            throw new Error(res.message || 'Failed to delete enquiry');
+        }
+        showToast('success', res.message || 'Enquiry deleted successfully');
         closeDeleteEnquiryModal();
         // Redirect to enquiries list after successful deletion
         window.location.href = 'enquiries.html';
     } catch (error) {
-        showToast('error', 'Failed to delete enquiry');
+        const msg = error.response?.data?.message
+            || error.error?.message
+            || error.message
+            || 'Failed to delete enquiry';
+        showToast('error', msg);
         closeDeleteEnquiryModal();
     } finally {
         // Reset flag and button (in case redirect fails or for future use)
