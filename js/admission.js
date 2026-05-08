@@ -233,10 +233,6 @@ function renderTable() {
           valueA = (a.name || 'Unknown').toLowerCase();
           valueB = (b.name || 'Unknown').toLowerCase();
           break;
-        case 'course':
-          valueA = (a.course || '-').toLowerCase();
-          valueB = (b.course || '-').toLowerCase();
-          break;
         case 'totalFees':
           valueA = a.totalFees || 0;
           valueB = b.totalFees || 0;
@@ -254,6 +250,12 @@ function renderTable() {
         case 'type':
           valueA = a.paymentType || '';
           valueB = b.paymentType || '';
+          break;
+        case 'nextDue':
+          const nextA = calculateNextDue(a);
+          const nextB = calculateNextDue(b);
+          valueA = nextA.date ? new Date(nextA.date).getTime() : Infinity;
+          valueB = nextB.date ? new Date(nextB.date).getTime() : Infinity;
           break;
         default:
           return 0;
@@ -276,6 +278,7 @@ function renderTable() {
     const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
     const paidAmount = totalFees - remaining;
     const paymentType = admission.paymentType || 'ONE_TIME';
+    const nextDue = calculateNextDue(admission);
 
     return `
       <tr class="finance-row border-b border-gray-50 last:border-0 cursor-pointer hover:bg-indigo-50/50 transition-colors" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
@@ -287,10 +290,10 @@ function renderTable() {
             <div>
               <div class="font-medium text-gray-800">${escapeHtml(name)}</div>
               <div class="text-xs text-gray-500">${mobile}</div>
+              <div class="text-xs text-blue-600">${escapeHtml(course)}</div>
             </div>
           </div>
         </td>
-        <td class="px-6 py-4 text-gray-600">${escapeHtml(course)}</td>
         <td class="px-6 py-4 text-right font-medium text-gray-800">${formatCurrency(totalFees)}</td>
         <td class="px-6 py-4 text-right font-medium text-green-600">${formatCurrency(paidAmount)}</td>
         <td class="px-6 py-4 text-right font-medium ${remaining > 0 ? 'text-red-600' : 'text-gray-400'}">${remaining > 0 ? formatCurrency(remaining) : 'Paid'}</td>
@@ -298,6 +301,12 @@ function renderTable() {
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${getPaymentTypeBadgeClass(paymentType)}">
             ${getPaymentTypeIcon(paymentType)}
             ${paymentType === 'ONE_TIME' ? 'One Time' : 'Installment'}
+          </span>
+        </td>
+        <td class="px-6 py-4 text-center">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${nextDue.isOverdue ? 'bg-red-100 text-red-700' : nextDue.isUpcoming ? 'bg-amber-100 text-amber-700' : nextDue.text === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">
+            ${nextDue.isOverdue ? '<i data-lucide="alert-circle" class="w-3 h-3"></i>' : nextDue.isUpcoming ? '<i data-lucide="clock" class="w-3 h-3"></i>' : ''}
+            ${nextDue.text}
           </span>
         </td>
         <td class="px-6 py-4" onclick="event.stopPropagation();">
@@ -337,6 +346,7 @@ function renderMobileCards() {
     const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
     const paidAmount = totalFees - remaining;
     const paymentType = admission.paymentType || 'ONE_TIME';
+    const nextDue = calculateNextDue(admission);
 
     return `
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
@@ -369,7 +379,14 @@ function renderMobileCards() {
             <div class="font-medium text-sm text-blue-700">${remaining > 0 ? formatCurrency(remaining) : 'Paid'}</div>
           </div>
         </div>
-        
+
+        <div class="flex items-center justify-between text-xs">
+          <span class="text-gray-500">Next Due</span>
+          <span class="font-medium ${nextDue.isOverdue ? 'text-red-600' : nextDue.isUpcoming ? 'text-amber-600' : nextDue.text === 'Paid' ? 'text-green-600' : 'text-gray-600'}">
+            ${nextDue.text}
+          </span>
+        </div>
+
         <div class="flex items-center justify-between pt-2 border-t border-gray-100" onclick="event.stopPropagation();">
           <div class="text-sm text-gray-600">${escapeHtml(course)}</div>
           <div class="flex items-center gap-1">
@@ -490,9 +507,67 @@ function getPaymentTypeBadgeClass(type) {
 }
 
 function getPaymentTypeIcon(type) {
-  return type === 'ONE_TIME' 
-    ? '<i data-lucide="check-circle" class="w-3.5 h-3.5"></i>' 
+  return type === 'ONE_TIME'
+    ? '<i data-lucide="check-circle" class="w-3.5 h-3.5"></i>'
     : '<i data-lucide="calendar" class="w-3.5 h-3.5"></i>';
+}
+
+// ==================== DATE & INSTALLMENT HELPERS ====================
+function formatDateDisplay(dateString) {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function calculateNextDue(admission) {
+  const totalFees = admission.totalFees || 0;
+  const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
+
+  if (remaining <= 0) {
+    return { text: 'Paid', date: null, isOverdue: false, isUpcoming: false, amount: 0 };
+  }
+
+  // One time payment with no installments
+  if (admission.paymentType === 'ONE_TIME') {
+    return {
+      text: admission.fullPaymentDueDate ? formatDateDisplay(admission.fullPaymentDueDate) : '-',
+      date: admission.fullPaymentDueDate || null,
+      isOverdue: false,
+      isUpcoming: false,
+      amount: remaining
+    };
+  }
+
+  const installments = admission.installments || [];
+  if (installments.length === 0) {
+    return { text: '-', date: null, isOverdue: false, isUpcoming: false, amount: remaining };
+  }
+
+  const paidAmount = totalFees - remaining;
+  let cumulativeAmount = admission.registrationAmount || 0;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  for (const inst of installments) {
+    cumulativeAmount += inst.amount;
+    if (paidAmount < cumulativeAmount) {
+      const dueDate = new Date(inst.dueDate);
+      const isOverdue = dueDate < today;
+      const daysUntil = Math.ceil((dueDate - today) / (1000 * 60 * 60 * 24));
+      const isUpcoming = !isOverdue && daysUntil <= 7;
+      return {
+        text: formatDateDisplay(inst.dueDate),
+        date: inst.dueDate,
+        isOverdue,
+        isUpcoming,
+        amount: inst.amount
+      };
+    }
+  }
+
+  return { text: 'On Demand', date: null, isOverdue: false, isUpcoming: false, amount: remaining };
 }
 
 // ==================== FILTER HELPER FUNCTIONS ====================
