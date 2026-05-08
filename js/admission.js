@@ -149,11 +149,30 @@ function setAdmissionDateFilter(filterType) {
 }
 
 function getActiveFilters() {
+  const filters = {};
+  
+  // Add date range filters
   const dateRange = getDateRangeForFilter(currentAdmissionFilter);
-  return {
-    dateFrom: dateRange.dateFrom,
-    dateTo: dateRange.dateTo
-  };
+  filters.dateFrom = dateRange.dateFrom;
+  filters.dateTo = dateRange.dateTo;
+  
+  // Add other filters
+  const statusFilter = document.getElementById('statusFilter')?.value;
+  if (statusFilter) {
+    filters.status = statusFilter;
+  }
+  
+  const courseFilter = document.getElementById('courseFilter')?.value?.trim();
+  if (courseFilter) {
+    filters.course = courseFilter;
+  }
+  
+  const sortBy = document.getElementById('sortBy')?.value;
+  if (sortBy) {
+    filters.sortBy = sortBy;
+  }
+  
+  return filters;
 }
 
 // ==================== API CALLS ====================
@@ -477,26 +496,6 @@ function getPaymentTypeIcon(type) {
 }
 
 // ==================== FILTER HELPER FUNCTIONS ====================
-function getActiveFilters() {
-  const filters = {};
-  
-  const statusFilter = document.getElementById('statusFilter')?.value;
-  if (statusFilter) {
-    filters.status = statusFilter;
-  }
-  
-  const courseFilter = document.getElementById('courseFilter')?.value?.trim();
-  if (courseFilter) {
-    filters.course = courseFilter;
-  }
-  
-  const sortBy = document.getElementById('sortBy')?.value;
-  if (sortBy) {
-    filters.sortBy = sortBy;
-  }
-  
-  return filters;
-}
 
 function applyFilters() {
   currentPage = 1;
