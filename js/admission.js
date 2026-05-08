@@ -52,8 +52,8 @@ function initEventListeners() {
 
   // Registration amount validation
   document.getElementById('registrationAmountInput')?.addEventListener('input', (e) => {
-    const total = parseFloat(document.getElementById('totalFeesInput')?.value) || 0;
-    const reg = parseFloat(e.target.value) || 0;
+    const total = parseInt(document.getElementById('totalFeesInput')?.value) || 0;
+    const reg = parseInt(e.target.value) || 0;
     const errorEl = document.getElementById('registrationAmountError');
     
     if (reg > total) {
@@ -68,7 +68,7 @@ function initEventListeners() {
 
   // Total fees validation
   document.getElementById('totalFeesInput')?.addEventListener('input', (e) => {
-    const total = parseFloat(e.target.value) || 0;
+    const total = parseInt(e.target.value) || 0;
     if (total > 0) {
       e.target.classList.remove('border-red-500');
       document.getElementById('totalFeesError')?.classList.add('hidden');
@@ -740,11 +740,11 @@ async function submitAddAdmission() {
 
   const enquiryId = document.getElementById('selectedEnquiryId').value;
   const course = document.getElementById('courseInput').value.trim();
-  const totalFees = parseFloat(document.getElementById('totalFeesInput').value) || 0;
-  const registrationAmount = parseFloat(document.getElementById('registrationAmountInput').value) || 0;
+  const totalFees = parseInt(document.getElementById('totalFeesInput').value) || 0;
+  const registrationAmount = parseInt(document.getElementById('registrationAmountInput').value) || 0;
   const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value || 'ONE_TIME';
   const admissionDate = document.getElementById('paymentDateInput').value;
-  const initialPayment = parseFloat(document.getElementById('initialPaymentInput').value) || 0;
+  const initialPayment = parseInt(document.getElementById('initialPaymentInput').value) || 0;
   const initialPaymentMode = document.getElementById('paymentModeInput').value;
 
   let hasError = false;
@@ -804,7 +804,7 @@ async function submitAddAdmission() {
   if (paymentType === 'INSTALLMENT') {
     installments = [];
     for (const row of admissionInstallmentRows) {
-      if (!row.amount || parseFloat(row.amount) <= 0) {
+      if (!row.amount || parseInt(row.amount) <= 0) {
         const errorEl = document.getElementById('installmentsError');
         errorEl.textContent = 'All installments must have a valid amount';
         errorEl.classList.remove('hidden');
@@ -819,7 +819,7 @@ async function submitAddAdmission() {
         break;
       }
       installments.push({
-        amount: parseFloat(row.amount),
+        amount: parseInt(row.amount),
         dueDate: row.dueDate
       });
     }
@@ -1026,22 +1026,16 @@ async function submitPaymentPlan() {
   
   // Validate all rows
   for (const row of installmentRows) {
-    if (!row.amount || parseFloat(row.amount) <= 0) {
+    if (!row.amount || parseInt(row.amount) <= 0) {
       errorEl.textContent = 'All installments must have a valid amount';
       errorEl.classList.remove('hidden');
       return;
     }
-    if (!row.dueDate) {
-      errorEl.textContent = 'All installments must have a due date';
-      errorEl.classList.remove('hidden');
-      return;
-    }
   }
-  
-  // Check sum matches remaining
+
   const admission = admissions.find(a => a._id === currentAdmissionId);
   const remaining = (admission.totalFees || 0) - (admission.registrationAmount || 0);
-  const totalInstallments = installmentRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+  const totalInstallments = installmentRows.reduce((sum, row) => sum + (parseInt(row.amount) || 0), 0);
   
   if (totalInstallments !== remaining) {
     errorEl.textContent = `Installments total (${formatCurrency(totalInstallments)}) must equal remaining amount (${formatCurrency(remaining)})`;
@@ -1059,7 +1053,7 @@ async function submitPaymentPlan() {
     const payload = {
       paymentType: 'INSTALLMENT',
       installments: installmentRows.map(row => ({
-        amount: parseFloat(row.amount),
+        amount: parseInt(row.amount),
         dueDate: row.dueDate
       }))
     };
@@ -1123,7 +1117,7 @@ function closePaymentModal() {
 }
 
 async function submitPayment() {
-  const amount = parseFloat(document.getElementById('paymentAmount').value) || 0;
+  const amount = parseInt(document.getElementById('paymentAmount').value) || 0;
   const mode = document.getElementById('paymentMode').value;
   const type = document.getElementById('paymentType').value;
   const note = document.getElementById('paymentNote').value.trim();

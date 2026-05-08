@@ -523,7 +523,7 @@ function closeAddPaymentModal() {
 }
 
 async function submitAddPayment() {
-  const amount = parseFloat(document.getElementById('paymentAmount').value) || 0;
+  const amount = parseInt(document.getElementById('paymentAmount').value) || 0;
   const mode = document.getElementById('paymentMode').value;
   const type = document.getElementById('paymentTypeSelect').value;
   const note = document.getElementById('paymentNote').value.trim();
@@ -717,13 +717,13 @@ async function submitInstallmentPlan() {
   // Validate all rows
   for (let i = 0; i < installmentRows.length; i++) {
     const row = installmentRows[i];
-    if (!row.amount || parseFloat(row.amount) <= 0) {
+    if (!row.amount || parseInt(row.amount) <= 0) {
       errorEl.textContent = `Installment ${i + 1}: Please enter a valid amount`;
       errorEl.classList.remove('hidden');
       return;
     }
     if (!row.dueDate) {
-      errorEl.textContent = `Installment ${i + 1}: Please select a due date`;
+      errorEl.textContent = `Installment ${i + 1}: Please enter a due date`;
       errorEl.classList.remove('hidden');
       return;
     }
@@ -743,7 +743,7 @@ async function submitInstallmentPlan() {
   }
   
   // Check sum does not exceed remaining (allow less than remaining)
-  const totalInstallments = installmentRows.reduce((sum, row) => sum + (parseFloat(row.amount) || 0), 0);
+  const totalInstallments = installmentRows.reduce((sum, row) => sum + (parseInt(row.amount) || 0), 0);
   
   if (totalInstallments > remaining) {
     errorEl.textContent = `Total installments (${formatCurrency(totalInstallments)}) cannot exceed remaining amount (${formatCurrency(remaining)})`;
@@ -771,7 +771,7 @@ async function submitInstallmentPlan() {
     const payload = {
       paymentType: 'INSTALLMENT',
       installments: installmentRows.map(row => ({
-        amount: parseFloat(row.amount),
+        amount: parseInt(row.amount),
         dueDate: row.dueDate
       }))
     };
@@ -854,7 +854,7 @@ function closeRefundModal() {
 }
 
 async function submitRefund() {
-  const amount = parseFloat(document.getElementById('refundAmount').value) || 0;
+  const amount = parseInt(document.getElementById('refundAmount').value) || 0;
   const mode = document.getElementById('refundMode').value;
   const reason = document.getElementById('refundReason').value.trim();
   const note = document.getElementById('refundNote').value.trim();

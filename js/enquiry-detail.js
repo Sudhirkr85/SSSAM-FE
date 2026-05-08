@@ -1159,8 +1159,8 @@ function onInitialPaymentChange() {
 
 // Calculate and update remaining amount (Total - Initial - Installments)
 function updateRemainingAmount() {
-    const totalFees = parseFloat(document.getElementById('totalFees')?.value) || 0;
-    const initialPayment = parseFloat(document.getElementById('initialPayment')?.value) || 0;
+    const totalFees = parseInt(document.getElementById('totalFees')?.value) || 0;
+    const initialPayment = parseInt(document.getElementById('initialPayment')?.value) || 0;
     const paymentType = document.getElementById('paymentType')?.value || 'ONE_TIME';
 
     // Calculate total installments
@@ -1215,7 +1215,7 @@ function addInstallmentRow() {
     row.innerHTML = `
         <div class="relative">
             <input type="number" class="installment-amount w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
-                placeholder="Amount" min="0" step="0.01" oninput="onInstallmentAmountChange()">
+                placeholder="Amount" min="0" step="1" oninput="onInstallmentAmountChange()">
         </div>
         <div class="relative">
             <input type="date" class="installment-date w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
@@ -1280,7 +1280,7 @@ function getInstallmentsData() {
         const amount = row.querySelector('.installment-amount').value;
         const date = row.querySelector('.installment-date').value;
         if (amount && date) {
-            installments.push({ amount: parseFloat(amount), dueDate: date });
+            installments.push({ amount: parseInt(amount), dueDate: date });
         }
     });
     return installments;
@@ -1293,8 +1293,8 @@ function onInstallmentAmountChange() {
 
 // Validate that total amount (initial + installments) doesn't exceed total fees
 function validateTotalAmount() {
-    const totalFees = parseFloat(document.getElementById('totalFees')?.value) || 0;
-    const initialPayment = parseFloat(document.getElementById('initialPayment')?.value) || 0;
+    const totalFees = parseInt(document.getElementById('totalFees')?.value) || 0;
+    const initialPayment = parseInt(document.getElementById('initialPayment')?.value) || 0;
     const installments = getInstallmentsData();
     const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
     const totalEntered = initialPayment + totalInstallments;
@@ -1383,10 +1383,10 @@ function validateSetupFeesForm() {
     const initialPaymentField = document.getElementById('initialPayment');
     const initialPaymentDateField = document.getElementById('initialPaymentDate');
     const initialPaymentModeField = document.getElementById('initialPaymentMode');
-    const initialPayment = parseFloat(initialPaymentField?.value) || 0;
+    const initialPayment = parseInt(initialPaymentField?.value) || 0;
 
     // Validate Total Fees (always required)
-    if (!totalFees.value || parseFloat(totalFees.value) <= 0) {
+    if (!totalFees.value || parseInt(totalFees.value) <= 0) {
         document.getElementById('totalFeesError').classList.remove('hidden');
         totalFees.classList.remove('border-gray-200', 'focus:border-purple-500', 'focus:ring-purple-100');
         totalFees.classList.add('border-red-500', 'focus:border-red-500', 'focus:ring-red-100');
@@ -1404,7 +1404,7 @@ function validateSetupFeesForm() {
         initialPaymentField.classList.remove('border-blue-200', 'focus:border-blue-500');
         initialPaymentField.classList.add('border-red-500', 'focus:border-red-500');
         valid = false;
-    } else if (initialPayment > parseFloat(totalFees.value || 0)) {
+    } else if (initialPayment > parseInt(totalFees.value || 0)) {
         document.getElementById('initialPaymentError')?.classList.remove('hidden');
         document.getElementById('initialPaymentError').textContent = 'Cannot exceed total fees';
         initialPaymentField.classList.remove('border-blue-200', 'focus:border-blue-500');
@@ -1442,7 +1442,7 @@ function validateSetupFeesForm() {
     if (paymentType === 'ONE_TIME' && pendingAmountSection && !pendingAmountSection.classList.contains('hidden')) {
         const pendingDueDate = document.getElementById('pendingDueDate');
         const pendingDueDateError = document.getElementById('pendingDueDateError');
-        const remainingAmount = parseFloat(document.getElementById('remainingAmountDisplay')?.textContent?.replace('₹', '').replace(',', '') || 0);
+        const remainingAmount = parseInt(document.getElementById('remainingAmountDisplay')?.textContent?.replace('₹', '').replace(',', '') || 0);
 
         if (remainingAmount > 0 && pendingDueDate && !pendingDueDate.value) {
             pendingDueDate.classList.add('border-red-500', 'focus:border-red-500');
