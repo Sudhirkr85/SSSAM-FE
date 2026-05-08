@@ -165,7 +165,7 @@ async function loadReports() {
 
     // Update summary with counselor revenue
     const counselorSummaryData = buildSummaryData(admissionsRes, feesRes);
-    counselorSummaryData.totalRevenue = totalCounselorRevenue;
+    counselorSummaryData.totalCounselorRevenue = totalCounselorRevenue;
     renderSummaryCards(counselorSummaryData);
 
     hideLoadingState();
@@ -345,7 +345,7 @@ function buildSummaryData(admissionsRes, feesRes) {
 
   return {
     totalEnquiries: summary.totalEnquiries || 0,
-    convertedEnquiries: summary.enquiriesConverted || summary.totalAdmissions || 0,
+    convertedEnquiries: summary.totalAdmissions || summary.enquiriesConverted || 0,
     totalRevenue: totalPaid || 0,
     totalRefunds: totalRefunds || 0,
     netRevenue: netRevenue || 0,
