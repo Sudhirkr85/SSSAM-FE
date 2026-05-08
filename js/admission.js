@@ -183,9 +183,15 @@ async function loadAdmissions(search = '', filters = {}) {
       limit: ITEMS_PER_PAGE,
       ...filters
     };
-    
+
     if (search) {
       params.search = search;
+    }
+
+    // Send sort params to backend (backend must support these for cross-page sorting)
+    if (sortColumn) {
+      params.sortBy = sortColumn === 'student' ? 'name' : sortColumn;
+      params.sortOrder = sortDirection;
     }
 
     const response = await apiGet(API_ENDPOINTS.ADMISSIONS.LIST, params);
@@ -420,7 +426,10 @@ function sortTable(column) {
     sortColumn = column;
     sortDirection = 'asc';
   }
-  renderTable();
+  currentPage = 1;
+  const search = document.getElementById('searchInput')?.value || '';
+  const filters = getActiveFilters();
+  loadAdmissions(search, filters);
 }
 
 function updateSortIcons() {
