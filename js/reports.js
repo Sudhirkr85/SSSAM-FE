@@ -21,12 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Warning', 'Reports are available for admin users only', 'warning');
   }
 
-  // Set default filter to this month
-  setDateFilter('thisMonth');
+  // Set default filter to today
+  setDateFilter('today');
 });
 
 // ==================== DATE FILTER LOGIC ====================
-let currentFilter = 'thisMonth';
+let currentFilter = 'today';
 
 function setDateFilter(filterType) {
   currentFilter = filterType;

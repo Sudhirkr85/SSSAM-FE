@@ -20,7 +20,7 @@ let sortColumn = null;
 let sortDirection = 'asc'; // 'asc' or 'desc'
 
 // Date filter state
-let currentAdmissionFilter = 'thisMonth';
+let currentAdmissionFilter = 'today';
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
