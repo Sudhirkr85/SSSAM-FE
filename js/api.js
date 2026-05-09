@@ -33,7 +33,7 @@ const API_ENDPOINTS = {
         GET: (id) => `/admissions/${id}`,
         UPDATE: (id) => `/admissions/${id}`,
         DELETE: (id) => `/admissions/${id}`,
-        RECORD_PAYMENT: (id) => `/admissions/${id}/payment`,
+        RECORD_PAYMENT: (id) => `/admissions/${id}/payments`,
         LIST_PAYMENTS: (id) => `/admissions/${id}/payments`,
         INSTALLMENTS: (id) => `/admissions/${id}/installments`,
         INSTALLMENT_ALERTS: '/admissions/installment-alerts',
