@@ -1238,18 +1238,37 @@ async function submitPayment() {
   lucide.createIcons();
   
   try {
+    // Validate admission exists
+    if (!admission) {
+      showToast('Error', 'Admission not found', 'error');
+      return;
+    }
+    
+    // Validate payment mode
+    if (!mode || mode === '') {
+      showToast('Error', 'Please select a payment mode', 'error');
+      return;
+    }
+    
+    // Validate payment type
+    if (!type || type === '') {
+      showToast('Error', 'Please select a payment type', 'error');
+      return;
+    }
+    
     const payload = {
       admissionId: currentAdmissionId,
       amount: amount,
       paymentMode: mode,
-      type: type
+      type: type,
+      paymentDate: new Date().toISOString()
     };
     
     if (note) {
       payload.note = note;
     }
     
-    await apiPost(API_ENDPOINTS.PAYMENTS.CREATE, payload);
+    await recordPayment(currentAdmissionId, payload);
     
     closePaymentModal();
     showToast('Success', 'Payment recorded successfully', 'success');
