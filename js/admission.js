@@ -1208,8 +1208,8 @@ async function submitPayment() {
   // Get current admission data for validation
   const admission = admissions.find(a => a._id === currentAdmissionId);
   const totalFees = admission?.totalFees || 0;
-  const paidAmount = admission?.paidAmount || 0;
-  const remaining = totalFees - paidAmount;
+  // Use backend remainingAmount if available, otherwise calculate from paidAmount
+  const remaining = admission?.remainingAmount ?? (totalFees - (admission?.paidAmount || 0));
   
   // Validate
   if (amount <= 0) {
