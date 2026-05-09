@@ -87,7 +87,7 @@ async function loadEnquiryDetail(id) {
 
         currentEnquiryData = enquiry;
         renderEnquiry(enquiry);
-        renderTimeline(enquiry.statusHistory || []);
+        await renderTimeline(enquiry.statusHistory || []);
 
         // NEW: Check if enquiry is locked due to admission for this course
         await checkEnquiryLocking();
@@ -311,7 +311,7 @@ function updateEnquiryUI(isLocked) {
   }
 }
 
-function renderTimeline(statusHistory) {
+async function renderTimeline(statusHistory) {
     const container = document.getElementById('timelineList');
 
     // Status labels mapping
@@ -364,7 +364,8 @@ function renderTimeline(statusHistory) {
         timelineItems.push({
             status: 'CREATED',
             note: 'Enquiry created',
-            changedAt: currentEnquiryData.createdAt
+            changedAt: currentEnquiryData.createdAt,
+            changedBy: currentEnquiryData.createdBy?._id || currentEnquiryData.createdBy
         });
     }
     
@@ -380,6 +381,38 @@ function renderTimeline(statusHistory) {
         return dateB - dateA;
     });
 
+    // Fetch user details for all unique user IDs
+    const userIds = [...new Set(sortedHistory
+        .map(item => item.changedBy)
+        .filter(id => id && id !== 'undefined' && id !== 'null')
+    )];
+
+    const userMap = new Map();
+    
+    // Fetch user details in parallel
+    if (userIds.length > 0) {
+        try {
+            const userPromises = userIds.map(async (userId) => {
+                try {
+                    const user = await getUserById(userId);
+                    return { id: userId, user: user.data?.user || user.data || user };
+                } catch (error) {
+                    console.error(`Failed to fetch user ${userId}:`, error);
+                    return { id: userId, user: null };
+                }
+            });
+
+            const userResults = await Promise.all(userPromises);
+            userResults.forEach(({ id, user }) => {
+                if (user && user.name) {
+                    userMap.set(id, user.name);
+                }
+            });
+        } catch (error) {
+            console.error('Error fetching user details:', error);
+        }
+    }
+
     let html = '<div class="relative pl-6 border-l-2 border-gray-200 space-y-6">';
 
     sortedHistory.forEach((item, index) => {
@@ -387,6 +420,9 @@ function renderTimeline(statusHistory) {
         const statusColor = statusColors[item.status] || 'bg-gray-100 text-gray-700 border-gray-200';
         const dotColor = dotColors[item.status] || 'bg-gray-400';
         const formattedDate = formatDateTime(item.changedAt);
+        
+        // Get user name from map or fallback
+        const userName = userMap.get(item.changedBy) || 'Unknown User';
 
         html += `
             <div class="relative">
@@ -398,6 +434,11 @@ function renderTimeline(statusHistory) {
                     <div class="flex items-center justify-between mb-2">
                         <span class="px-3 py-1 rounded-full text-xs font-semibold border ${statusColor}">${statusLabel}</span>
                         <span class="text-xs text-gray-500">${formattedDate}</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-2 text-xs text-gray-600 mb-2">
+                        <i data-lucide="user" class="w-3 h-3"></i>
+                        <span>Updated by: ${userName}</span>
                     </div>
                     
                     ${item.note ? `<p class="text-sm text-gray-700 mt-2">${item.note}</p>` : ''}

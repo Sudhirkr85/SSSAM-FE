@@ -49,7 +49,8 @@ const API_ENDPOINTS = {
         LOGIN: '/auth/login'
     },
     USERS: {
-        GET_COUNSELORS: '/users/counselors'
+        GET_COUNSELORS: '/users/counselors',
+        GET: (id) => `/users/${id}`
     },
     REPORTS: {
         ADMISSIONS: '/reports/admissions',
@@ -168,6 +169,13 @@ async function updateEnquiry(id, updateData) {
 
 async function assignEnquiry(id, counselorId) {
     return await apiPut(API_ENDPOINTS.ENQUIRIES.ASSIGN(id), { counselorId });
+}
+
+/* ======================
+USER API FUNCTIONS
+====================== */
+async function getUserById(id) {
+    return await apiGet(API_ENDPOINTS.USERS.GET(id));
 }
 
 
