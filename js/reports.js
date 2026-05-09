@@ -191,7 +191,7 @@ async function loadReportsFromRegularApis(dateRange) {
     const totalEnquiries = enquiries.length;
     const convertedEnquiries = enquiries.filter(e => e.status === 'ADMITTED').length;
     const totalRevenue = admissions.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
-    const pendingAmount = admissions.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
+    const pendingAmount = admissions.reduce((sum, a) => sum + Math.max(0, a.remainingAmount || 0), 0);
 
     renderSummaryCards({
       totalEnquiries,
@@ -338,9 +338,12 @@ function buildSummaryData(admissionsRes, feesRes) {
     totalPending = Math.max(0, totalFeesExpected - totalPaid);
   }
 
+  // Always ensure totalPending is not negative (backend might send negative values)
+  totalPending = Math.max(0, totalPending);
+
   // Fallback: calculate pending from admissions if no data
   if (totalPending === 0 && admissionsData.admissions) {
-    totalPending = admissionsData.admissions.reduce((sum, a) => sum + (a.remainingAmount || 0), 0);
+    totalPending = admissionsData.admissions.reduce((sum, a) => sum + Math.max(0, a.remainingAmount || 0), 0);
   }
 
   return {
