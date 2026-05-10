@@ -434,3 +434,28 @@
 .user-badge-meta {
   @apply text-xs text-gray-500;
 }
+
+/* Disabled button styling for update modal */
+#updateModal button[onclick="submitUpdate()"]:disabled {
+  @apply opacity-50 cursor-not-allowed bg-gray-400 hover:bg-gray-400 shadow-none;
+}
+
+#updateModal button[onclick="submitUpdate()"]:disabled:hover {
+  @apply transform-none scale-100;
+}
+
+/* Highlight required status field when no status selected */
+#updateModal #updateStatus:invalid,
+#updateModal #updateStatus[value=""] {
+  @apply border-red-300 bg-red-50;
+}
+
+#updateModal #updateStatus:focus:invalid,
+#updateModal #updateStatus[value=""]:focus {
+  @apply border-red-500 ring-red-100;
+}
+
+/* Add helper text for required status */
+.status-required-hint {
+  @apply text-red-500 text-xs mt-1;
+}

@@ -627,7 +627,7 @@ function openUpdateModal(enquiryId, currentStatus) {
   document.getElementById('updateNoteError').classList.add('hidden');
   document.getElementById('followUpError').classList.add('hidden');
 
-  // Handle follow-up date visibility
+  // Handle follow-up date visibility and button state
   handleUpdateStatusChange();
 
   // Show modal
@@ -660,6 +660,9 @@ function handleUpdateStatusChange() {
   const status = document.getElementById('updateStatus').value;
   const followUpRequired = document.getElementById('followUpRequired');
   const followUpDate = document.getElementById('updateFollowUpDate');
+  const submitBtn = document.querySelector('#updateModal button[onclick="submitUpdate()"]');
+  const statusRequiredHint = document.getElementById('statusRequiredHint');
+  const statusSelect = document.getElementById('updateStatus');
   
   // Follow-up rules for 3-status system:
   // CONTACTED → follow-up REQUIRED
@@ -670,20 +673,40 @@ function handleUpdateStatusChange() {
     followUpRequired.classList.remove('hidden');
     followUpDate.required = true;
     followUpDate.disabled = false;
+    // Enable submit button when status is selected
+    if (submitBtn) submitBtn.disabled = false;
+    // Hide helper text and remove error styling
+    if (statusRequiredHint) statusRequiredHint.classList.add('hidden');
+    statusSelect.classList.remove('border-red-300', 'bg-red-50');
   } else if (status === 'INTERESTED') {
     followUpRequired.classList.add('hidden');
     followUpDate.required = false;
     followUpDate.disabled = false;
+    // Enable submit button when status is selected
+    if (submitBtn) submitBtn.disabled = false;
+    // Hide helper text and remove error styling
+    if (statusRequiredHint) statusRequiredHint.classList.add('hidden');
+    statusSelect.classList.remove('border-red-300', 'bg-red-50');
   } else if (status === 'NOT_INTERESTED') {
     followUpRequired.classList.add('hidden');
     followUpDate.required = false;
     followUpDate.disabled = true;
     followUpDate.value = ''; // Clear follow-up date
+    // Enable submit button when status is selected
+    if (submitBtn) submitBtn.disabled = false;
+    // Hide helper text and remove error styling
+    if (statusRequiredHint) statusRequiredHint.classList.add('hidden');
+    statusSelect.classList.remove('border-red-300', 'bg-red-50');
   } else {
     // No status selected
     followUpRequired.classList.add('hidden');
     followUpDate.required = false;
     followUpDate.disabled = false;
+    // Disable submit button when no status is selected
+    if (submitBtn) submitBtn.disabled = true;
+    // Show helper text and add error styling
+    if (statusRequiredHint) statusRequiredHint.classList.remove('hidden');
+    statusSelect.classList.add('border-red-300', 'bg-red-50');
   }
   
   document.getElementById('followUpError').classList.add('hidden');
@@ -715,6 +738,17 @@ async function submitUpdate() {
   // Get submit button and disable it
   const submitBtn = document.querySelector('#updateModal button[onclick="submitUpdate()"]');
   const originalBtnText = submitBtn ? submitBtn.innerHTML : null;
+
+  // Validate status selection
+  if (!status) {
+    showToast('error', 'Please select a status');
+    isUpdating = false;
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = originalBtnText;
+    }
+    return;
+  }
   if (submitBtn) {
     submitBtn.disabled = true;
     submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Please wait...';
