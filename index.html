@@ -133,9 +133,10 @@
         Notification.requestPermission().then(async permission => {
           if (permission === 'granted') {
             try {
-              const swReg = await navigator.serviceWorker.register(
-                '/SSSAM-FE/firebase-messaging-sw.js'
-              );
+              const swPath = window.location.pathname.startsWith('/SSSAM-FE')
+                ? '/SSSAM-FE/firebase-messaging-sw.js'
+                : '/firebase-messaging-sw.js';
+              const swReg = await navigator.serviceWorker.register(swPath);
 
               const token = await messaging.getToken({
                 vapidKey: VAPID_KEY,

@@ -141,8 +141,7 @@
 
       <!-- CONTENT -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
-        
-        <!-- DATE FILTER TABS -->
+                <!-- DATE FILTER TABS -->
         <div class="bg-white rounded-xl shadow-sm p-4">
           <div class="flex flex-wrap items-center gap-2">
             <div class="flex items-center gap-2 mr-4">
@@ -150,13 +149,7 @@
               <span class="text-sm font-medium text-gray-700">Date Range:</span>
             </div>
             <div class="flex flex-wrap gap-2">
-              <button onclick="setDateFilter('today')" data-filter="today" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
-                Today
-              </button>
-              <button onclick="setDateFilter('last7days')" data-filter="last7days" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
-                Last 7 Days
-              </button>
-              <button onclick="setDateFilter('thisMonth')" data-filter="thisMonth" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+              <button onclick="setDateFilter('thisMonth')" data-filter="thisMonth" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
                 This Month
               </button>
               <button onclick="setDateFilter('thisYear')" data-filter="thisYear" class="filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
@@ -178,74 +171,74 @@
         </div>
 
         <!-- SUMMARY CARDS -->
-        <div id="summaryCards" class="grid grid-cols-2 lg:grid-cols-6 gap-4">
+        <div id="summaryCards" class="grid grid-cols-1 md:grid-cols-4 gap-4">
           
-          <!-- Total Enquiries -->
+          <!-- Total Admissions -->
           <div class="stat-card bg-white rounded-xl shadow-sm p-5">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="message-square" class="w-5 h-5 text-blue-600"></i>
+                <i data-lucide="user-check" class="w-5 h-5 text-blue-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Total Enquiries</span>
+              <span class="text-sm text-gray-500 font-medium">Total Admissions</span>
             </div>
-            <p id="totalEnquiries" class="text-2xl font-bold text-gray-800">0</p>
+            <p id="convertedCount" class="text-2xl font-bold text-gray-800">0</p>
           </div>
 
-          <!-- Converted -->
-          <div class="stat-card bg-white rounded-xl shadow-sm p-5">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="user-check" class="w-5 h-5 text-green-600"></i>
-              </div>
-              <span class="text-sm text-gray-500">Converted</span>
-            </div>
-            <p id="convertedCount" class="text-2xl font-bold text-green-600">0</p>
-          </div>
-
-          <!-- Total Collected -->
+          <!-- Total Paid -->
           <div class="stat-card bg-white rounded-xl shadow-sm p-5">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="trending-up" class="w-5 h-5 text-emerald-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Total Collected</span>
+              <span class="text-sm text-gray-500 font-medium">Total Paid</span>
             </div>
             <p id="totalCollected" class="text-2xl font-bold text-emerald-600">₹0</p>
           </div>
 
-          <!-- Total Due -->
+          <!-- Total Baaki (Due) -->
           <div class="stat-card bg-white rounded-xl shadow-sm p-5">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="credit-card" class="w-5 h-5 text-orange-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Total Due</span>
+              <span class="text-sm text-gray-500 font-medium">Total Baaki (Due)</span>
             </div>
             <p id="totalDue" class="text-2xl font-bold text-orange-600">₹0</p>
           </div>
 
-          <!-- Revenue -->
+          <!-- Total Fees (Collected + Due) -->
           <div class="stat-card bg-white rounded-xl shadow-sm p-5">
             <div class="flex items-center gap-3 mb-3">
               <div class="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
                 <i data-lucide="wallet" class="w-5 h-5 text-purple-600"></i>
               </div>
-              <span class="text-sm text-gray-500">Revenue</span>
+              <span class="text-sm text-gray-500 font-medium">Total Fees (Coll. + Due)</span>
             </div>
             <p id="totalRevenue" class="text-2xl font-bold text-purple-600">₹0</p>
           </div>
 
-          <!-- Overdue -->
-          <div class="stat-card bg-white rounded-xl shadow-sm p-5">
-            <div class="flex items-center gap-3 mb-3">
-              <div class="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center">
-                <i data-lucide="alert-circle" class="w-5 h-5 text-red-600"></i>
-              </div>
-              <span class="text-sm text-gray-500">Overdue</span>
-            </div>
-            <p id="overdueAmount" class="text-2xl font-bold text-red-600">₹0</p>
-          </div>
+        </div>
 
+        <!-- COLLECTION BREAKDOWN -->
+        <div class="bg-white rounded-xl shadow-sm p-5 max-w-md">
+          <h3 class="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-purple-600"></i>
+            Collection Breakdown
+          </h3>
+          <div class="space-y-2.5 text-sm text-gray-600">
+            <div class="flex justify-between items-center py-1.5 border-b border-gray-50">
+              <span>New Admission Registration</span>
+              <span id="breakdownReg" class="font-bold text-gray-800">₹0</span>
+            </div>
+            <div class="flex justify-between items-center py-1.5 border-b border-gray-50">
+              <span>Installment Payments</span>
+              <span id="breakdownInst" class="font-bold text-gray-800">₹0</span>
+            </div>
+            <div class="flex justify-between items-center pt-2 font-bold text-gray-900 border-t border-dashed">
+              <span>Total Paid</span>
+              <span id="breakdownTotal" class="text-purple-600 font-bold">₹0</span>
+            </div>
+          </div>
         </div>
 
         <!-- TWO COLUMN LAYOUT -->
@@ -289,10 +282,10 @@
               </h3>
             </div>
             <div class="flex flex-col lg:flex-row items-center">
-              <div class="w-full lg:w-1/2 p-4 flex items-center justify-center">
+              <div class="w-full lg:w-2/5 p-4 flex items-center justify-center">
                 <canvas id="paymentChart" width="220" height="220"></canvas>
               </div>
-              <div class="w-full lg:w-1/2 overflow-x-auto">
+              <div class="w-full lg:w-3/5 overflow-x-auto pr-4">
                 <table class="w-full text-sm">
                   <thead class="bg-gray-50 text-gray-600">
                     <tr>

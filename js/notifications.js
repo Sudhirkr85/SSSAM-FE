@@ -54,7 +54,10 @@ SERVICE WORKER REGISTRATION
 ====================== */
 function registerServiceWorker() {
     if ('serviceWorker' in navigator) {
-        navigator.serviceWorker.register('/SSSAM-FE/firebase-messaging-sw.js').then((registration) => {
+        const swPath = window.location.pathname.startsWith('/SSSAM-FE')
+            ? '/SSSAM-FE/firebase-messaging-sw.js'
+            : '/firebase-messaging-sw.js';
+        navigator.serviceWorker.register(swPath).then((registration) => {
         })
             .catch((error) => {
             });

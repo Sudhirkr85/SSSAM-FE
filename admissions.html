@@ -176,13 +176,7 @@
               <span class="text-sm font-medium text-gray-700">Date Range:</span>
             </div>
             <div class="flex flex-wrap gap-2">
-              <button onclick="setAdmissionDateFilter('today')" data-filter="today" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
-                Today
-              </button>
-              <button onclick="setAdmissionDateFilter('last7days')" data-filter="last7days" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
-                Last 7 Days
-              </button>
-              <button onclick="setAdmissionDateFilter('thisMonth')" data-filter="thisMonth" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+              <button onclick="setAdmissionDateFilter('thisMonth')" data-filter="thisMonth" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
                 This Month
               </button>
               <button onclick="setAdmissionDateFilter('thisYear')" data-filter="thisYear" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
@@ -402,6 +396,12 @@
       <!-- Form -->
       <div class="px-6 py-5 space-y-4 overflow-y-auto">
         <input type="hidden" id="paymentAdmissionId">
+        
+        <!-- Dynamic Financial Snapshot -->
+        <div id="paymentModalOverview" class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 flex justify-between text-xs text-indigo-900 font-medium hidden"></div>
+
+        <!-- Dynamic Installment List -->
+        <div id="paymentModalInstallments" class="space-y-2 hidden"></div>
 
         <!-- Amount -->
         <div>

@@ -20,14 +20,13 @@ let sortColumn = null;
 let sortDirection = 'asc'; // 'asc' or 'desc'
 
 // Date filter state
-let currentAdmissionFilter = 'today';
+let currentAdmissionFilter = 'thisMonth';
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
   initUserInfo();
   initEventListeners();
-  const filters = getActiveFilters();
-  loadAdmissions('', filters);
+  setAdmissionDateFilter('thisMonth');
 });
 
 function initUserInfo() {
@@ -84,15 +83,6 @@ function getDateRangeForFilter(filterType) {
   const endDate = new Date();
 
   switch (filterType) {
-    case 'today':
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      break;
-    case 'last7days':
-      startDate.setDate(today.getDate() - 6);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      break;
     case 'thisMonth':
       startDate.setDate(1);
       startDate.setHours(0, 0, 0, 0);
@@ -1159,7 +1149,7 @@ async function submitPaymentPlan() {
 }
 
 // ==================== ADD PAYMENT MODAL ====================
-function openPaymentModal(admissionId) {
+async function openPaymentModal(admissionId) {
   currentAdmissionId = admissionId;
   
   // Reset form
@@ -1169,6 +1159,12 @@ function openPaymentModal(admissionId) {
   document.getElementById('paymentNote').value = '';
   document.getElementById('paymentAmountError')?.classList.add('hidden');
   document.getElementById('paymentAmount')?.classList.remove('border-red-500');
+  
+  const overviewEl = document.getElementById('paymentModalOverview');
+  const instsEl = document.getElementById('paymentModalInstallments');
+  
+  if (overviewEl) overviewEl.classList.add('hidden');
+  if (instsEl) instsEl.classList.add('hidden');
   
   // Show modal
   const modal = document.getElementById('paymentModal');
@@ -1183,7 +1179,68 @@ function openPaymentModal(admissionId) {
   }, 10);
   
   lucide.createIcons();
+
+  // Load admission details to show snapshot and installments
+  try {
+    const res = await getAdmission(admissionId);
+    const admission = res?.data?.admission || res?.admission || res?.data || res;
+    if (!admission) return;
+
+    const totalFees = admission.totalFees || 0;
+    const totalPaid = admission.totalPaid ?? (totalFees - (admission.remainingAmount ?? 0));
+    const remaining = admission.remainingAmount ?? (totalFees - totalPaid);
+
+    if (overviewEl) {
+      overviewEl.innerHTML = `
+        <div><span class="text-gray-400">Total:</span> <span class="font-bold">${formatCurrency(totalFees)}</span></div>
+        <div><span class="text-gray-400">Paid:</span> <span class="font-bold text-emerald-600">${formatCurrency(totalPaid)}</span></div>
+        <div><span class="text-gray-400">Balance:</span> <span class="font-bold text-rose-600">${formatCurrency(remaining)}</span></div>
+      `;
+      overviewEl.classList.remove('hidden');
+    }
+
+    if (instsEl && admission.installments && admission.installments.length > 0) {
+      instsEl.innerHTML = `
+        <h3 class="text-xs font-semibold text-gray-500 mb-1.5 uppercase tracking-wider">Installment Schedule</h3>
+        <div class="space-y-1.5">
+          ${admission.installments.map((inst, index) => {
+            const label = inst.status === 'PAID' 
+              ? 'bg-emerald-50 border-emerald-100 text-emerald-700' 
+              : inst.status === 'OVERDUE' 
+                ? 'bg-rose-50 border-rose-100 text-rose-700' 
+                : 'bg-slate-50 border-slate-100 text-slate-700';
+            
+            return `
+              <div class="flex justify-between items-center p-2.5 rounded-lg border text-xs ${label}">
+                <div class="font-medium">
+                  Installment ${index + 1}: ${formatCurrency(inst.amount)}
+                  <span class="text-[10px] text-gray-400 font-normal">(Due: ${new Date(inst.dueDate).toLocaleDateString('en-IN')})</span>
+                </div>
+                ${inst.status !== 'PAID' 
+                  ? `<button type="button" onclick="autofillPaymentAmount(${inst.amount})" class="px-2 py-1 text-[10px] bg-white border border-gray-200 rounded hover:bg-gray-50 transition-colors font-medium text-gray-700 shadow-sm">Pay This</button>` 
+                  : '<span class="text-[10px] font-semibold text-emerald-600">✓ Paid</span>'
+                }
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+      instsEl.classList.remove('hidden');
+    }
+  } catch (err) {
+    console.error('Failed to load admission overview:', err);
+  }
 }
+
+// Global helper for click-to-autofill in payment modal
+window.autofillPaymentAmount = function(amount) {
+  const amountInput = document.getElementById('paymentAmount');
+  if (amountInput) {
+    amountInput.value = amount;
+    document.getElementById('paymentAmountError')?.classList.add('hidden');
+    amountInput.classList.remove('border-red-500');
+  }
+};
 
 function closePaymentModal() {
   const modal = document.getElementById('paymentModal');

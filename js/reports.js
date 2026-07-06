@@ -21,12 +21,12 @@ document.addEventListener('DOMContentLoaded', () => {
     showToast('Warning', 'Reports are available for admin users only', 'warning');
   }
 
-  // Set default filter to today
-  setDateFilter('today');
+  // Set default filter to thisMonth
+  setDateFilter('thisMonth');
 });
 
 // ==================== DATE FILTER LOGIC ====================
-let currentFilter = 'today';
+let currentFilter = 'thisMonth';
 
 function setDateFilter(filterType) {
   currentFilter = filterType;
@@ -52,15 +52,6 @@ function getDateRangeForFilter(filterType) {
   const endDate = new Date();
 
   switch (filterType) {
-    case 'today':
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      break;
-    case 'last7days':
-      startDate.setDate(today.getDate() - 6);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      break;
     case 'thisMonth':
       startDate.setDate(1);
       startDate.setHours(0, 0, 0, 0);
@@ -106,7 +97,7 @@ async function loadReports() {
   try {
     // Fetch all reports in parallel using date range parameters
     
-    const [admissionsRes, feesRes, courseRes, counselorRes, walkinBroughtByRes] = await Promise.all([
+    const [admissionsRes, feesRes, courseRes, counselorRes, walkinBroughtByRes, alertsRes] = await Promise.all([
       apiGet(API_ENDPOINTS.REPORTS.ADMISSIONS, dateRange).catch(err => {
         return null;
       }),
@@ -121,6 +112,9 @@ async function loadReports() {
       }),
       apiGet(API_ENDPOINTS.ENQUIRIES_REPORTS.WALKIN_BROUGHT_BY, dateRange).catch(err => {
         return null;
+      }),
+      apiGet(API_ENDPOINTS.ADMISSIONS.INSTALLMENT_ALERTS).catch(err => {
+        return null;
       })
     ]);
 
@@ -133,7 +127,7 @@ async function loadReports() {
     }
 
     // Build summary data from API responses
-    const summaryData = buildSummaryData(admissionsRes, feesRes);
+    const summaryData = buildSummaryData(admissionsRes, feesRes, alertsRes);
     renderSummaryCards(summaryData);
 
     // Course performance table
@@ -188,17 +182,19 @@ async function loadReportsFromRegularApis(dateRange) {
     const admissions = admissionsRes?.data || [];
 
     // Calculate summary
-    const totalEnquiries = enquiries.length;
-    const convertedEnquiries = enquiries.filter(e => e.status === 'ADMITTED').length;
-    const totalRevenue = admissions.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
-    const pendingAmount = admissions.reduce((sum, a) => sum + Math.max(0, a.remainingAmount || 0), 0);
+    const totalAdmissions = admissions.length;
+    const totalPaid = admissions.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
+    const registrationPaid = admissions.reduce((sum, a) => sum + (a.registrationAmount || 0), 0);
+    const installmentPaid = admissions.reduce((sum, a) => sum + Math.max(0, (a.totalPaid || 0) - (a.registrationAmount || 0)), 0);
+    const totalPending = admissions.reduce((sum, a) => sum + Math.max(0, a.remainingAmount || 0), 0);
 
     renderSummaryCards({
-      totalEnquiries,
-      convertedEnquiries,
-      totalRevenue,
-      pendingAmount,
-      overdueAmount: 0
+      totalAdmissions,
+      totalPaid,
+      registrationPaid,
+      installmentPaid,
+      totalPending,
+      totalFeesCollectedAndDue: totalPaid + totalPending
     });
 
     // Course stats
@@ -212,7 +208,7 @@ async function loadReportsFromRegularApis(dateRange) {
           courseGroups[course] = { enquiries: 0, admissions: 0, revenue: 0 };
         }
         courseGroups[course].enquiries++;
-        if (enq.status === 'ADMITTED') {
+        if (enq.status === 'ADMITTED' || enq.status === 'CONVERTED') {
           courseGroups[course].admissions++;
         }
       });
@@ -246,7 +242,7 @@ async function loadReportsFromRegularApis(dateRange) {
       const source = enq.source || 'other';
       if (!sourceGroups[source]) sourceGroups[source] = { enquiries: 0, converted: 0 };
       sourceGroups[source].enquiries++;
-      if (enq.status === 'ADMITTED') sourceGroups[source].converted++;
+      if (enq.status === 'ADMITTED' || enq.status === 'CONVERTED') sourceGroups[source].converted++;
     });
     const sourceStats = Object.entries(sourceGroups).map(([source, data]) => ({
       source,
@@ -296,64 +292,21 @@ async function loadReportsFromRegularApis(dateRange) {
   }
 }
 
-// Build summary data from admissions and fees responses
-function buildSummaryData(admissionsRes, feesRes) {
-  // apiGet flattens .data, so fields are at top level
+// Build summary data from admissions, fees, and alerts responses
+function buildSummaryData(admissionsRes, feesRes, alertsRes) {
   const admissionsData = admissionsRes?.data || admissionsRes || {};
   const feesData = feesRes?.data || feesRes || {};
-  const summary = admissionsData.summary || {};
   const feeSummary = feesData.summary || {};
-  const periodPayments = feesData.periodPayments || [];
 
-  // Calculate totalPaid from periodPayments if backend returns null (excluding refunds)
-  let totalPaid = feeSummary.totalPaid;
-  let totalRefunds = 0;
-  
-  if (totalPaid === null || totalPaid === undefined || totalPaid === 0) {
-    totalPaid = 0;
-    totalRefunds = 0;
-    periodPayments.forEach(p => {
-      if (p.type === 'refund') {
-        totalRefunds += p.amount || 0;
-      } else {
-        totalPaid += p.amount || 0;
-      }
-    });
-  } else if (feeSummary.totalRefunds !== undefined && feeSummary.totalRefunds !== null) {
-    totalRefunds = feeSummary.totalRefunds;
-  }
-
-  // Fallback: if still no revenue, try to get from admissions data
-  if (totalPaid === 0 && admissionsData.admissions) {
-    totalPaid = admissionsData.admissions.reduce((sum, a) => sum + (a.totalPaid || 0), 0);
-  }
-
-  // Calculate net revenue
-  const netRevenue = totalPaid - totalRefunds;
-
-  // Calculate totalPending if backend returns null
-  let totalPending = feeSummary.totalPending;
-  if (totalPending === null || totalPending === undefined) {
-    const totalFeesExpected = feeSummary.totalFeesExpected || 0;
-    totalPending = Math.max(0, totalFeesExpected - totalPaid);
-  }
-
-  // Always ensure totalPending is not negative (backend might send negative values)
-  totalPending = Math.max(0, totalPending);
-
-  // Fallback: calculate pending from admissions if no data
-  if (totalPending === 0 && admissionsData.admissions) {
-    totalPending = admissionsData.admissions.reduce((sum, a) => sum + Math.max(0, a.remainingAmount || 0), 0);
-  }
+  const totalAdmissions = admissionsData.summary?.totalAdmissions || (admissionsData.admissions ? admissionsData.admissions.length : 0);
 
   return {
-    totalEnquiries: summary.totalEnquiries || 0,
-    convertedEnquiries: summary.totalAdmissions || summary.enquiriesConverted || 0,
-    totalRevenue: totalPaid || 0,
-    totalRefunds: totalRefunds || 0,
-    netRevenue: netRevenue || 0,
-    pendingAmount: totalPending || 0,
-    overdueAmount: 0 // Will be fetched from installment alerts
+    totalAdmissions,
+    totalPaid: feeSummary.totalPaid || 0,
+    registrationPaid: feeSummary.registrationPaid || 0,
+    installmentPaid: feeSummary.installmentPaid || 0,
+    totalPending: feeSummary.totalPending || 0,
+    totalFeesCollectedAndDue: (feeSummary.totalPaid || 0) + (feeSummary.totalPending || 0)
   };
 }
 
@@ -393,47 +346,43 @@ function buildSourceStats(admissionsRes) {
 
 // ==================== RENDER FUNCTIONS ====================
 function renderSummaryCards(data) {
-  document.getElementById('totalEnquiries').textContent = data.totalEnquiries || 0;
-  document.getElementById('convertedCount').textContent = data.convertedEnquiries || 0;
-  
-  // Get revenue data with fallbacks
-  const grossRevenue = data.totalRevenue || 0;
-  const refunds = data.totalRefunds || 0;
-  const netRevenue = data.netRevenue || (grossRevenue - refunds);
-  
-  // Calculate total collected (net revenue after refunds)
-  const totalCollected = netRevenue;
-  
-  // Calculate total due (pending + overdue)
-  const pendingAmount = data.pendingAmount || 0;
-  const overdueAmount = data.overdueAmount || 0;
-  const totalDue = pendingAmount + overdueAmount;
-  
-  // Calculate total revenue (collected + due)
-  const totalRevenue = totalCollected + totalDue;
-  
-  // Update Total Collected card
-  document.getElementById('totalCollected').textContent = formatCurrency(totalCollected);
-  
-  // Update Total Due card
-  document.getElementById('totalDue').textContent = formatCurrency(totalDue);
-  
-  // Update Revenue display to show total revenue (collected + due)
-  const revenueElement = document.getElementById('totalRevenue');
-  if (refunds > 0) {
-    revenueElement.innerHTML = `
-      <div class="text-lg font-bold text-purple-600">${formatCurrency(totalRevenue)}</div>
-      <div class="text-xs text-gray-500">Collected: ${formatCurrency(totalCollected)} + Due: ${formatCurrency(totalDue)}</div>
-    `;
-  } else {
-    revenueElement.innerHTML = `
-      <div class="text-lg font-bold text-purple-600">${formatCurrency(totalRevenue)}</div>
-      <div class="text-xs text-gray-500">Collected: ${formatCurrency(totalCollected)} + Due: ${formatCurrency(totalDue)}</div>
-    `;
+  // 1. Total Admissions
+  const convertedCountEl = document.getElementById('convertedCount');
+  if (convertedCountEl) {
+    convertedCountEl.textContent = data.totalAdmissions || 0;
   }
   
-  // Update Overdue card
-  document.getElementById('overdueAmount').textContent = formatCurrency(overdueAmount);
+  // 2. Total Paid (Collected)
+  const totalCollectedEl = document.getElementById('totalCollected');
+  if (totalCollectedEl) {
+    totalCollectedEl.textContent = formatCurrency(data.totalPaid || 0);
+  }
+  
+  // 3. Total Baaki (Due)
+  const totalDueEl = document.getElementById('totalDue');
+  if (totalDueEl) {
+    totalDueEl.textContent = formatCurrency(data.totalPending || 0);
+  }
+  
+  // 4. Total Fees (Collected + Due)
+  const totalRevenueEl = document.getElementById('totalRevenue');
+  if (totalRevenueEl) {
+    totalRevenueEl.textContent = formatCurrency(data.totalFeesCollectedAndDue || 0);
+  }
+
+  // 5. Collection Breakdown Rendering
+  const breakdownRegEl = document.getElementById('breakdownReg');
+  if (breakdownRegEl) {
+    breakdownRegEl.textContent = formatCurrency(data.registrationPaid || 0);
+  }
+  const breakdownInstEl = document.getElementById('breakdownInst');
+  if (breakdownInstEl) {
+    breakdownInstEl.textContent = formatCurrency(data.installmentPaid || 0);
+  }
+  const breakdownTotalEl = document.getElementById('breakdownTotal');
+  if (breakdownTotalEl) {
+    breakdownTotalEl.textContent = formatCurrency(data.totalPaid || 0);
+  }
 }
 
 function renderCourseTable(courses) {
