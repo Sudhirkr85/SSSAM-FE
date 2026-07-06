@@ -10,7 +10,7 @@ let sortColumn = null;
 let sortDirection = 'asc'; // 'asc' or 'desc'
 
 // Date filter state
-let currentFilter = 'currentMonth'; // 'today', '7days', 'currentMonth', 'all', 'month'
+let currentFilter = 'thisMonth'; // 'thisMonth', 'thisYear', 'allTime', 'month'
 let selectedMonth = null; // For month filter: { year: 2026, month: 3 } (0-indexed)
 
 // Payment mode badge styles (match API uppercase format)
@@ -79,20 +79,16 @@ function getStartDateForFilter(filterType) {
     now.setHours(0, 0, 0, 0);
 
     switch (filterType) {
-        case 'today':
-            return now;
-        case '7days':
-            const sevenDaysAgo = new Date(now);
-            sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-            return sevenDaysAgo;
-        case 'currentMonth':
+        case 'thisMonth':
             return new Date(now.getFullYear(), now.getMonth(), 1);
+        case 'thisYear':
+            return new Date(now.getFullYear(), 0, 1);
         case 'month':
             if (selectedMonth) {
                 return new Date(selectedMonth.year, selectedMonth.month, 1);
             }
             return null;
-        case 'all':
+        case 'allTime':
         default:
             return null;
     }
@@ -103,18 +99,16 @@ function getEndDateForFilter(filterType) {
     now.setHours(23, 59, 59, 999);
 
     switch (filterType) {
-        case 'today':
-            return now;
-        case '7days':
-            return now;
-        case 'currentMonth':
+        case 'thisMonth':
             return new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+        case 'thisYear':
+            return new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
         case 'month':
             if (selectedMonth) {
                 return new Date(selectedMonth.year, selectedMonth.month + 1, 0, 23, 59, 59, 999);
             }
             return null;
-        case 'all':
+        case 'allTime':
         default:
             return null;
     }
@@ -136,7 +130,7 @@ function setFilter(filterType) {
             selectedMonth = { year, month: month - 1 }; // Convert to 0-indexed
         } else {
             selectedMonth = null;
-            currentFilter = 'currentMonth'; // Fallback to current month
+            currentFilter = 'thisMonth'; // Fallback to current month
         }
     } else {
         selectedMonth = null;
@@ -149,7 +143,7 @@ function setFilter(filterType) {
 }
 
 function updateFilterUI() {
-    const buttons = ['today', '7days', 'currentMonth', 'all'];
+    const buttons = ['thisMonth', 'thisYear', 'allTime'];
     buttons.forEach(btn => {
         const el = document.getElementById(`filter-${btn}`);
         if (el) {

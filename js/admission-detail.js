@@ -981,6 +981,9 @@ function closeDropStudentModal() {
 }
 
 async function submitDropStudent() {
+  if (!confirm("Are you sure you want to drop this student? This action will mark them as DROPPED.")) {
+    return;
+  }
   const reason = document.getElementById('dropReason').value.trim();
   const dropDate = document.getElementById('dropDate').value;
   const clearDues = document.getElementById('clearDues').checked;

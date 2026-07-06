@@ -21,6 +21,7 @@ let sortDirection = 'asc'; // 'asc' or 'desc'
 
 // Date filter state
 let currentAdmissionFilter = 'thisMonth';
+let currentAdmission = null;
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -268,6 +269,7 @@ function renderTable() {
     const name = admission.name || 'Unknown';
     const mobile = admission.mobile || '';
     const course = admission.course || '-';
+    const status = admission.status || 'ACTIVE';
     console.log('=== DEBUG: Extracted data - Name:', name, 'Mobile:', mobile, 'Course:', course);
     const totalFees = admission.totalFees || 0;
     // Backend sends remainingAmount, calculate paid from it
@@ -284,7 +286,10 @@ function renderTable() {
               <i data-lucide="user" class="w-5 h-5 text-blue-600"></i>
             </div>
             <div>
-              <div class="font-medium text-gray-800">${escapeHtml(name)}</div>
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-gray-800">${escapeHtml(name)}</span>
+                ${status === 'DROPPED' ? '<span class="px-1.5 py-0.5 text-[9px] bg-red-100 text-red-700 rounded-md font-semibold">Dropped</span>' : ''}
+              </div>
               <div class="text-xs text-gray-500">${mobile}</div>
               <div class="text-xs text-blue-600">${escapeHtml(course)}</div>
             </div>
@@ -344,6 +349,8 @@ function renderMobileCards() {
     const paymentType = admission.paymentType || 'ONE_TIME';
     const nextDue = calculateNextDue(admission);
 
+    const status = admission.status || 'ACTIVE';
+
     return `
       <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
         <div class="flex items-center justify-between">
@@ -352,7 +359,10 @@ function renderMobileCards() {
               <i data-lucide="user" class="w-5 h-5 text-blue-600"></i>
             </div>
             <div>
-              <div class="font-medium text-gray-800">${escapeHtml(name)}</div>
+              <div class="flex items-center gap-2">
+                <span class="font-medium text-gray-800">${escapeHtml(name)}</span>
+                ${status === 'DROPPED' ? '<span class="px-1.5 py-0.5 text-[9px] bg-red-100 text-red-700 rounded-md font-semibold">Dropped</span>' : ''}
+              </div>
               <div class="text-xs text-gray-500">${mobile}</div>
             </div>
           </div>
@@ -1185,6 +1195,7 @@ async function openPaymentModal(admissionId) {
     const res = await getAdmission(admissionId);
     const admission = res?.data?.admission || res?.admission || res?.data || res;
     if (!admission) return;
+    currentAdmission = admission;
 
     const totalFees = admission.totalFees || 0;
     const totalPaid = admission.totalPaid ?? (totalFees - (admission.remainingAmount ?? 0));
@@ -1263,10 +1274,10 @@ async function submitPayment() {
   const note = document.getElementById('paymentNote').value.trim();
   
   // Get current admission data for validation
-  const admission = admissions.find(a => a._id === currentAdmissionId);
+  const admission = currentAdmission || admissions.find(a => a._id === currentAdmissionId);
   const totalFees = admission?.totalFees || 0;
-  // Use backend remainingAmount if available, otherwise calculate from paidAmount
-  const remaining = admission?.remainingAmount ?? (totalFees - (admission?.paidAmount || 0));
+  const totalPaid = admission?.totalPaid ?? (totalFees - (admission?.remainingAmount ?? totalFees));
+  const remaining = totalFees - totalPaid;
   
   // Validate
   if (amount <= 0) {

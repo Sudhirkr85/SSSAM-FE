@@ -143,10 +143,9 @@
                             <span class="font-medium text-gray-800">Date Filter</span>
                         </div>
                         <div class="flex flex-wrap items-center gap-2">
-                            <button onclick="setFilter('today')" id="filter-today" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">Today</button>
-                            <button onclick="setFilter('7days')" id="filter-7days" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">7 Days</button>
-                            <button onclick="setFilter('currentMonth')" id="filter-currentMonth" class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white border border-blue-600 transition-colors">Current Month</button>
-                            <button onclick="setFilter('all')" id="filter-all" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">All</button>
+                            <button onclick="setFilter('thisMonth')" id="filter-thisMonth" class="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white border border-blue-600 transition-colors">This Month</button>
+                            <button onclick="setFilter('thisYear')" id="filter-thisYear" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">This Year</button>
+                            <button onclick="setFilter('allTime')" id="filter-allTime" class="px-4 py-2 text-sm rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors">All Time</button>
                             <div class="flex items-center gap-2 ml-2">
                                 <select id="monthSelector" onchange="setFilter('month')" class="px-3 py-2 text-sm rounded-lg border border-gray-200 focus:outline-none focus:border-blue-500">
                                     <option value="">Select Month</option>
