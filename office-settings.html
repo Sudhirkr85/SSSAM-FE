@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Office Settings - SSSAM CRM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: #f8fafc;
+    }
+    .gradient-header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+    }
+    #map {
+      height: 400px;
+      border-radius: 1rem;
+      border: 1px border-slate-200;
+      z-index: 10;
+    }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="lg:w-64 w-80 bg-gradient-to-b from-gray-900 to-purple-950 text-gray-300 flex flex-col border-r border-white/10 lg:static fixed inset-y-0 left-0 z-40 transform lg:translate-x-0 -translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="px-6 py-5 border-b border-white/10 flex items-center gap-3">
+      <div class="w-9 h-9 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+        <i data-lucide="graduation-cap" class="text-white w-5 h-5"></i>
+      </div>
+      <div>
+        <span class="text-base font-bold text-white tracking-tight">SSSAM</span>
+        <p class="text-[10px] text-purple-300/70 uppercase tracking-wider">CRM System</p>
+      </div>
+    </div>
+
+    <nav class="flex-1 py-3 space-y-0.5 px-2">
+      <a href="dashboard.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="layout-dashboard" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Dashboard</span>
+      </a>
+      <a href="enquiries.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="message-square" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Enquiries</span>
+      </a>
+      <a href="admissions.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="user-check" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Admissions</span>
+      </a>
+      <a href="payments.html" class="nav-item hidden flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="wallet" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Payments</span>
+      </a>
+      <a href="reports.html" class="nav-item hidden flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="bar-chart-3" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Reports</span>
+      </a>
+      <a href="attendance.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="clock" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">My Attendance</span>
+      </a>
+      <a href="admin-attendance.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="users" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Team Attendance</span>
+      </a>
+      <a href="office-settings.html" class="bg-gradient-to-r from-purple-600 to-purple-700 text-white flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg shadow-purple-500/25">
+        <i data-lucide="map-pin" class="w-[18px] h-[18px]"></i>
+        <span class="text-sm font-medium">Office Settings</span>
+      </a>
+    </nav>
+
+    <div class="p-3 border-t border-white/10 bg-black/20">
+      <p id="userName" class="text-sm text-white font-medium truncate"></p>
+      <p id="userRole" class="text-xs text-purple-300/60"></p>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+    
+    <!-- HEADER -->
+    <header class="gradient-header px-6 py-4 flex justify-between items-center shadow-xl text-white relative">
+      <div class="flex items-center gap-4">
+        <button id="mobileMenuToggle" class="lg:hidden w-10 h-10 bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all">
+          <i data-lucide="menu" class="w-5 h-5 text-white"></i>
+        </button>
+        <div>
+          <h1 class="text-xl font-bold text-white">Office Location Configuration</h1>
+          <p class="text-sm text-white/80">Configure geofence anchor point coordinates and matching radius</p>
+        </div>
+      </div>
+      <button id="logoutBtn" class="flex items-center gap-2 text-white/90 hover:text-white transition-colors font-medium text-sm bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm hover:bg-white/20">
+        <i data-lucide="log-out" class="w-5 h-5"></i>
+        <span>Logout</span>
+      </button>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        
+        <!-- MAP PANEL -->
+        <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-md border border-gray-100 space-y-4">
+          <div class="flex items-center justify-between border-b border-gray-50 pb-4 mb-2">
+            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+              <i data-lucide="map" class="text-purple-600 w-5 h-5"></i>
+              Interactive Geofence Configuration
+            </h2>
+            <span class="text-xs text-gray-400">Click on map to drop pin</span>
+          </div>
+          
+          <div id="map"></div>
+        </div>
+
+        <!-- SETTINGS PANEL -->
+        <div class="lg:col-span-1 bg-white rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col justify-between">
+          <div class="space-y-5">
+            <div class="border-b border-gray-50 pb-4 mb-2">
+              <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                <i data-lucide="sliders" class="text-purple-600 w-5 h-5"></i>
+                Geofence Settings
+              </h2>
+            </div>
+            
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Latitude</label>
+              <input type="number" id="officeLat" step="any" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-gray-50 font-mono" readonly>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Longitude</label>
+              <input type="number" id="officeLng" step="any" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-gray-50 font-mono" readonly>
+            </div>
+
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Radius Range (Meters)</label>
+              <input type="number" id="officeRadius" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white" placeholder="Enter geofence radius...">
+            </div>
+          </div>
+
+          <div class="pt-6">
+            <button id="saveSettingsBtn" onclick="saveOfficeLocation()" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-lg shadow-purple-600/20 hover:shadow-xl transition-all text-sm font-semibold flex items-center justify-center gap-2">
+              <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+              Save Anchor Parameters
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3"></div>
+
+  <!-- JS SCRIPTS -->
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/office-settings.js"></script>
+</body>
+</html>
