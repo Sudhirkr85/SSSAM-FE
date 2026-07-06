@@ -184,6 +184,15 @@ function getCurrentUser() {
     }
 }
 
+function getUserRole() {
+    const user = getCurrentUser();
+    return user.role || 'counselor';
+}
+
+function isAdmin() {
+    return getUserRole() === 'admin';
+}
+
 /* ======================
 PROTECT ROUTES
 ====================== */

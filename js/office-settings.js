@@ -124,6 +124,83 @@ async function saveOfficeLocation() {
     }
 }
 
+// Fetch User's Current GPS Location
+function getCurrentGPSLocation() {
+    if (!navigator.geolocation) {
+        showToast('Error', 'Geolocation is not supported by your browser', 'error');
+        return;
+    }
+
+    showToast('Info', 'Fetching GPS location...', 'info');
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            
+            // Center map and update inputs
+            if (map && marker) {
+                map.setView([lat, lng], 17);
+                marker.setLatLng([lat, lng]);
+                updateCoordsFields(lat, lng);
+                showToast('Success', 'Current location loaded successfully!', 'success');
+            }
+        },
+        (error) => {
+            console.error("GPS retrieval failed:", error);
+            showToast('Error', 'Unable to retrieve location. Please check browser permissions.', 'error');
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+    );
+}
+
+// Search address using free OpenStreetMap Nominatim API
+async function performAddressSearch() {
+    const input = document.getElementById('mapSearchInput');
+    const query = input.value.trim();
+    
+    if (!query) {
+        showToast('Error', 'Please enter a search query', 'error');
+        return;
+    }
+
+    showToast('Info', 'Searching...', 'info');
+
+    try {
+        const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`;
+        const res = await axios.get(url);
+        
+        if (res.data && res.data.length > 0) {
+            const result = res.data[0];
+            const lat = parseFloat(result.lat);
+            const lng = parseFloat(result.lon);
+
+            // Center map and update fields
+            if (map && marker) {
+                map.setView([lat, lng], 16);
+                marker.setLatLng([lat, lng]);
+                updateCoordsFields(lat, lng);
+                showToast('Success', `Location found: ${result.display_name.substring(0, 45)}...`, 'success');
+            }
+        } else {
+            showToast('Warning', 'No matching location found', 'warning');
+        }
+    } catch (err) {
+        console.error("Geocoding failed:", err);
+        showToast('Error', 'Search request failed', 'error');
+    }
+}
+
+// Bind Enter key on search input
+document.getElementById('mapSearchInput')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        performAddressSearch();
+    }
+});
+
+window.getCurrentGPSLocation = getCurrentGPSLocation;
+window.performAddressSearch = performAddressSearch;
+
 // Logout handler
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
     localStorage.removeItem('token');

@@ -27,9 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // ==================== DATE FILTER LOGIC ====================
 let currentFilter = 'thisMonth';
+let selectedCustomMonth = ''; // Format: YYYY-MM
 
 function setDateFilter(filterType) {
   currentFilter = filterType;
+  selectedCustomMonth = '';
+  document.getElementById('reportMonthPicker').value = '';
 
   // Update tab styles
   document.querySelectorAll('.filter-tab').forEach(tab => {
@@ -46,31 +49,56 @@ function setDateFilter(filterType) {
   loadReports();
 }
 
+function onMonthPickerChange(value) {
+  if (!value) return;
+  selectedCustomMonth = value;
+  currentFilter = 'customMonth';
+
+  // Deselect all tabs
+  document.querySelectorAll('.filter-tab').forEach(tab => {
+    tab.classList.remove('bg-blue-600', 'text-white');
+    tab.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+  });
+
+  loadReports();
+}
+
 function getDateRangeForFilter(filterType) {
   const today = new Date();
   const startDate = new Date();
   const endDate = new Date();
 
-  switch (filterType) {
-    case 'thisMonth':
-      startDate.setDate(1);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      break;
-    case 'thisYear':
-      startDate.setMonth(0, 1);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      break;
-    case 'allTime':
-      startDate.setFullYear(2020, 0, 1);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
-      break;
-    default:
-      startDate.setDate(1);
-      startDate.setHours(0, 0, 0, 0);
-      endDate.setHours(23, 59, 59, 999);
+  if (filterType === 'customMonth' && selectedCustomMonth) {
+    const [year, month] = selectedCustomMonth.split('-');
+    startDate.setFullYear(parseInt(year), parseInt(month) - 1, 1);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Last day of that month
+    const lastDay = new Date(parseInt(year), parseInt(month), 0).getDate();
+    endDate.setFullYear(parseInt(year), parseInt(month) - 1, lastDay);
+    endDate.setHours(23, 59, 59, 999);
+  } else {
+    switch (filterType) {
+      case 'thisMonth':
+        startDate.setDate(1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'thisYear':
+        startDate.setMonth(0, 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      case 'allTime':
+        startDate.setFullYear(2020, 0, 1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+        break;
+      default:
+        startDate.setDate(1);
+        startDate.setHours(0, 0, 0, 0);
+        endDate.setHours(23, 59, 59, 999);
+    }
   }
 
   // Format dates as YYYY-MM-DD in local timezone (not UTC)
@@ -86,6 +114,10 @@ function getDateRangeForFilter(filterType) {
     dateTo: formatDateLocal(endDate)
   };
 }
+
+// Expose functions globally for HTML event handlers
+window.setDateFilter = setDateFilter;
+window.onMonthPickerChange = onMonthPickerChange;
 
 // ==================== LOAD REPORTS ====================
 async function loadReports() {

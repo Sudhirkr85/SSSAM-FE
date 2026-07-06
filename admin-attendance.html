@@ -103,32 +103,17 @@
     <div class="flex-1 overflow-y-auto p-6 space-y-6">
       
       <!-- CONTROLS & FILTERS -->
-      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-3 gap-4">
         <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Search Employee</label>
-          <div class="relative">
-            <input type="text" id="adminSearch" oninput="loadAdminHistory()" placeholder="Search by name..." class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
-            <i data-lucide="search" class="absolute left-3.5 top-3 w-4 h-4 text-gray-400"></i>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter Role</label>
-          <select id="adminRoleFilter" onchange="loadAdminHistory()" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
-            <option value="" selected>All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="counselor">Counselor</option>
-            <option value="employee">Employee</option>
+          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Employee</label>
+          <select id="adminEmployeeSelect" onchange="loadAdminHistory()" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white text-gray-700">
+            <option value="">-- Choose Employee --</option>
           </select>
         </div>
 
         <div>
-          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter Date Range</label>
-          <select id="adminDateFilter" onchange="loadAdminHistory()" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
-            <option value="thisMonth" selected>This Month</option>
-            <option value="thisYear">This Year</option>
-            <option value="allTime">All Time</option>
-          </select>
+          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Month</label>
+          <input type="month" id="adminMonthPicker" onchange="onAdminMonthChange(this.value)" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-sm bg-white text-gray-700">
         </div>
         
         <div class="flex items-end">
@@ -143,43 +128,115 @@
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
         <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
           <i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-600"></i>
-          Monthly Summaries
+          Employee Monthly Summary
         </h2>
         <div id="summariesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div class="col-span-full text-center py-4 text-gray-400">Loading summaries...</div>
+          <div class="col-span-full text-center py-4 text-gray-400">Please select an employee first</div>
         </div>
       </div>
 
-      <!-- ATTENDANCE RECORDS TABLE -->
+      <!-- ATTENDANCE VISUAL CALENDAR GRID -->
       <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
-        <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <i data-lucide="file-text" class="w-5 h-5 text-purple-600"></i>
-          Punch Records
-        </h2>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left border-collapse">
-            <thead>
-              <tr class="border-b border-gray-100 text-gray-400 text-xs font-semibold uppercase tracking-wider">
-                <th class="py-3 px-4">Name</th>
-                <th class="py-3 px-4">Role</th>
-                <th class="py-3 px-4">Date</th>
-                <th class="py-3 px-4">Punch In</th>
-                <th class="py-3 px-4">Punch Out</th>
-                <th class="py-3 px-4 text-right">Total Hours</th>
-              </tr>
-            </thead>
-            <tbody id="adminLogsTableBody" class="text-sm text-gray-700 divide-y divide-gray-50">
-              <tr>
-                <td colspan="6" class="text-center py-12 text-gray-400">Loading records...</td>
-              </tr>
-            </tbody>
-          </table>
+        <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+          <div>
+            <h2 class="text-base font-bold text-gray-800 flex items-center gap-2">
+              <i data-lucide="calendar" class="w-5 h-5 text-purple-600"></i>
+              Attendance Grid (Calendar View)
+            </h2>
+            <p class="text-xs text-gray-400 mt-0.5">Click on any calendar day block to configure Leaves or Weekoffs</p>
+          </div>
+          <!-- Legend -->
+          <div class="flex flex-wrap gap-3 text-xs">
+            <span class="flex items-center gap-1.5 font-medium text-gray-600">
+              <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Present
+            </span>
+            <span class="flex items-center gap-1.5 font-medium text-gray-600">
+              <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Leave
+            </span>
+            <span class="flex items-center gap-1.5 font-medium text-gray-600">
+              <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Weekoff
+            </span>
+            <span class="flex items-center gap-1.5 font-medium text-gray-600">
+              <span class="w-2.5 h-2.5 rounded-full bg-gray-200"></span> Absent
+            </span>
+          </div>
+        </div>
+
+        <!-- Responsive Scrollable Calendar Container -->
+        <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+          <div class="min-w-[500px]">
+            <!-- 7 Column Grid Header (Mon - Sun) -->
+            <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+              <div>Mon</div>
+              <div>Tue</div>
+              <div>Wed</div>
+              <div>Thu</div>
+              <div>Fri</div>
+              <div>Sat</div>
+              <div>Sun</div>
+            </div>
+
+            <!-- Real 7 Column Calendar Days Container -->
+            <div id="attendanceGridBody" class="grid grid-cols-7 gap-1.5 min-h-[250px]">
+              <div class="col-span-7 text-center py-12 text-gray-400">Please select an employee to view calendar</div>
+            </div>
+          </div>
         </div>
       </div>
 
     </div>
 
   </main>
+
+  <!-- LEAVE & WEEKOFF SETTING MODAL -->
+  <div id="statusModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200 p-4">
+    <div class="bg-white rounded-2xl w-full max-w-md shadow-2xl transform scale-95 transition-transform duration-200 p-6 flex flex-col" id="statusModalContent">
+      <div class="flex items-center gap-3 border-b border-gray-100 pb-4 mb-4">
+        <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
+          <i data-lucide="edit-3" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <h2 class="text-lg font-bold text-gray-800">Set Day Status</h2>
+          <p class="text-xs text-gray-500" id="statusModalSub">Update status for employee</p>
+        </div>
+      </div>
+
+      <form id="statusForm" class="space-y-4" onsubmit="submitStatusUpdate(event)">
+        <input type="hidden" id="statusUserId">
+        <input type="hidden" id="statusDate">
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Select Day Type</label>
+          <select id="dayStatusSelect" onchange="toggleTimeFields(this.value)" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-sm">
+            <option value="PRESENT">Present (Punch IN/OUT)</option>
+            <option value="LEAVE">Leave</option>
+            <option value="WEEKOFF">Weekoff</option>
+            <option value="ABSENT">Absent (Clear status)</option>
+          </select>
+        </div>
+
+        <div id="timeFields" class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Punch In</label>
+            <input type="time" id="statusPunchIn" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-sm">
+          </div>
+          <div>
+            <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Punch Out</label>
+            <input type="time" id="statusPunchOut" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-sm">
+          </div>
+        </div>
+
+        <div class="flex gap-3 pt-4 border-t border-gray-50">
+          <button type="button" onclick="closeStatusModal()" class="flex-1 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-xl transition-colors text-sm font-semibold">
+            Cancel
+          </button>
+          <button type="submit" class="flex-1 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-all text-sm font-semibold">
+            Update Status
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <!-- TOAST CONTAINER -->
   <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3"></div>

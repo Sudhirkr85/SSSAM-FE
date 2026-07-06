@@ -186,6 +186,10 @@ async function getUserById(id) {
     return await apiGet(API_ENDPOINTS.USERS.GET(id));
 }
 
+async function listAllUsers() {
+    return await apiGet('/users/');
+}
+
 
 /* ======================
 ADMISSION API FUNCTIONS
@@ -280,6 +284,10 @@ async function getAttendanceOfficeSettings() {
 
 async function updateAttendanceOfficeSettings(settings) {
     return await apiPut(API_ENDPOINTS.ATTENDANCE.OFFICE_SETTINGS, settings);
+}
+
+async function updateAttendanceRecord(data) {
+    return await apiPut('/attendance/record', data);
 }
 
 async function registerUser(userData) {

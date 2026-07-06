@@ -285,13 +285,11 @@
 
                     </table>
 
-                    <!-- PAGINATION -->
-                    <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
-
+                    <!-- PAGINATION (Responsive layouts) -->
+                    <div class="border-t border-gray-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3">
                         <div class="text-sm text-gray-500">
                             Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span> payments
                         </div>
-
                         <div class="flex items-center gap-2">
                             <button id="firstPage" onclick="goToPage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 <i data-lucide="chevrons-left" class="w-4 h-4"></i>
@@ -299,11 +297,9 @@
                             <button id="prevPage" onclick="changePage(-1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
                             </button>
-
                             <div id="pageNumbers" class="flex items-center gap-1">
                                 <span class="px-3 py-2 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
                             </div>
-
                             <button id="nextPage" onclick="changePage(1)" class="px-3 py-2 text-sm text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                                 <i data-lucide="chevron-right" class="w-4 h-4"></i>
                             </button>
@@ -311,7 +307,6 @@
                                 <i data-lucide="chevrons-right" class="w-4 h-4"></i>
                             </button>
                         </div>
-
                     </div>
 
                 </div>

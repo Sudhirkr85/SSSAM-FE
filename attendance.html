@@ -8,6 +8,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <!-- Leaflet CSS & JS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     body {
       font-family: 'Outfit', sans-serif;
@@ -113,16 +116,28 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
         <!-- PUNCH PANEL -->
-        <div class="lg:col-span-1 punch-card rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col justify-between min-h-[350px]">
+        <div class="lg:col-span-1 punch-card rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col justify-between gap-5">
           <div>
             <div class="flex items-center justify-between mb-4">
               <span class="text-xs font-bold text-purple-600 uppercase tracking-widest">Live Console</span>
               <div id="liveClock" class="text-sm font-semibold text-gray-600">--:--:--</div>
             </div>
             
-            <div class="text-center py-6">
-              <p id="punchStatusText" class="text-lg font-bold text-gray-800">Checking status...</p>
-              <p id="geoStatusText" class="text-xs text-gray-500 mt-1">Requesting GPS coordinate access...</p>
+            <!-- Circular Progress Dashboard Widget -->
+            <div class="flex flex-col items-center py-4">
+              <div class="relative w-28 h-28 flex items-center justify-center bg-purple-50/50 rounded-full border border-purple-100 shadow-sm">
+                <!-- SVG Ring -->
+                <svg class="absolute w-full h-full transform -rotate-90">
+                  <circle cx="56" cy="56" r="48" class="stroke-gray-100" stroke-width="6" fill="transparent"/>
+                  <circle cx="56" cy="56" r="48" id="statusProgressCircle" class="stroke-purple-600 transition-all duration-500 ease-out" stroke-width="6" fill="transparent" stroke-dasharray="301.6" stroke-dashoffset="301.6"/>
+                </svg>
+                <div class="text-center z-10">
+                  <span class="text-xs text-gray-400 block font-medium">Status</span>
+                  <span id="circleStatusShort" class="font-bold text-purple-700 text-sm">...</span>
+                </div>
+              </div>
+              <p id="punchStatusText" class="text-base font-bold text-gray-800 mt-4">Checking status...</p>
+              <p id="geoStatusText" class="text-xs text-gray-500 mt-1 text-center">Requesting GPS coordinate access...</p>
             </div>
           </div>
 
@@ -137,17 +152,20 @@
                 <span>Longitude:</span>
                 <span id="coordLng" class="font-mono font-semibold">-</span>
               </div>
+              <div class="flex justify-between pt-1 border-t border-dashed border-gray-100">
+                <span>Distance from Office:</span>
+                <span id="coordDistance" class="font-semibold text-purple-600">-</span>
+              </div>
             </div>
 
-            <!-- ACTION BUTTONS -->
-            <div class="flex gap-4">
-              <button id="punchInBtn" onclick="triggerPunch('IN')" class="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-400 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 disabled:shadow-none hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2">
-                <i data-lucide="log-in" class="w-4 h-4"></i>
-                Punch In
-              </button>
-              <button id="punchOutBtn" onclick="triggerPunch('OUT')" class="flex-1 py-3 px-4 bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-700 hover:to-pink-700 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-400 text-white font-semibold rounded-xl shadow-lg shadow-rose-600/20 disabled:shadow-none hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2">
-                <i data-lucide="log-out" class="w-4 h-4"></i>
-                Punch Out
+            <!-- GEOLOCATION VISUAL ZONE MAP -->
+            <div class="rounded-xl border border-gray-200 overflow-hidden shadow-inner bg-gray-50 h-[160px]" id="miniMap"></div>
+
+            <!-- ACTION BUTTON -->
+            <div>
+              <button id="punchActionBtn" onclick="handlePunchClick()" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-400 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 disabled:shadow-none hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2">
+                <i data-lucide="log-in" class="w-5 h-5"></i>
+                <span>Punch In</span>
               </button>
             </div>
           </div>
@@ -163,11 +181,16 @@
               <h2 class="text-lg font-bold text-gray-800">Attendance Log</h2>
             </div>
             
-            <select id="dateFilter" onchange="loadPersonalHistory()" class="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
-              <option value="thisMonth" selected>This Month</option>
-              <option value="thisYear">This Year</option>
-              <option value="allTime">All Time</option>
-            </select>
+            <div class="flex items-center gap-2">
+              <!-- Custom Month Picker -->
+              <input type="month" id="attendanceMonthPicker" onchange="onAttendanceMonthChange(this.value)" class="px-3 py-1.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 bg-white text-gray-700">
+              
+              <select id="dateFilter" onchange="loadPersonalHistory()" class="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
+                <option value="thisMonth" selected>This Month</option>
+                <option value="thisYear">This Year</option>
+                <option value="allTime">All Time</option>
+              </select>
+            </div>
           </div>
 
           <div class="flex-1 overflow-x-auto">

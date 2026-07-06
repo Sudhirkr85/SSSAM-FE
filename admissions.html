@@ -263,32 +263,31 @@
                     <p class="text-gray-500">Loading admissions...</p>
                   </div>
                 </td>
-              </tr>
             </tbody>
           </table>
+        </div>
 
-          <!-- PAGINATION -->
-          <div class="border-t border-gray-100 px-6 py-4 flex items-center justify-between">
-            <div class="text-sm text-gray-500">
-              Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span>
+        <!-- PAGINATION (Visible on all screens) -->
+        <div class="bg-white rounded-xl shadow border border-gray-100 px-6 py-4 flex flex-col sm:flex-row items-center justify-between gap-3 mt-4">
+          <div class="text-sm text-gray-500">
+            Showing <span id="showingFrom" class="font-medium text-gray-800">0</span> to <span id="showingTo" class="font-medium text-gray-800">0</span> of <span id="totalItems" class="font-medium text-gray-800">0</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="firstPage" onclick="goToPage(1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+              <i data-lucide="chevrons-left" class="w-4 h-4"></i>
+            </button>
+            <button id="prevPage" onclick="changePage(-1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            <div id="pageNumbers" class="flex items-center gap-1">
+              <span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
             </div>
-            <div class="flex items-center gap-2">
-              <button id="firstPage" onclick="goToPage(1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
-                <i data-lucide="chevrons-left" class="w-4 h-4"></i>
-              </button>
-              <button id="prevPage" onclick="changePage(-1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
-                <i data-lucide="chevron-left" class="w-4 h-4"></i>
-              </button>
-              <div id="pageNumbers" class="flex items-center gap-1">
-                <span class="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg font-medium">1</span>
-              </div>
-              <button id="nextPage" onclick="changePage(1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
-                <i data-lucide="chevron-right" class="w-4 h-4"></i>
-              </button>
-              <button id="lastPage" onclick="goToLastPage()" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
-                <i data-lucide="chevrons-right" class="w-4 h-4"></i>
-              </button>
-            </div>
+            <button id="nextPage" onclick="changePage(1)" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>
+            <button id="lastPage" onclick="goToLastPage()" class="p-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50" disabled>
+              <i data-lucide="chevrons-right" class="w-4 h-4"></i>
+            </button>
           </div>
         </div>
 

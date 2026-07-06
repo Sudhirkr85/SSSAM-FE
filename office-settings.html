@@ -115,6 +115,21 @@
             </h2>
             <span class="text-xs text-gray-400">Click on map to drop pin</span>
           </div>
+          <!-- Map Control Toolbar: Search and Get Current GPS Coordinates -->
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <div class="relative flex-1">
+              <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"></i>
+              <input type="text" id="mapSearchInput" placeholder="Search address, city, area..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-sm">
+            </div>
+            <button type="button" onclick="performAddressSearch()" class="px-4 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 border border-purple-100">
+              <i data-lucide="search" class="w-4 h-4"></i>
+              Search
+            </button>
+            <button type="button" onclick="getCurrentGPSLocation()" class="px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 border border-emerald-100">
+              <i data-lucide="navigation" class="w-4 h-4"></i>
+              Get Current Location
+            </button>
+          </div>
           
           <div id="map"></div>
         </div>
