@@ -174,6 +174,16 @@ if (loginForm) {
     });
 }
 
+function getCurrentUser() {
+    try {
+        const item = localStorage.getItem('user');
+        return item ? JSON.parse(item) : {};
+    } catch (e) {
+        console.error('Error parsing user from localStorage', e);
+        return {};
+    }
+}
+
 /* ======================
 PROTECT ROUTES
 ====================== */
