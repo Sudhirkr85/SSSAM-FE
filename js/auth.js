@@ -133,7 +133,11 @@ async function handleLogin() {
         safeSetLocalStorage('user', user);
 
         showToast('success', 'Login successful!');
-        window.location.href = 'dashboard.html';
+        if (user.role === 'employee') {
+            window.location.href = 'attendance.html';
+        } else {
+            window.location.href = 'dashboard.html';
+        }
 
     } catch (err) {
         console.log('=== LOGIN CATCH BLOCK ===');
@@ -175,9 +179,20 @@ PROTECT ROUTES
 ====================== */
 function checkAuth() {
     const token = localStorage.getItem('token');
+    const user = getCurrentUser();
 
     if (!token && !window.location.pathname.includes('index.html')) {
         window.location.href = 'index.html';
+        return;
+    }
+
+    if (token && user) {
+        const path = window.location.pathname.split('/').pop();
+        if (user.role === 'employee') {
+            if (path && path !== 'attendance.html' && path !== 'index.html') {
+                window.location.href = 'attendance.html';
+            }
+        }
     }
 }
 

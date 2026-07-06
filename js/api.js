@@ -47,7 +47,8 @@ const API_ENDPOINTS = {
         REFUND: (paymentId) => `/payments/${paymentId}/refund`
     },
     AUTH: {
-        LOGIN: '/auth/login'
+        LOGIN: '/auth/login',
+        REGISTER: '/auth/register'
     },
     USERS: {
         GET_COUNSELORS: '/users/counselors',
@@ -62,6 +63,12 @@ const API_ENDPOINTS = {
     },
     ENQUIRIES_REPORTS: {
         WALKIN_BROUGHT_BY: '/enquiries/walkin-brought-by'
+    },
+    ATTENDANCE: {
+        PUNCH: '/attendance/punch',
+        PERSONAL_HISTORY: '/attendance/personal-history',
+        ADMIN_HISTORY: '/attendance/admin-history',
+        OFFICE_SETTINGS: '/attendance/office-settings'
     }
 };
 
@@ -253,6 +260,30 @@ async function voidPayment(paymentId) {
 
 async function dropStudent(admissionId, dropData) {
     return await apiPost(API_ENDPOINTS.ADMISSIONS.DROP(admissionId), dropData);
+}
+
+async function punchAttendance(coords) {
+    return await apiPost(API_ENDPOINTS.ATTENDANCE.PUNCH, coords);
+}
+
+async function getPersonalAttendanceHistory(range) {
+    return await apiGet(API_ENDPOINTS.ATTENDANCE.PERSONAL_HISTORY, range ? { range } : {});
+}
+
+async function getAdminAttendanceHistory(filters) {
+    return await apiGet(API_ENDPOINTS.ATTENDANCE.ADMIN_HISTORY, filters);
+}
+
+async function getAttendanceOfficeSettings() {
+    return await apiGet(API_ENDPOINTS.ATTENDANCE.OFFICE_SETTINGS);
+}
+
+async function updateAttendanceOfficeSettings(settings) {
+    return await apiPut(API_ENDPOINTS.ATTENDANCE.OFFICE_SETTINGS, settings);
+}
+
+async function registerUser(userData) {
+    return await apiPost(API_ENDPOINTS.AUTH.REGISTER, userData);
 }
 
 /* ======================

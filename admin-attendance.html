@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Team Attendance - SSSAM CRM</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+      background-color: #f8fafc;
+    }
+    .gradient-header {
+      background: linear-gradient(135deg, #1e1b4b 0%, #311042 100%);
+    }
+    .stats-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .stats-card:hover {
+      transform: translateY(-2px);
+    }
+  </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+  <!-- SIDEBAR -->
+  <aside id="sidebar" class="lg:w-64 w-80 bg-gradient-to-b from-gray-900 to-purple-950 text-gray-300 flex flex-col border-r border-white/10 lg:static fixed inset-y-0 left-0 z-40 transform lg:translate-x-0 -translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="px-6 py-5 border-b border-white/10 flex items-center gap-3">
+      <div class="w-9 h-9 bg-gradient-to-tr from-purple-600 to-pink-600 rounded-xl flex items-center justify-center shadow-lg shadow-purple-500/30">
+        <i data-lucide="graduation-cap" class="text-white w-5 h-5"></i>
+      </div>
+      <div>
+        <span class="text-base font-bold text-white tracking-tight">SSSAM</span>
+        <p class="text-[10px] text-purple-300/70 uppercase tracking-wider">CRM System</p>
+      </div>
+    </div>
+
+    <nav class="flex-1 py-3 space-y-0.5 px-2">
+      <a href="dashboard.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="layout-dashboard" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Dashboard</span>
+      </a>
+      <a href="enquiries.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="message-square" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Enquiries</span>
+      </a>
+      <a href="admissions.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="user-check" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Admissions</span>
+      </a>
+      <a href="payments.html" class="nav-item hidden flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="wallet" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Payments</span>
+      </a>
+      <a href="reports.html" class="nav-item hidden flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="bar-chart-3" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Reports</span>
+      </a>
+      <a href="attendance.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="clock" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">My Attendance</span>
+      </a>
+      <a href="admin-attendance.html" class="bg-gradient-to-r from-purple-600 to-purple-700 text-white flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg shadow-purple-500/25">
+        <i data-lucide="users" class="w-[18px] h-[18px]"></i>
+        <span class="text-sm font-medium">Team Attendance</span>
+      </a>
+      <a href="office-settings.html" class="nav-item flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group">
+        <i data-lucide="map-pin" class="w-[18px] h-[18px] text-gray-400 group-hover:text-white transition-colors"></i>
+        <span class="text-sm font-medium text-gray-300 group-hover:text-white">Office Settings</span>
+      </a>
+    </nav>
+
+    <div class="p-3 border-t border-white/10 bg-black/20">
+      <p id="userName" class="text-sm text-white font-medium truncate"></p>
+      <p id="userRole" class="text-xs text-purple-300/60"></p>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="flex-1 flex flex-col overflow-hidden">
+    
+    <!-- HEADER -->
+    <header class="gradient-header px-6 py-4 flex justify-between items-center shadow-xl text-white relative">
+      <div class="flex items-center gap-4">
+        <button id="mobileMenuToggle" class="lg:hidden w-10 h-10 bg-white/15 hover:bg-white/25 rounded-xl flex items-center justify-center transition-all">
+          <i data-lucide="menu" class="w-5 h-5 text-white"></i>
+        </button>
+        <div>
+          <h1 class="text-xl font-bold text-white">Team Attendance Administration</h1>
+          <p class="text-sm text-white/80">Track logs and view monthly summaries for all roles</p>
+        </div>
+      </div>
+      <button id="logoutBtn" class="flex items-center gap-2 text-white/90 hover:text-white transition-colors font-medium text-sm bg-white/10 px-4 py-2 rounded-lg backdrop-blur-sm hover:bg-white/20">
+        <i data-lucide="log-out" class="w-5 h-5"></i>
+        <span>Logout</span>
+      </button>
+    </header>
+
+    <!-- CONTENT -->
+    <div class="flex-1 overflow-y-auto p-6 space-y-6">
+      
+      <!-- CONTROLS & FILTERS -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Search Employee</label>
+          <div class="relative">
+            <input type="text" id="adminSearch" oninput="loadAdminHistory()" placeholder="Search by name..." class="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
+            <i data-lucide="search" class="absolute left-3.5 top-3 w-4 h-4 text-gray-400"></i>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter Role</label>
+          <select id="adminRoleFilter" onchange="loadAdminHistory()" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
+            <option value="" selected>All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="counselor">Counselor</option>
+            <option value="employee">Employee</option>
+          </select>
+        </div>
+
+        <div>
+          <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Filter Date Range</label>
+          <select id="adminDateFilter" onchange="loadAdminHistory()" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
+            <option value="thisMonth" selected>This Month</option>
+            <option value="thisYear">This Year</option>
+            <option value="allTime">All Time</option>
+          </select>
+        </div>
+        
+        <div class="flex items-end">
+          <button onclick="loadAdminHistory()" class="w-full py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-all text-sm font-semibold flex items-center justify-center gap-2">
+            <i data-lucide="rotate-cw" class="w-4 h-4"></i>
+            Refresh Logs
+          </button>
+        </div>
+      </div>
+
+      <!-- MONTHLY SUMMARIES -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <i data-lucide="bar-chart-3" class="w-5 h-5 text-purple-600"></i>
+          Monthly Summaries
+        </h2>
+        <div id="summariesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div class="col-span-full text-center py-4 text-gray-400">Loading summaries...</div>
+        </div>
+      </div>
+
+      <!-- ATTENDANCE RECORDS TABLE -->
+      <div class="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+        <h2 class="text-base font-bold text-gray-800 mb-4 flex items-center gap-2">
+          <i data-lucide="file-text" class="w-5 h-5 text-purple-600"></i>
+          Punch Records
+        </h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse">
+            <thead>
+              <tr class="border-b border-gray-100 text-gray-400 text-xs font-semibold uppercase tracking-wider">
+                <th class="py-3 px-4">Name</th>
+                <th class="py-3 px-4">Role</th>
+                <th class="py-3 px-4">Date</th>
+                <th class="py-3 px-4">Punch In</th>
+                <th class="py-3 px-4">Punch Out</th>
+                <th class="py-3 px-4 text-right">Total Hours</th>
+              </tr>
+            </thead>
+            <tbody id="adminLogsTableBody" class="text-sm text-gray-700 divide-y divide-gray-50">
+              <tr>
+                <td colspan="6" class="text-center py-12 text-gray-400">Loading records...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- TOAST CONTAINER -->
+  <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-3"></div>
+
+  <!-- JS SCRIPTS -->
+  <script src="js/api.js"></script>
+  <script src="js/ui.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/sidebar.js"></script>
+  <script src="js/admin-attendance.js"></script>
+</body>
+</html>
