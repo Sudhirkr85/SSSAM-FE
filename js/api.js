@@ -247,6 +247,10 @@ async function processRefund(paymentId, refundData) {
     return await apiPost(API_ENDPOINTS.PAYMENTS.REFUND(paymentId), refundData);
 }
 
+async function voidPayment(paymentId) {
+    return await apiPost(`/payments/${paymentId}/void`, {});
+}
+
 async function dropStudent(admissionId, dropData) {
     return await apiPost(API_ENDPOINTS.ADMISSIONS.DROP(admissionId), dropData);
 }

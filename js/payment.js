@@ -1,4 +1,5 @@
 let payments = [];
+let confirmActionCallback = null;
 
 // Pagination state
 let currentPage = 1;
@@ -290,6 +291,7 @@ function renderTable() {
         const style = paymentModeStyles[mode] || paymentModeStyles['CASH'];
         const isRefund = p.type === 'refund';
         const typeStyle = paymentTypeStyles[p.type] || null;
+        const isVoided = p.status === 'VOIDED';
 
         // Get admission data from enriched payment
         const admission = p._admissionData;
@@ -303,22 +305,36 @@ function renderTable() {
         const amountPrefix = isRefund ? '-' : '';
         const rowClass = isRefund ? 'bg-red-50/30' : 'hover:bg-gray-50';
 
+        const user = JSON.parse(localStorage.getItem('user') || '{}');
+        const isAdmin = user.role === 'admin';
+
         return `
-            <tr class="${rowClass} transition-colors border-b border-gray-50 last:border-0">
+            <tr class="${rowClass} transition-colors border-b border-gray-50 last:border-0 ${isVoided ? 'opacity-50' : ''}">
                 <td class="px-6 py-4">
-                    <div class="font-medium text-gray-900">${studentName}</div>
+                    <div class="font-medium text-gray-900 ${isVoided ? 'line-through' : ''}">${studentName}</div>
                     ${mobile ? `<div class="text-xs text-gray-500">${mobile}</div>` : ''}
                 </td>
-                <td class="px-6 py-4 text-gray-700">${course}</td>
-                <td class="px-6 py-4 ${amountClass} font-semibold">${amountPrefix}${formatCurrency(p.amount)}</td>
+                <td class="px-6 py-4 text-gray-700 ${isVoided ? 'line-through' : ''}">${course}</td>
+                <td class="px-6 py-4 ${amountClass} font-semibold ${isVoided ? 'line-through' : ''}">${amountPrefix}${formatCurrency(p.amount)}</td>
                 <td class="px-6 py-4">
-                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${style.bg} ${style.text}">
-                        <span>${style.icon}</span>
-                        ${mode}
-                    </span>
-                    ${typeStyle ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${typeStyle.bg} ${typeStyle.text} ml-1">${typeStyle.label}</span>` : ''}
+                    ${isVoided 
+                      ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-red-100 text-red-700 border border-red-200">Voided</span>`
+                      : `
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${style.bg} ${style.text}">
+                            <span>${style.icon}</span>
+                            ${mode}
+                        </span>
+                        ${typeStyle ? `<span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${typeStyle.bg} ${typeStyle.text} ml-1">${typeStyle.label}</span>` : ''}
+                      `
+                    }
                 </td>
-                <td class="px-6 py-4 text-gray-600">${formatDate(p.paymentDate || p.createdAt)}</td>
+                <td class="px-6 py-4 text-gray-600 ${isVoided ? 'line-through' : ''}">${formatDate(p.paymentDate || p.createdAt)}</td>
+                <td class="px-6 py-4 text-center">
+                    ${(!isVoided && isAdmin && p.type !== 'refund') 
+                      ? `<button onclick="triggerVoidPayment('${p._id || p.id}')" class="text-xs text-red-600 hover:text-red-800 font-medium px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 transition-colors shadow-sm">Void</button>`
+                      : ''
+                    }
+                </td>
             </tr>
         `;
     }).join('');
@@ -363,7 +379,7 @@ function renderEmptyState() {
     const table = document.getElementById('paymentTable');
     table.innerHTML = `
         <tr>
-            <td colspan="5" class="text-center py-12">
+            <td colspan="6" class="text-center py-12">
                 <div class="flex flex-col items-center gap-3">
                     <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center">
                         <i data-lucide="wallet" class="w-8 h-8 text-gray-400"></i>
@@ -507,7 +523,56 @@ function updatePaginationInfoFromServer(pagination) {
 /* ======================
 EXPORT
 ====================== */
+function triggerVoidPayment(paymentId) {
+    showConfirmModal("Are you sure you want to void this payment? This will permanently reverse the payment and re-allocate installments.", async () => {
+        try {
+            await voidPayment(paymentId);
+            showToast('success', 'Payment voided successfully');
+            loadPayments();
+        } catch (err) {
+            console.error('Failed to void payment:', err);
+            showToast('error', 'Failed to void payment');
+        }
+    });
+}
+
+function showConfirmModal(text, callback) {
+    document.getElementById('confirmModalText').textContent = text;
+    confirmActionCallback = callback;
+    
+    const modal = document.getElementById('confirmModal');
+    const content = document.getElementById('confirmModalContent');
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    }, 10);
+    lucide.createIcons();
+}
+
+function closeConfirmModal() {
+    const modal = document.getElementById('confirmModal');
+    const content = document.getElementById('confirmModalContent');
+    modal.classList.add('opacity-0');
+    content.classList.remove('scale-100');
+    content.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }, 300);
+}
+
+function proceedConfirmAction() {
+    if (confirmActionCallback) {
+        confirmActionCallback();
+    }
+    closeConfirmModal();
+}
+
 window.changePage = changePage;
 window.goToPage = goToPage;
 window.goToLastPage = goToLastPage;
 window.setFilter = setFilter;
+window.triggerVoidPayment = triggerVoidPayment;

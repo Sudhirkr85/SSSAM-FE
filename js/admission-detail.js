@@ -8,6 +8,7 @@ let admissionId = null;
 let admissionData = null;
 let payments = [];
 let installmentRows = [];
+let confirmActionCallback = null;
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -346,6 +347,7 @@ function renderPaymentHistory() {
   
   section.innerHTML = sortedPayments.map(p => {
     const date = formatDateTime(p.createdAt);
+    const isVoided = p.status === 'VOIDED';
     
     const typeColors = {
       'initial': 'bg-blue-100 text-blue-700 border-blue-200',
@@ -364,23 +366,33 @@ function renderPaymentHistory() {
     const typeClass = typeColors[p.type] || 'bg-gray-100 text-gray-700';
     const typeLabel = typeLabels[p.type] || (p.type ? p.type.charAt(0).toUpperCase() + p.type.slice(1) : 'Payment');
     
+    const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const isAdmin = user.role === 'admin';
+    
     return `
-      <div class="payment-row px-6 py-4 border-b border-gray-50 last:border-0">
+      <div class="payment-row px-6 py-4 border-b border-gray-50 last:border-0 ${isVoided ? 'opacity-50' : ''}">
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center gap-3">
-            <div class="w-8 h-8 ${typeClass.split(' ')[0]} rounded-lg flex items-center justify-center">
-              <i data-lucide="${getPaymentIcon(p.type)}" class="w-4 h-4 ${typeClass.split(' ')[1]}"></i>
+            <div class="w-8 h-8 ${isVoided ? 'bg-red-100 text-red-700' : typeClass.split(' ')[0]} rounded-lg flex items-center justify-center">
+              <i data-lucide="${isVoided ? 'trash-2' : getPaymentIcon(p.type)}" class="w-4 h-4 ${isVoided ? 'text-red-700' : typeClass.split(' ')[1]}"></i>
             </div>
             <div>
-              <div class="font-semibold text-gray-800">${formatCurrency(p.amount)}</div>
+              <div class="font-semibold text-gray-800 ${isVoided ? 'line-through' : ''}">${formatCurrency(p.amount)}</div>
               <div class="text-xs text-gray-500">${date}</div>
             </div>
           </div>
-          <span class="px-2.5 py-1 rounded-lg text-xs font-medium border ${typeClass}">
-            ${typeLabel}
-          </span>
+          <div class="flex items-center gap-2">
+            ${isVoided 
+              ? `<span class="px-2.5 py-1 rounded-lg text-xs font-medium border bg-red-100 text-red-700 border-red-200">Voided</span>`
+              : `<span class="px-2.5 py-1 rounded-lg text-xs font-medium border ${typeClass}">${typeLabel}</span>`
+            }
+            ${(!isVoided && isAdmin && p.type !== 'refund') 
+              ? `<button onclick="triggerVoidPayment('${p._id || p.id}')" class="text-xs text-red-600 hover:text-red-800 font-medium px-2 py-1 rounded bg-red-50 hover:bg-red-100 transition-colors ml-2">Void</button>`
+              : ''
+            }
+          </div>
         </div>
-        <div class="flex items-center justify-between text-sm">
+        <div class="flex items-center justify-between text-sm ${isVoided ? 'line-through' : ''}">
           <span class="text-gray-500">${p.paymentMode}</span>
           ${p.note ? `<span class="text-gray-400 italic">${escapeHtml(p.note)}</span>` : ''}
         </div>
@@ -900,9 +912,9 @@ async function submitRefund() {
       .filter(p => {
         // Exclude refunds
         if (p.type === 'refund') return false;
-        // Include if status is success, completed, or not set (assume successful)
+        // Include if status is success, completed, active, or not set (assume successful)
         const status = (p.status || '').toLowerCase();
-        return !status || status === 'success' || status === 'completed';
+        return !status || status === 'success' || status === 'completed' || status === 'active';
       })
       .sort((a, b) => new Date(b.createdAt || b.date) - new Date(a.createdAt || a.date));
     
@@ -981,9 +993,6 @@ function closeDropStudentModal() {
 }
 
 async function submitDropStudent() {
-  if (!confirm("Are you sure you want to drop this student? This action will mark them as DROPPED.")) {
-    return;
-  }
   const reason = document.getElementById('dropReason').value.trim();
   const dropDate = document.getElementById('dropDate').value;
   const clearDues = document.getElementById('clearDues').checked;
@@ -1006,37 +1015,53 @@ async function submitDropStudent() {
   
   errorEl.classList.add('hidden');
   
-  // Submit
-  const submitBtn = document.getElementById('dropSubmitBtn');
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Dropping...';
-  lucide.createIcons();
-  
-  try {
-    const payload = {
-      reason: reason,
-      dropDate: dropDate,
-      clearDues: clearDues,
-      note: note || `Student dropped: ${reason}`
-    };
-    
-    await dropStudent(admissionId, payload);
-    
-    closeDropStudentModal();
-    showToast('Success', 'Student dropped successfully', 'success');
-    
-    // Reload data
-    await loadAdmissionDetail();
-  } catch (err) {
-    console.error('Failed to drop student:', err);
-    const message = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to drop student';
-    errorEl.textContent = message;
-    errorEl.classList.remove('hidden');
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i data-lucide="user-x" class="w-4 h-4"></i> Drop Student';
+  showConfirmModal("Are you sure you want to drop this student? This action will mark them as DROPPED.", async () => {
+    // Submit
+    const submitBtn = document.getElementById('dropSubmitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Dropping...';
     lucide.createIcons();
-  }
+    
+    try {
+      const payload = {
+        reason: reason,
+        dropDate: dropDate,
+        clearDues: clearDues,
+        note: note || `Student dropped: ${reason}`
+      };
+      
+      await dropStudent(admissionId, payload);
+      
+      closeDropStudentModal();
+      showToast('Success', 'Student dropped successfully', 'success');
+      
+      // Reload data
+      await loadAdmissionDetail();
+    } catch (err) {
+      console.error('Failed to drop student:', err);
+      const message = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to drop student';
+      errorEl.textContent = message;
+      errorEl.classList.remove('hidden');
+    } finally {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="user-x" class="w-4 h-4"></i> Drop Student';
+      lucide.createIcons();
+    }
+  });
+}
+
+function triggerVoidPayment(paymentId) {
+  showConfirmModal("Are you sure you want to void this payment? This will permanently reverse the payment and re-allocate installments.", async () => {
+    try {
+      await voidPayment(paymentId);
+      showToast('Success', 'Payment voided successfully', 'success');
+      await loadAdmissionDetail();
+    } catch (err) {
+      console.error('Failed to void payment:', err);
+      const message = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to void payment';
+      showToast('Error', message, 'error');
+    }
+  });
 }
 
 // ==================== HELPER FUNCTIONS ====================
@@ -1292,4 +1317,39 @@ function showToast(title, message, type = 'success') {
     toast.classList.add('toast-exit');
     setTimeout(() => toast.remove(), 300);
   }, duration);
+}
+
+function showConfirmModal(text, callback) {
+  document.getElementById('confirmModalText').textContent = text;
+  confirmActionCallback = callback;
+  
+  const modal = document.getElementById('confirmModal');
+  const content = document.getElementById('confirmModalContent');
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  setTimeout(() => {
+    modal.classList.remove('opacity-0');
+    content.classList.remove('scale-95');
+    content.classList.add('scale-100');
+  }, 10);
+  lucide.createIcons();
+}
+
+function closeConfirmModal() {
+  const modal = document.getElementById('confirmModal');
+  const content = document.getElementById('confirmModalContent');
+  modal.classList.add('opacity-0');
+  content.classList.remove('scale-100');
+  content.classList.add('scale-95');
+  setTimeout(() => {
+    modal.classList.add('hidden');
+    modal.classList.remove('flex');
+  }, 300);
+}
+
+function proceedConfirmAction() {
+  if (confirmActionCallback) {
+    confirmActionCallback();
+  }
+  closeConfirmModal();
 }
