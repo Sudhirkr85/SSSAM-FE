@@ -113,10 +113,22 @@
     <!-- CONTENT -->
     <div class="flex-1 overflow-y-auto p-6 space-y-6">
       
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+      <!-- Premium Standalone Tab Switcher Selector Toolbar -->
+      <div class="bg-white/80 backdrop-blur-sm border border-gray-100 rounded-2xl p-2.5 flex gap-2 shadow-sm max-w-md mx-auto">
+        <button onclick="switchAttendanceMainTab('punch')" id="mainTabPunch" class="flex-1 py-3 px-4 font-bold text-sm text-center rounded-xl transition-all flex items-center justify-center gap-2 bg-purple-600 text-white shadow-md shadow-purple-600/10">
+          <i data-lucide="fingerprint" class="w-4 h-4"></i>
+          Punch Console
+        </button>
+        <button onclick="switchAttendanceMainTab('logs')" id="mainTabLogs" class="flex-1 py-3 px-4 font-bold text-sm text-center rounded-xl transition-all flex items-center justify-center gap-2 text-gray-500 hover:text-gray-800 hover:bg-gray-50">
+          <i data-lucide="calendar" class="w-4 h-4"></i>
+          Attendance Logs
+        </button>
+      </div>
+
+      <!-- TAB 1: PUNCH CONSOLE PANEL -->
+      <div id="attendancePunchTab" class="block max-w-md mx-auto">
         <!-- PUNCH PANEL -->
-        <div class="lg:col-span-1 punch-card rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col justify-between gap-5">
+        <div class="punch-card bg-white rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col justify-between gap-5">
           <div>
             <div class="flex items-center justify-between mb-4">
               <span class="text-xs font-bold text-purple-600 uppercase tracking-widest">Live Console</span>
@@ -136,7 +148,7 @@
                   <span id="circleStatusShort" class="font-bold text-purple-700 text-sm">...</span>
                 </div>
               </div>
-              <p id="punchStatusText" class="text-base font-bold text-gray-800 mt-4">Checking status...</p>
+              <p id="punchStatusText" class="text-base font-bold text-gray-800 mt-4 text-center">Checking status...</p>
               <p id="geoStatusText" class="text-xs text-gray-500 mt-1 text-center">Requesting GPS coordinate access...</p>
             </div>
           </div>
@@ -158,9 +170,6 @@
               </div>
             </div>
 
-            <!-- GEOLOCATION VISUAL ZONE MAP -->
-            <div class="rounded-xl border border-gray-200 overflow-hidden shadow-inner bg-gray-50 h-[160px]" id="miniMap"></div>
-
             <!-- ACTION BUTTON -->
             <div>
               <button id="punchActionBtn" onclick="handlePunchClick()" class="w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-400 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 disabled:shadow-none hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2">
@@ -170,30 +179,35 @@
             </div>
           </div>
         </div>
+      </div>
 
+      <!-- TAB 2: ATTENDANCE LOGS PANEL (Both List & Calendar views) -->
+      <div id="attendanceLogsTab" class="hidden max-w-4xl mx-auto">
         <!-- MY ATTENDANCE LOGS -->
-        <div class="lg:col-span-2 bg-white rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col">
-          <div class="flex items-center justify-between border-b border-gray-50 pb-4 mb-4">
+        <div class="bg-white rounded-2xl p-6 shadow-md border border-gray-100 flex flex-col">
+          <div class="flex flex-col sm:flex-row sm:items-center justify-between border-b border-gray-50 pb-4 mb-4 gap-3">
             <div class="flex items-center gap-3">
               <div class="w-10 h-10 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center">
                 <i data-lucide="calendar" class="w-5 h-5"></i>
               </div>
-              <h2 class="text-lg font-bold text-gray-800">Attendance Log</h2>
+              <div>
+                <h2 class="text-lg font-bold text-gray-800">Attendance Logs</h2>
+                <!-- View Tabs Switcher -->
+                <div class="flex items-center gap-1 mt-1 bg-gray-100 p-0.5 rounded-lg w-fit">
+                  <button type="button" onclick="switchPersonalView('table')" id="viewTabTable" class="px-3 py-1 rounded-md text-xs font-semibold bg-white text-purple-600 shadow-sm transition-all">List View</button>
+                  <button type="button" onclick="switchPersonalView('calendar')" id="viewTabCalendar" class="px-3 py-1 rounded-md text-xs font-semibold text-gray-500 hover:text-gray-800 transition-all">Calendar View</button>
+                </div>
+              </div>
             </div>
             
-            <div class="flex items-center gap-2">
-              <!-- Custom Month Picker -->
-              <input type="month" id="attendanceMonthPicker" onchange="onAttendanceMonthChange(this.value)" class="px-3 py-1.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 bg-white text-gray-700">
-              
-              <select id="dateFilter" onchange="loadPersonalHistory()" class="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white">
-                <option value="thisMonth" selected>This Month</option>
-                <option value="thisYear">This Year</option>
-                <option value="allTime">All Time</option>
-              </select>
+            <div class="flex items-center gap-2 flex-wrap">
+              <!-- Month Picker Only -->
+              <input type="month" id="attendanceMonthPicker" onchange="onAttendanceMonthChange(this.value)" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 bg-white text-gray-700 font-medium">
             </div>
           </div>
 
-          <div class="flex-1 overflow-x-auto">
+          <!-- TABLE VIEW PANEL -->
+          <div id="personalTableView" class="flex-1 overflow-x-auto">
             <table class="w-full text-left border-collapse">
               <thead>
                 <tr class="border-b border-gray-100 text-gray-400 text-xs font-semibold uppercase tracking-wider">
@@ -210,8 +224,43 @@
               </tbody>
             </table>
           </div>
-        </div>
 
+          <!-- DYNAMIC GRID CALENDAR VIEW PANEL -->
+          <div id="personalCalendarView" class="hidden flex-1 flex-col">
+            <!-- Legend Indicators -->
+            <div class="flex flex-wrap gap-3 text-xs mb-4">
+              <span class="flex items-center gap-1.5 font-medium text-gray-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Present
+              </span>
+              <span class="flex items-center gap-1.5 font-medium text-gray-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Leave
+              </span>
+              <span class="flex items-center gap-1.5 font-medium text-gray-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Weekoff
+              </span>
+              <span class="flex items-center gap-1.5 font-medium text-gray-600">
+                <span class="w-2.5 h-2.5 rounded-full bg-gray-200"></span> Absent
+              </span>
+            </div>
+
+            <div class="overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0">
+              <div class="min-w-[450px]">
+                <div class="grid grid-cols-7 gap-1.5 text-center text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
+                  <div>Mon</div>
+                  <div>Tue</div>
+                  <div>Wed</div>
+                  <div>Thu</div>
+                  <div>Fri</div>
+                  <div>Sat</div>
+                  <div>Sun</div>
+                </div>
+                <div id="personalCalendarGrid" class="grid grid-cols-7 gap-1.5 min-h-[220px]">
+                  <div class="col-span-7 text-center py-12 text-gray-400">Loading Calendar Matrix...</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
     </div>

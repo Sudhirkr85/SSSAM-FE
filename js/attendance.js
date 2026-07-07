@@ -3,6 +3,9 @@ let lastPunchType = 'OUT';
 let miniMap = null;
 let userMarker = null;
 let officeCircle = null;
+let selectedCustomMonth = '2026-07';
+let currentYear = 2026;
+let currentMonth = 6; // July (0-indexed)
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Auth Check
@@ -14,6 +17,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     // Start Live Clock
     startClock();
+    
+    // Set default month in month picker input
+    const monthPicker = document.getElementById('attendanceMonthPicker');
+    if (monthPicker) {
+        monthPicker.value = '2026-07';
+    }
     
     // Load Personal History & Punch States first so UI doesn't block
     loadPersonalHistory().then(() => {
@@ -150,18 +159,20 @@ function requestLocation() {
                     if (distanceMeters <= settings.radiusMeters) {
                         geoStatus.textContent = `Within geofence range (${Math.round(distanceMeters)}m from office)`;
                         geoStatus.className = "text-xs text-emerald-600 mt-1 font-medium";
+                        window.isWithinGeofence = true;
                     } else {
                         geoStatus.textContent = `Out of range (${Math.round(distanceMeters)}m from office. Max: ${settings.radiusMeters}m)`;
                         geoStatus.className = "text-xs text-rose-500 mt-1 font-medium";
+                        window.isWithinGeofence = false;
                     }
 
-                    // Render mini dynamic geofence map
-                    updateMiniMap(lat1, lon1, lat2, lon2, settings.radiusMeters);
+
                 }
             } catch (err) {
                 console.error("Failed to compute client-side distance:", err);
                 geoStatus.textContent = "Location locked inside office geofence range";
                 geoStatus.className = "text-xs text-emerald-600 mt-1 font-medium";
+                window.isWithinGeofence = true;
             }
             
             // Re-evaluate button state based on last punch type
@@ -216,6 +227,21 @@ function togglePunchButtons() {
         
         if (circleStatus) circleStatus.textContent = "DONE";
         setStatusProgress(100);
+        lucide.createIcons();
+        return;
+    }
+
+    // Dynamic Geofence disabling check
+    if (window.isWithinGeofence === false) {
+        btn.disabled = true;
+        btn.className = "w-full py-3.5 px-4 bg-rose-100 text-rose-500 font-semibold rounded-xl cursor-not-allowed flex items-center justify-center gap-2 border border-rose-200";
+        btn.innerHTML = '<i data-lucide="map-pin-off" class="w-5 h-5"></i> <span>Out of Geofence Range</span>';
+        
+        statusText.textContent = "Punch Action Disabled: Out of Geofence";
+        statusText.className = "text-sm font-semibold text-rose-600";
+        
+        if (circleStatus) circleStatus.textContent = "OUT";
+        setStatusProgress(0);
         lucide.createIcons();
         return;
     }
@@ -290,27 +316,96 @@ async function handlePunchClick() {
 
 window.handlePunchClick = handlePunchClick;
 
-let selectedCustomMonth = '';
+function switchAttendanceMainTab(tabName) {
+    const punchTabBtn = document.getElementById('mainTabPunch');
+    const logsTabBtn = document.getElementById('mainTabLogs');
+    const punchPanel = document.getElementById('attendancePunchTab');
+    const logsPanel = document.getElementById('attendanceLogsTab');
+
+    if (tabName === 'logs') {
+        punchTabBtn?.classList.remove('bg-purple-600', 'text-white', 'shadow-md', 'shadow-purple-600/10');
+        punchTabBtn?.classList.add('text-gray-500', 'hover:text-gray-800', 'hover:bg-gray-50');
+        
+        logsTabBtn?.classList.add('bg-purple-600', 'text-white', 'shadow-md', 'shadow-purple-600/10');
+        logsTabBtn?.classList.remove('text-gray-500', 'hover:text-gray-800', 'hover:bg-gray-50');
+
+        punchPanel?.classList.replace('block', 'hidden');
+        logsPanel?.classList.replace('hidden', 'block');
+    } else {
+        logsTabBtn?.classList.remove('bg-purple-600', 'text-white', 'shadow-md', 'shadow-purple-600/10');
+        logsTabBtn?.classList.add('text-gray-500', 'hover:text-gray-800', 'hover:bg-gray-50');
+        
+        punchTabBtn?.classList.add('bg-purple-600', 'text-white', 'shadow-md', 'shadow-purple-600/10');
+        punchTabBtn?.classList.remove('text-gray-500', 'hover:text-gray-800', 'hover:bg-gray-50');
+
+        logsPanel?.classList.replace('block', 'hidden');
+        punchPanel?.classList.replace('hidden', 'block');
+    }
+}
+
+window.switchAttendanceMainTab = switchAttendanceMainTab;
+
+
 
 function onAttendanceMonthChange(value) {
     if (!value) return;
     selectedCustomMonth = value;
-    document.getElementById('dateFilter').value = 'thisMonth'; // Reset dropdown selection visually
     loadPersonalHistory();
 }
 
 window.onAttendanceMonthChange = onAttendanceMonthChange;
 
-// Load personal history table
-async function loadPersonalHistory() {
-    let range = document.getElementById('dateFilter').value;
-    const tableBody = document.getElementById('logsTableBody');
+let activePersonalView = 'table'; // 'table' or 'calendar'
+
+function switchPersonalView(viewType) {
+    activePersonalView = viewType;
     
-    // If a custom month is selected, construct custom range filters
-    let queryParam = range;
-    if (selectedCustomMonth) {
-        queryParam = `custom_${selectedCustomMonth}`;
+    const tableTab = document.getElementById('viewTabTable');
+    const calendarTab = document.getElementById('viewTabCalendar');
+    const tableViewEl = document.getElementById('personalTableView');
+    const calendarViewEl = document.getElementById('personalCalendarView');
+
+    if (viewType === 'calendar') {
+        tableTab?.classList.remove('bg-white', 'text-purple-600', 'shadow-sm');
+        tableTab?.classList.add('text-gray-500', 'hover:text-gray-800');
+        
+        calendarTab?.classList.add('bg-white', 'text-purple-600', 'shadow-sm');
+        calendarTab?.classList.remove('text-gray-500', 'hover:text-gray-800');
+
+        tableViewEl?.classList.add('hidden');
+        calendarViewEl?.classList.remove('hidden');
+        calendarViewEl?.classList.add('flex');
+    } else {
+        calendarTab?.classList.remove('bg-white', 'text-purple-600', 'shadow-sm');
+        calendarTab?.classList.add('text-gray-500', 'hover:text-gray-800');
+        
+        tableTab?.classList.add('bg-white', 'text-purple-600', 'shadow-sm');
+        tableTab?.classList.remove('text-gray-500', 'hover:text-gray-800');
+
+        calendarViewEl?.classList.add('hidden');
+        tableViewEl?.classList.remove('hidden');
     }
+    loadPersonalHistory();
+}
+
+window.switchPersonalView = switchPersonalView;
+
+// Load personal history table and calendar visual grid
+async function loadPersonalHistory() {
+    const tableBody = document.getElementById('logsTableBody');
+    const calendarGrid = document.getElementById('personalCalendarGrid');
+    
+    // Always use selectedCustomMonth (from month picker)
+    if (selectedCustomMonth) {
+        const [y, m] = selectedCustomMonth.split('-');
+        currentYear = parseInt(y);
+        currentMonth = parseInt(m) - 1;
+    } else {
+        const today = new Date();
+        currentYear = today.getFullYear();
+        currentMonth = today.getMonth();
+    }
+    const queryParam = `custom_${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 
     try {
         const res = await getPersonalAttendanceHistory(queryParam);
@@ -333,40 +428,129 @@ async function loadPersonalHistory() {
         } else {
             lastPunchType = 'OUT';
         }
+
+        // Scan yesterday's log to check for missing punch-out
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+        const yesterdayLog = data.find(log => log.date === yesterdayStr);
+
+        if (yesterdayLog && yesterdayLog.punchIn && !yesterdayLog.punchOut) {
+            // Display alert banner or warning toast
+            setTimeout(() => {
+                showToast('Warning', 'You forgot to Punch Out yesterday! Please inform your Admin to rectify the logs.', 'error');
+            }, 1000);
+        }
         
         window.hasCompletedToday = hasCompletedToday;
         togglePunchButtons();
         
+        // 1. Populate Table List View
         if (data.length === 0) {
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="4" class="text-center py-8 text-gray-400">No attendance logs found for this period.</td>
                 </tr>
             `;
-            return;
+        } else {
+            tableBody.innerHTML = data.map(log => {
+                let punchInTime = log.punchIn ? new Date(log.punchIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
+                let punchOutTime = log.punchOut ? new Date(log.punchOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
+                let totalHoursText = log.totalHours || '-';
+
+                if (log.specialStatus === 'LEAVE') {
+                    punchInTime = `<span class="inline-flex px-2 py-1 rounded-md text-xs font-semibold bg-amber-50 text-amber-600 border border-amber-100 uppercase tracking-wider">Leave</span>`;
+                    punchOutTime = `-`;
+                    totalHoursText = `-`;
+                } else if (log.specialStatus === 'WEEKOFF') {
+                    punchInTime = `<span class="inline-flex px-2 py-1 rounded-md text-xs font-semibold bg-indigo-50 text-indigo-600 border border-indigo-100 uppercase tracking-wider">Weekoff</span>`;
+                    punchOutTime = `-`;
+                    totalHoursText = `-`;
+                } else if (!log.punchIn && !log.punchOut) {
+                    punchInTime = `<span class="inline-flex px-2 py-1 rounded-md text-xs font-semibold bg-gray-50 text-gray-500 border border-gray-100 uppercase tracking-wider">Absent</span>`;
+                    punchOutTime = `-`;
+                    totalHoursText = `-`;
+                }
+                
+                return `
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="py-3 px-4 font-medium text-gray-800">${formatDateForDisplay(log.date)}</td>
+                        <td class="py-3 px-4 font-semibold">${punchInTime}</td>
+                        <td class="py-3 px-4 font-semibold">${punchOutTime}</td>
+                        <td class="py-3 px-4 text-right font-bold text-gray-700">${totalHoursText}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 2. Populate Calendar Grid View (If Calendar is Active)
+        if (calendarGrid) {
+            const firstDayOfMonth = new Date(currentYear, currentMonth, 1);
+            let startDayIndex = firstDayOfMonth.getDay(); // 0-6 (Sun-Sat)
+            startDayIndex = startDayIndex === 0 ? 6 : startDayIndex - 1; // Align Mon=0, Sun=6
+
+            const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+            let gridHtml = '';
+
+            // Blank padding offset days
+            for (let i = 0; i < startDayIndex; i++) {
+                gridHtml += `<div class="bg-gray-50 border border-dashed border-gray-100 rounded-lg min-h-[60px] opacity-40"></div>`;
+            }
+
+            // Days blocks
+            const weekdaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+            for (let day = 1; day <= totalDays; day++) {
+                const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                const matchingLog = data.find(log => log.date === dateString);
+
+                // Determine weekday name for this specific day
+                const currentDayOfWeek = new Date(currentYear, currentMonth, day).getDay(); // 0 (Sun) - 6 (Sat)
+                const alignedIndex = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+                const weekdayLabel = weekdaysShort[alignedIndex];
+
+                let dayColorClass = 'bg-gray-100 text-gray-500 hover:bg-purple-50 hover:text-purple-600 border border-gray-200/60';
+                let timeSummary = '';
+
+                if (matchingLog) {
+                    if (matchingLog.specialStatus === 'LEAVE') {
+                        dayColorClass = 'bg-amber-500 text-white border-amber-600';
+                        timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-amber-100 opacity-90">Leave</div>`;
+                    } else if (matchingLog.specialStatus === 'WEEKOFF') {
+                        dayColorClass = 'bg-indigo-500 text-white border-indigo-600';
+                        timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-indigo-100 opacity-90">Weekoff</div>`;
+                    } else if (matchingLog.punchIn) {
+                        dayColorClass = 'bg-emerald-500 text-white border-emerald-600';
+                        const inStr = new Date(matchingLog.punchIn).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
+                        const outStr = matchingLog.punchOut ? new Date(matchingLog.punchOut).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Active';
+                        timeSummary = `
+                            <div class="text-[9px] mt-0.5 text-emerald-50 font-medium">In: ${inStr}</div>
+                            <div class="text-[9px] text-emerald-50 font-medium">Out: ${outStr}</div>
+                        `;
+                    }
+                } else {
+                    timeSummary = `<div class="text-[10px] mt-1 text-gray-400 font-medium">Absent</div>`;
+                }
+
+                gridHtml += `
+                    <div class="min-h-[65px] rounded-lg flex flex-col justify-between p-1.5 font-bold transition-all shadow-sm ${dayColorClass}">
+                        <div class="flex justify-between w-full text-[10px] opacity-90">
+                            <span>${day}</span>
+                            <span class="font-normal text-[9px] uppercase tracking-wider">${weekdayLabel}</span>
+                        </div>
+                        <div class="text-left w-full mt-auto">${timeSummary}</div>
+                    </div>
+                `;
+            }
+
+            calendarGrid.innerHTML = gridHtml;
         }
         
-        tableBody.innerHTML = data.map(log => {
-            const punchInTime = log.punchIn ? new Date(log.punchIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
-            const punchOutTime = log.punchOut ? new Date(log.punchOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '-';
-            
-            return `
-                <tr class="hover:bg-gray-50 transition-colors">
-                    <td class="py-3 px-4 font-medium text-gray-800">${formatDateForDisplay(log.date)}</td>
-                    <td class="py-3 px-4 text-emerald-600 font-semibold">${punchInTime}</td>
-                    <td class="py-3 px-4 text-rose-600 font-semibold">${punchOutTime}</td>
-                    <td class="py-3 px-4 text-right font-bold text-gray-700">${log.totalHours}</td>
-                </tr>
-            `;
-        }).join('');
-        
     } catch (err) {
-        console.error("Failed to load attendance logs:", err);
-        tableBody.innerHTML = `
-            <tr>
-                <td colspan="4" class="text-center py-8 text-red-500">Failed to load attendance log history.</td>
-            </tr>
-        `;
+        console.error("Failed to load attendance history:", err);
+        tableBody.innerHTML = `<tr><td colspan="4" class="text-center py-8 text-red-500">Failed to load logs.</td></tr>`;
+        if (calendarGrid) {
+            calendarGrid.innerHTML = `<div class="col-span-7 text-center py-12 text-rose-500">Failed to load calendar grid.</div>`;
+        }
     }
 }
 

@@ -325,7 +325,9 @@ async function renderTimeline(statusHistory) {
         'ADMISSION_PROCESS': 'Admission Process',
         'CONVERTED': 'Converted',
         'ADMITTED': 'Admission Done',
-        'CREATED': 'Enquiry Created'
+        'CREATED': 'Enquiry Created',
+        'ASSIGNED': 'Assigned',
+        'UPDATED': 'Updated'
     };
 
     // Status colors for badges
@@ -339,7 +341,9 @@ async function renderTimeline(statusHistory) {
         'ADMISSION_PROCESS': 'bg-purple-100 text-purple-800 border-purple-200',
         'CONVERTED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
         'ADMITTED': 'bg-emerald-100 text-emerald-800 border-emerald-200',
-        'CREATED': 'bg-indigo-100 text-indigo-800 border-indigo-200'
+        'CREATED': 'bg-indigo-100 text-indigo-800 border-indigo-200',
+        'ASSIGNED': 'bg-cyan-100 text-cyan-800 border-cyan-200',
+        'UPDATED': 'bg-slate-100 text-slate-800 border-slate-200'
     };
 
     // Status colors for timeline dots
@@ -353,7 +357,9 @@ async function renderTimeline(statusHistory) {
         'ADMISSION_PROCESS': 'bg-purple-500',
         'CONVERTED': 'bg-emerald-500',
         'ADMITTED': 'bg-emerald-500',
-        'CREATED': 'bg-indigo-500'
+        'CREATED': 'bg-indigo-500',
+        'ASSIGNED': 'bg-cyan-500',
+        'UPDATED': 'bg-slate-500'
     };
 
     // Build timeline array - always include "Enquiry Created"
@@ -416,9 +422,20 @@ async function renderTimeline(statusHistory) {
     let html = '<div class="relative pl-6 border-l-2 border-gray-200 space-y-6">';
 
     sortedHistory.forEach((item, index) => {
-        const statusLabel = statusLabels[item.status] || item.status;
-        const statusColor = statusColors[item.status] || 'bg-gray-100 text-gray-700 border-gray-200';
-        const dotColor = dotColors[item.status] || 'bg-gray-400';
+        let currentStatus = item.status;
+        
+        // Handle null, undefined or "null" strings
+        if (!currentStatus || currentStatus === 'null') {
+            if (item.note && item.note.toLowerCase().includes('assign')) {
+                currentStatus = 'ASSIGNED';
+            } else {
+                currentStatus = 'UPDATED';
+            }
+        }
+
+        const statusLabel = statusLabels[currentStatus] || currentStatus || 'Updated';
+        const statusColor = statusColors[currentStatus] || 'bg-gray-100 text-gray-700 border-gray-200';
+        const dotColor = dotColors[currentStatus] || 'bg-gray-400';
         const formattedDate = formatDateTime(item.changedAt);
         
         // Get user name from map or fallback
