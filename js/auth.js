@@ -210,6 +210,16 @@ function checkAuth() {
         if (user.role === 'employee') {
             if (path && path !== 'attendance.html' && path !== 'index.html') {
                 window.location.href = 'attendance.html';
+                return;
+            }
+        }
+        
+        // Protect users.html and other admin-only pages from non-admin users
+        if (user.role !== 'admin') {
+            const adminOnlyPages = ['users.html', 'office-settings.html', 'admin-attendance.html', 'reports.html', 'payments.html'];
+            if (path && adminOnlyPages.includes(path)) {
+                window.location.href = 'dashboard.html';
+                return;
             }
         }
     }
@@ -295,6 +305,44 @@ function applyRoleBasedUI() {
             el.classList.add('bg-gray-100', 'cursor-not-allowed');
         }
     });
+
+    // Dynamic sidebar link injection for User Management (Admin only)
+    const sidebarNav = document.querySelector('#sidebar nav');
+    if (sidebarNav && isAdminUser) {
+        let usersMenu = document.getElementById('usersMenu');
+        if (!usersMenu) {
+            usersMenu = document.createElement('a');
+            usersMenu.id = 'usersMenu';
+            usersMenu.href = 'users.html';
+            
+            const path = window.location.pathname.split('/').pop();
+            const isUsersPage = path === 'users.html';
+            
+            if (isUsersPage) {
+                usersMenu.className = 'bg-gradient-to-r from-purple-600 to-purple-700 text-white flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg shadow-purple-500/25';
+            } else {
+                usersMenu.className = 'flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group';
+            }
+            
+            usersMenu.innerHTML = `
+                <i data-lucide="users" class="w-[18px] h-[18px] ${isUsersPage ? 'text-white' : 'text-gray-400 group-hover:text-white transition-colors'}"></i>
+                <span class="text-sm font-medium ${isUsersPage ? 'text-white' : 'text-gray-300 group-hover:text-white'}">Users</span>
+            `;
+            
+            // Insert before office-settings if exists, otherwise append
+            const officeSettingsLink = Array.from(sidebarNav.querySelectorAll('a')).find(a => a.getAttribute('href') === 'office-settings.html');
+            if (officeSettingsLink) {
+                sidebarNav.insertBefore(usersMenu, officeSettingsLink);
+            } else {
+                sidebarNav.appendChild(usersMenu);
+            }
+            
+            // Re-initialize Lucide Icons if available
+            if (typeof lucide !== 'undefined') {
+                lucide.createIcons();
+            }
+        }
+    }
 }
 
 /* ======================

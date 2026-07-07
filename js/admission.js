@@ -22,6 +22,7 @@ let sortDirection = 'asc'; // 'asc' or 'desc'
 // Date filter state
 let currentAdmissionFilter = 'thisMonth';
 let currentAdmission = null;
+let duesFilterActive = false;
 
 // ==================== INITIALIZATION ====================
 document.addEventListener('DOMContentLoaded', () => {
@@ -158,6 +159,11 @@ function getActiveFilters() {
     filters.course = courseFilter;
   }
   
+  // Pending dues filter
+  if (duesFilterActive) {
+    filters.hasDues = 'true';
+  }
+  
   const sortBy = document.getElementById('sortBy')?.value;
   if (sortBy) {
     filters.sortBy = sortBy;
@@ -165,6 +171,44 @@ function getActiveFilters() {
   
   return filters;
 }
+
+function toggleDuesFilter() {
+  duesFilterActive = !duesFilterActive;
+  
+  const btn = document.getElementById('duesFilterBtn');
+  if (btn) {
+    if (duesFilterActive) {
+      btn.classList.remove('bg-gray-100', 'text-gray-700', 'border-gray-200', 'hover:bg-gray-200');
+      btn.classList.add('bg-amber-600', 'text-white', 'border-amber-600', 'hover:bg-amber-700', 'shadow-md', 'shadow-amber-600/20');
+      btn.innerHTML = `<i data-lucide="check-circle" class="w-4 h-4"></i> Pending Dues & Upcoming Sort: ON`;
+      
+      // Auto-set sorting state to nextDue asc
+      sortColumn = 'nextDue';
+      sortDirection = 'asc';
+    } else {
+      btn.classList.remove('bg-amber-600', 'text-white', 'border-amber-600', 'hover:bg-amber-700', 'shadow-md', 'shadow-amber-600/20');
+      btn.classList.add('bg-gray-100', 'text-gray-700', 'border-gray-200', 'hover:bg-gray-200');
+      btn.innerHTML = `<i data-lucide="filter" class="w-4 h-4"></i> Filter: Pending Dues & Upcoming Sort`;
+      
+      // Reset sorting state
+      sortColumn = null;
+      sortDirection = 'asc';
+    }
+    
+    // Refresh icons
+    if (typeof lucide !== 'undefined') {
+      lucide.createIcons();
+    }
+  }
+
+  // Reload admissions
+  currentPage = 1;
+  const filters = getActiveFilters();
+  loadAdmissions(document.getElementById('searchInput')?.value || '', filters);
+}
+
+// Expose globally
+window.toggleDuesFilter = toggleDuesFilter;
 
 // ==================== API CALLS ====================
 async function loadAdmissions(search = '', filters = {}) {
