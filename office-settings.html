@@ -119,13 +119,13 @@
           <div class="flex flex-col sm:flex-row gap-2.5">
             <div class="relative flex-1">
               <i data-lucide="search" class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4"></i>
-              <input type="text" id="mapSearchInput" placeholder="Search address, city, area..." class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-sm">
+              <input type="text" id="mapSearchInput" placeholder="Search address, city, area... (Disabled)" class="w-full pl-9 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 text-sm bg-gray-50 cursor-not-allowed" disabled>
             </div>
-            <button type="button" onclick="performAddressSearch()" class="px-4 py-2 bg-purple-50 text-purple-600 hover:bg-purple-100 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 border border-purple-100">
+            <button type="button" disabled class="px-4 py-2 bg-purple-100 text-purple-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 border border-purple-100 cursor-not-allowed opacity-60">
               <i data-lucide="search" class="w-4 h-4"></i>
               Search
             </button>
-            <button type="button" onclick="getCurrentGPSLocation()" class="px-4 py-2 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 border border-emerald-100">
+            <button type="button" disabled class="px-4 py-2 bg-emerald-100 text-emerald-400 rounded-xl text-sm font-medium transition-colors flex items-center justify-center gap-1.5 border border-emerald-100 cursor-not-allowed opacity-60">
               <i data-lucide="navigation" class="w-4 h-4"></i>
               Get Current Location
             </button>
@@ -156,14 +156,14 @@
 
             <div>
               <label class="block text-xs font-semibold text-gray-500 uppercase mb-2">Radius Range (Meters)</label>
-              <input type="number" id="officeRadius" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-white" placeholder="Enter geofence radius...">
+              <input type="number" id="officeRadius" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-purple-500 transition-all text-sm bg-gray-50 font-mono cursor-not-allowed" placeholder="Enter geofence radius..." readonly>
             </div>
           </div>
 
           <div class="pt-6">
-            <button id="saveSettingsBtn" onclick="saveOfficeLocation()" class="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-lg shadow-purple-600/20 hover:shadow-xl transition-all text-sm font-semibold flex items-center justify-center gap-2">
+            <button id="saveSettingsBtn" disabled class="w-full py-3 bg-purple-400 text-purple-100 rounded-xl shadow-lg shadow-purple-400/20 transition-all text-sm font-semibold flex items-center justify-center gap-2 cursor-not-allowed opacity-70">
               <i data-lucide="check-circle-2" class="w-4 h-4"></i>
-              Save Anchor Parameters
+              Save Anchor Parameters (Disabled)
             </button>
           </div>
         </div>

@@ -44,8 +44,8 @@ async function initOfficeMap() {
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
         
-        // Add Marker
-        marker = L.marker([lat, lng], { draggable: true }).addTo(map);
+        // Add Marker (Disabled dragging)
+        marker = L.marker([lat, lng], { draggable: false }).addTo(map);
         
         // Add Geofence Circle
         circle = L.circle([lat, lng], {
@@ -55,6 +55,8 @@ async function initOfficeMap() {
             radius: radius
         }).addTo(map);
         
+        // Dragging and clicking handlers disabled temporarily
+        /*
         // Handle Marker Drag
         marker.on('dragend', () => {
             const position = marker.getLatLng();
@@ -66,6 +68,7 @@ async function initOfficeMap() {
             marker.setLatLng(e.latlng);
             updateCoordsFields(e.latlng.lat, e.latlng.lng);
         });
+        */
         
         // Handle radius input change
         officeRadius.addEventListener('input', () => {
@@ -90,14 +93,9 @@ function updateCoordsFields(lat, lng) {
 }
 
 async function saveOfficeLocation() {
+    showToast('Info', 'Office location changes are temporarily disabled.', 'info');
+    return;
     const lat = parseFloat(document.getElementById('officeLat').value);
-    const lng = parseFloat(document.getElementById('officeLng').value);
-    const radius = parseInt(document.getElementById('officeRadius').value) || 100;
-    
-    if (isNaN(lat) || isNaN(lng)) {
-        showToast('Error', 'Please pin a coordinate on the map first', 'error');
-        return;
-    }
     
     const btn = document.getElementById('saveSettingsBtn');
     const originalText = btn.innerHTML;
@@ -126,6 +124,8 @@ async function saveOfficeLocation() {
 
 // Fetch User's Current GPS Location
 function getCurrentGPSLocation() {
+    showToast('Info', 'Office location changes are temporarily disabled.', 'info');
+    return;
     if (!navigator.geolocation) {
         showToast('Error', 'Geolocation is not supported by your browser', 'error');
         return;
@@ -156,6 +156,8 @@ function getCurrentGPSLocation() {
 
 // Search address using free OpenStreetMap Nominatim API
 async function performAddressSearch() {
+    showToast('Info', 'Office location changes are temporarily disabled.', 'info');
+    return;
     const input = document.getElementById('mapSearchInput');
     const query = input.value.trim();
     
