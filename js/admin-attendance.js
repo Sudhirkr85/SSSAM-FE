@@ -207,8 +207,12 @@ async function loadAdminHistory() {
                 } else if (matchingLog.punchIn) {
                     dayColorClass = isUpdated ? 'bg-sky-500 text-white border-sky-600 shadow-sm' : 'bg-emerald-500 text-white border-emerald-600';
                     const inStr = new Date(matchingLog.punchIn).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
-                    const outStr = matchingLog.punchOut ? new Date(matchingLog.punchOut).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Active';
-                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - Present${isUpdated ? ' (Updated by Admin)' : ''}\nIn: ${inStr}\nOut: ${outStr}`;
+                    const todayStr = new Date().toISOString().split('T')[0];
+                    const isPastDate = matchingLog.date < todayStr;
+                    const outStr = matchingLog.punchOut 
+                        ? new Date(matchingLog.punchOut).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) 
+                        : (isPastDate ? '<span class="text-red-200 font-bold">Missing</span>' : 'Active');
+                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - Present${isUpdated ? ' (Updated by Admin)' : ''}\nIn: ${inStr}\nOut: ${matchingLog.punchOut ? outStr : (isPastDate ? 'Missing' : 'Active')}`;
                     timeSummary = `
                         <div class="text-[9px] mt-1 text-emerald-50 font-medium">In: ${inStr}</div>
                         <div class="text-[9px] text-emerald-50 font-medium">Out: ${outStr}</div>
