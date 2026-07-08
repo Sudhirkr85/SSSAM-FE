@@ -207,6 +207,37 @@
               <input type="month" id="attendanceMonthPicker" onchange="onAttendanceMonthChange(this.value)" class="px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:border-purple-500 bg-white text-gray-700 font-medium">
             </div>
           </div>
+          <!-- Attendance Summary Stats -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6 bg-gray-50 rounded-2xl p-4 border border-gray-100">
+            <div class="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border border-gray-50">
+              <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold text-sm">✓</div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Present</p>
+                <p class="text-sm font-bold text-gray-800" id="statPresent">0 Days</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border border-gray-50">
+              <div class="w-8 h-8 rounded-lg bg-gray-100 text-gray-600 flex items-center justify-center font-bold text-sm">✗</div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Absent</p>
+                <p class="text-sm font-bold text-gray-800" id="statAbsent">0 Days</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border border-gray-50">
+              <div class="w-8 h-8 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center font-bold text-sm">⚠</div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Leave</p>
+                <p class="text-sm font-bold text-gray-800" id="statLeave">0 Days</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-3 p-3 bg-white rounded-xl shadow-sm border border-gray-50">
+              <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold text-sm">★</div>
+              <div>
+                <p class="text-[10px] text-gray-400 font-semibold uppercase tracking-wider">Weekoff</p>
+                <p class="text-sm font-bold text-gray-800" id="statWeekoff">0 Days</p>
+              </div>
+            </div>
+          </div>
 
           <!-- TABLE VIEW PANEL -->
           <div id="personalTableView" class="flex-1 overflow-x-auto">

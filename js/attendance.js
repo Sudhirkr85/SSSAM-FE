@@ -491,6 +491,14 @@ async function loadPersonalHistory() {
 
             const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
             let gridHtml = '';
+            
+            let presentCount = 0;
+            let absentCount = 0;
+            let leaveCount = 0;
+            let weekoffCount = 0;
+
+            const todayLimit = new Date();
+            todayLimit.setHours(23, 59, 59, 999);
 
             // Blank padding offset days
             for (let i = 0; i < startDayIndex; i++) {
@@ -514,12 +522,15 @@ async function loadPersonalHistory() {
                 if (matchingLog) {
                     const isUpdated = matchingLog.updatedByAdmin === true;
                     if (matchingLog.specialStatus === 'LEAVE') {
+                        leaveCount++;
                         dayColorClass = isUpdated ? 'bg-sky-600 text-white border-sky-700 shadow-sm' : 'bg-amber-500 text-white border-amber-600';
                         timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-amber-100 opacity-90">Leave${isUpdated ? ' (Admin)' : ''}</div>`;
                     } else if (matchingLog.specialStatus === 'WEEKOFF') {
+                        weekoffCount++;
                         dayColorClass = isUpdated ? 'bg-sky-700 text-white border-sky-800 shadow-sm' : 'bg-indigo-500 text-white border-indigo-600';
                         timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-indigo-100 opacity-90">Weekoff${isUpdated ? ' (Admin)' : ''}</div>`;
                     } else if (matchingLog.punchIn) {
+                        presentCount++;
                         dayColorClass = isUpdated ? 'bg-sky-500 text-white border-sky-600 shadow-sm' : 'bg-emerald-500 text-white border-emerald-600';
                         const inStr = new Date(matchingLog.punchIn).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
                         const outStr = matchingLog.punchOut ? new Date(matchingLog.punchOut).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Active';
@@ -530,6 +541,10 @@ async function loadPersonalHistory() {
                         `;
                     }
                 } else {
+                    const checkDate = new Date(currentYear, currentMonth, day);
+                    if (checkDate <= todayLimit) {
+                        absentCount++;
+                    }
                     timeSummary = `<div class="text-[10px] mt-1 text-gray-400 font-medium">Absent</div>`;
                 }
 
@@ -545,6 +560,17 @@ async function loadPersonalHistory() {
             }
 
             calendarGrid.innerHTML = gridHtml;
+
+            // Update Summary Stats DOM Elements
+            const statPresent = document.getElementById('statPresent');
+            const statAbsent = document.getElementById('statAbsent');
+            const statLeave = document.getElementById('statLeave');
+            const statWeekoff = document.getElementById('statWeekoff');
+
+            if (statPresent) statPresent.textContent = `${presentCount} ${presentCount === 1 ? 'Day' : 'Days'}`;
+            if (statAbsent) statAbsent.textContent = `${absentCount} ${absentCount === 1 ? 'Day' : 'Days'}`;
+            if (statLeave) statLeave.textContent = `${leaveCount} ${leaveCount === 1 ? 'Day' : 'Days'}`;
+            if (statWeekoff) statWeekoff.textContent = `${weekoffCount} ${weekoffCount === 1 ? 'Day' : 'Days'}`;
         }
         
     } catch (err) {
