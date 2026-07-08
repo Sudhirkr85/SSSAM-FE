@@ -134,35 +134,43 @@ async function loadAdminHistory() {
 
         // 1. Add blank padding blocks for previous month overflow (offset days)
         for (let i = 0; i < startDayIndex; i++) {
-            gridHtml += `<div class="bg-gray-50 border border-dashed border-gray-100 rounded-xl min-h-[75px] opacity-40"></div>`;
+            gridHtml += `<div class="bg-gray-50 border border-dashed border-gray-100 rounded-lg min-h-[60px] opacity-40"></div>`;
         }
 
         // 2. Generate Days
+        const weekdaysShort = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
         for (let day = 1; day <= totalDays; day++) {
             const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
             const matchingLog = attendanceLogs.find(log => log.userId === selectedUserId && log.date === dateString);
+
+            // Determine weekday name for this specific day
+            const currentDayOfWeek = new Date(currentYear, currentMonth, day).getDay(); // 0 (Sun) - 6 (Sat)
+            const alignedIndex = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1;
+            const weekdayLabel = weekdaysShort[alignedIndex];
 
             let dayColorClass = 'bg-gray-100 text-gray-500 hover:bg-purple-50 hover:text-purple-600 border border-gray-200/60';
             let titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - Absent/No Record. Click to configure.`;
             let timeSummary = '';
 
             if (matchingLog) {
+                const isUpdated = matchingLog.updatedByAdmin === true;
                 if (matchingLog.specialStatus === 'LEAVE') {
-                    dayColorClass = 'bg-amber-500 text-white border-amber-600';
-                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - LEAVE. Click to edit.`;
-                    timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-amber-100 opacity-90">Leave</div>`;
+                    dayColorClass = isUpdated ? 'bg-sky-600 text-white border-sky-700 shadow-sm' : 'bg-amber-500 text-white border-amber-600';
+                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - LEAVE${isUpdated ? ' (Updated by Admin)' : ''}. Click to edit.`;
+                    timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-amber-100 opacity-90">Leave${isUpdated ? ' (Admin)' : ''}</div>`;
                 } else if (matchingLog.specialStatus === 'WEEKOFF') {
-                    dayColorClass = 'bg-indigo-500 text-white border-indigo-600';
-                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - WEEKOFF. Click to edit.`;
-                    timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-indigo-100 opacity-90">Weekoff</div>`;
+                    dayColorClass = isUpdated ? 'bg-sky-700 text-white border-sky-800 shadow-sm' : 'bg-indigo-500 text-white border-indigo-600';
+                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - WEEKOFF${isUpdated ? ' (Updated by Admin)' : ''}. Click to edit.`;
+                    timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-indigo-100 opacity-90">Weekoff${isUpdated ? ' (Admin)' : ''}</div>`;
                 } else if (matchingLog.punchIn) {
-                    dayColorClass = 'bg-emerald-500 text-white border-emerald-600';
+                    dayColorClass = isUpdated ? 'bg-sky-500 text-white border-sky-600 shadow-sm' : 'bg-emerald-500 text-white border-emerald-600';
                     const inStr = new Date(matchingLog.punchIn).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
                     const outStr = matchingLog.punchOut ? new Date(matchingLog.punchOut).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Active';
-                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - Present\nIn: ${inStr}\nOut: ${outStr}`;
+                    titleAttr = `Date: ${day}/${currentMonth+1}/${currentYear} - Present${isUpdated ? ' (Updated by Admin)' : ''}\nIn: ${inStr}\nOut: ${outStr}`;
                     timeSummary = `
                         <div class="text-[9px] mt-1 text-emerald-50 font-medium">In: ${inStr}</div>
                         <div class="text-[9px] text-emerald-50 font-medium">Out: ${outStr}</div>
+                        ${isUpdated ? '<div class="text-[8px] font-bold text-sky-100 uppercase tracking-widest mt-0.5">Admin Edit</div>' : ''}
                     `;
                 }
             } else {
@@ -173,7 +181,10 @@ async function loadAdminHistory() {
                 <div onclick="openStatusModal('${selectedUserId}', '${selectedEmp.name}', '${dateString}', '${matchingLog ? (matchingLog.specialStatus || 'PRESENT') : 'ABSENT'}', '${matchingLog && matchingLog.punchIn ? new Date(matchingLog.punchIn).toTimeString().substring(0, 5) : ''}', '${matchingLog && matchingLog.punchOut ? new Date(matchingLog.punchOut).toTimeString().substring(0, 5) : ''}')" 
                      title="${titleAttr}" 
                      class="min-h-[60px] rounded-lg flex flex-col justify-between p-1.5 font-bold cursor-pointer transition-all shadow-sm ${dayColorClass}">
-                    <span class="text-xs">${day}</span>
+                    <div class="flex justify-between w-full text-[10px] opacity-90">
+                        <span>${day}</span>
+                        <span class="font-normal text-[9px] uppercase tracking-wider">${weekdayLabel}</span>
+                    </div>
                     <div class="text-left w-full mt-auto">${timeSummary}</div>
                 </div>
             `;

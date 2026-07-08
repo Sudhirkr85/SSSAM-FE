@@ -512,19 +512,21 @@ async function loadPersonalHistory() {
                 let timeSummary = '';
 
                 if (matchingLog) {
+                    const isUpdated = matchingLog.updatedByAdmin === true;
                     if (matchingLog.specialStatus === 'LEAVE') {
-                        dayColorClass = 'bg-amber-500 text-white border-amber-600';
-                        timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-amber-100 opacity-90">Leave</div>`;
+                        dayColorClass = isUpdated ? 'bg-sky-600 text-white border-sky-700 shadow-sm' : 'bg-amber-500 text-white border-amber-600';
+                        timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-amber-100 opacity-90">Leave${isUpdated ? ' (Admin)' : ''}</div>`;
                     } else if (matchingLog.specialStatus === 'WEEKOFF') {
-                        dayColorClass = 'bg-indigo-500 text-white border-indigo-600';
-                        timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-indigo-100 opacity-90">Weekoff</div>`;
+                        dayColorClass = isUpdated ? 'bg-sky-700 text-white border-sky-800 shadow-sm' : 'bg-indigo-500 text-white border-indigo-600';
+                        timeSummary = `<div class="text-[10px] mt-1 font-semibold uppercase tracking-wider text-indigo-100 opacity-90">Weekoff${isUpdated ? ' (Admin)' : ''}</div>`;
                     } else if (matchingLog.punchIn) {
-                        dayColorClass = 'bg-emerald-500 text-white border-emerald-600';
+                        dayColorClass = isUpdated ? 'bg-sky-500 text-white border-sky-600 shadow-sm' : 'bg-emerald-500 text-white border-emerald-600';
                         const inStr = new Date(matchingLog.punchIn).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'});
                         const outStr = matchingLog.punchOut ? new Date(matchingLog.punchOut).toLocaleTimeString('en-IN', {hour:'2-digit', minute:'2-digit'}) : 'Active';
                         timeSummary = `
                             <div class="text-[9px] mt-0.5 text-emerald-50 font-medium">In: ${inStr}</div>
                             <div class="text-[9px] text-emerald-50 font-medium">Out: ${outStr}</div>
+                            ${isUpdated ? '<div class="text-[8px] font-bold text-sky-100 uppercase tracking-widest mt-0.5">Admin Edit</div>' : ''}
                         `;
                     }
                 } else {
