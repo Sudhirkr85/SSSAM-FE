@@ -46,7 +46,7 @@ function setupSidebarLinks() {
         document.getElementById('admissionsLink')?.classList.remove('hidden');
         
         if (isUserAdmin) {
-            document.getElementById('paymentsLink')?.classList.remove('hidden');
+            // document.getElementById('paymentsLink')?.classList.remove('hidden');
             document.getElementById('reportsLink')?.classList.remove('hidden');
             document.getElementById('adminAttendanceLink')?.classList.remove('hidden');
             document.getElementById('officeSettingsLink')?.classList.remove('hidden');

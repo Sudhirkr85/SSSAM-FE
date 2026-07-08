@@ -36,6 +36,9 @@ const paymentTypeStyles = {
 INIT
 ====================== */
 document.addEventListener('DOMContentLoaded', () => {
+    // Redirect away as Payments page is disabled/not needed
+    window.location.href = 'dashboard.html';
+    return;
     populateMonthDropdown();
     loadPayments();
     initSearchListener();

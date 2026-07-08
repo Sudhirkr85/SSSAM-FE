@@ -250,14 +250,10 @@ function applyRoleBasedUI() {
     const role = getUserRole();
     const isAdminUser = isAdmin();
 
-    // Show/hide Payments menu (Admin only)
+    // Show/hide Payments menu (Disabled)
     const paymentsMenu = document.getElementById('paymentsMenu');
     if (paymentsMenu) {
-        if (isAdminUser) {
-            paymentsMenu.classList.remove('hidden');
-        } else {
-            paymentsMenu.classList.add('hidden');
-        }
+        paymentsMenu.classList.add('hidden');
     }
 
     // Show/hide Reports menu (Admin only)
