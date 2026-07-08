@@ -171,8 +171,6 @@ async function loadAdminHistory() {
         let startDayIndex = firstDayOfMonth.getDay(); // 0 (Sun) - 6 (Sat)
         // Convert to Mon=0, Tue=1, ..., Sun=6
         startDayIndex = startDayIndex === 0 ? 6 : startDayIndex - 1;
-
-        const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
         
         let gridHtml = '';
 
