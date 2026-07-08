@@ -1184,8 +1184,8 @@ ${data.customMessage || '[Your message here]'}`
 function openWhatsAppModal() {
   if (!admissionData) return;
   
-  const enquiry = admissionData.enquiryId || {};
-  const mobile = enquiry.mobile;
+  const mobile = admissionData.mobile || admissionData.enquiryId?.mobile;
+  const name = admissionData.name || admissionData.enquiryId?.name || 'Student';
   
   if (!mobile) {
     showToast('Error', 'No mobile number available for this student', 'error');
@@ -1193,7 +1193,7 @@ function openWhatsAppModal() {
   }
   
   // Set recipient info
-  document.getElementById('whatsappRecipient').textContent = `${enquiry.name || 'Student'} (${mobile})`;
+  document.getElementById('whatsappRecipient').textContent = `${name} (${mobile})`;
   
   // Reset template and update message
   document.getElementById('whatsappTemplate').value = 'followup';
@@ -1230,13 +1230,13 @@ function closeWhatsAppModal() {
 
 function updateWhatsAppMessage() {
   const template = document.getElementById('whatsappTemplate').value;
-  const enquiry = admissionData?.enquiryId || {};
+  const name = admissionData?.name || admissionData?.enquiryId?.name || 'Student';
   
   // Get next due info
   const nextDue = calculateNextDue(admissionData, payments);
   
   const data = {
-    name: enquiry.name || 'Student',
+    name: name,
     course: admissionData?.course || 'Course',
     amount: nextDue.amount > 0 ? formatCurrency(nextDue.amount) : formatCurrency(admissionData?.totalFees || 0),
     dueDate: nextDue.date !== '--' ? nextDue.date : 'As discussed',
@@ -1251,8 +1251,7 @@ function updateWhatsAppMessage() {
 }
 
 function sendWhatsAppMessage() {
-  const enquiry = admissionData?.enquiryId || {};
-  const mobile = enquiry.mobile;
+  const mobile = admissionData?.mobile || admissionData?.enquiryId?.mobile;
   
   if (!mobile) {
     showToast('Error', 'No mobile number available', 'error');
