@@ -86,6 +86,36 @@ async function loadAdminHistory() {
         const { history, summary } = res.data || { history: [], summary: [] };
         attendanceLogs = history || [];
         
+        // Calculate complete stats dynamically from history logs
+        const totalDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+        let presentCount = 0;
+        let absentCount = 0;
+        let leaveCount = 0;
+        let weekoffCount = 0;
+
+        const todayLimit = new Date();
+        todayLimit.setHours(23, 59, 59, 999);
+
+        for (let day = 1; day <= totalDays; day++) {
+            const dateString = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+            const matchingLog = attendanceLogs.find(log => log.userId === selectedUserId && log.date === dateString);
+
+            if (matchingLog) {
+                if (matchingLog.specialStatus === 'LEAVE') {
+                    leaveCount++;
+                } else if (matchingLog.specialStatus === 'WEEKOFF') {
+                    weekoffCount++;
+                } else if (matchingLog.punchIn) {
+                    presentCount++;
+                }
+            } else {
+                const checkDate = new Date(currentYear, currentMonth, day);
+                if (checkDate <= todayLimit) {
+                    absentCount++;
+                }
+            }
+        }
+
         // Render Summary for Selected Employee
         const empSummary = summary.find(s => s.name === selectedEmp.name) || {
             name: selectedEmp.name,
@@ -102,19 +132,33 @@ async function loadAdminHistory() {
         const roleClass = roleColors[empSummary.role?.toLowerCase()] || 'bg-gray-50 text-gray-700';
 
         summariesContainer.innerHTML = `
-            <div class="stats-card bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col justify-between col-span-full max-w-sm">
-                <div>
-                    <h3 class="font-bold text-gray-800 text-sm truncate">${empSummary.name}</h3>
-                    <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider mt-1 ${roleClass}">${empSummary.role}</span>
-                </div>
-                <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-slate-200/50">
+            <div class="stats-card bg-slate-50 border border-slate-100 rounded-xl p-5 flex flex-col justify-between col-span-full w-full">
+                <div class="flex items-center justify-between border-b border-slate-200/50 pb-3">
                     <div>
-                        <p class="text-[10px] text-gray-400 uppercase font-semibold">Days Present</p>
-                        <p class="text-sm font-bold text-gray-700">${empSummary.daysPresent} days</p>
+                        <h3 class="font-bold text-gray-800 text-sm truncate">${empSummary.name}</h3>
+                        <span class="inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider mt-1 ${roleClass}">${empSummary.role}</span>
                     </div>
-                    <div>
+                </div>
+                <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 mt-4">
+                    <div class="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                        <p class="text-[10px] text-gray-400 uppercase font-semibold">Days Present</p>
+                        <p class="text-sm font-bold text-emerald-600 mt-1">${presentCount} days</p>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                        <p class="text-[10px] text-gray-400 uppercase font-semibold">Days Absent</p>
+                        <p class="text-sm font-bold text-rose-600 mt-1">${absentCount} days</p>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                        <p class="text-[10px] text-gray-400 uppercase font-semibold">Days Leave</p>
+                        <p class="text-sm font-bold text-amber-600 mt-1">${leaveCount} days</p>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
+                        <p class="text-[10px] text-gray-400 uppercase font-semibold">Days Weekoff</p>
+                        <p class="text-sm font-bold text-indigo-600 mt-1">${weekoffCount} days</p>
+                    </div>
+                    <div class="bg-white p-3 rounded-lg border border-slate-100 shadow-sm">
                         <p class="text-[10px] text-gray-400 uppercase font-semibold">Total Hours</p>
-                        <p class="text-sm font-bold text-gray-700">${empSummary.totalHours}h</p>
+                        <p class="text-sm font-bold text-slate-700 mt-1">${empSummary.totalHours}h</p>
                     </div>
                 </div>
             </div>
