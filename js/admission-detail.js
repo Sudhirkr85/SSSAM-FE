@@ -1151,7 +1151,7 @@ function showContentState() {
 // ==================== WHATSAPP MESSAGING ====================
 // Get logged-in user name from localStorage
 function getLoggedInUserName() {
-  const user = safeParseLocalStorage('user', {});
+  const user = getCurrentUser();
   return user.name || user.fullName || user.userName || 'Counselor';
 }
 
