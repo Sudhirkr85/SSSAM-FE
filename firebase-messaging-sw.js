@@ -20,18 +20,22 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('Background message received:', payload);
 
-  const notificationTitle = payload.notification?.title || 'New Notification';
-  const notificationOptions = {
-    body: payload.notification?.body || '',
-    icon: '/favicon.ico',
-    badge: '/favicon.ico',
-    tag: payload.data?.type || 'general',
-    requireInteraction: true,
-    vibrate: [200, 100, 200],
-    data: payload.data
-  };
+  // If the payload has a notification block, Firebase already displays it automatically.
+  // We only display manually if there is no notification block (i.e. only data payload).
+  if (!payload.notification) {
+    const notificationTitle = payload.data?.title || 'New Notification';
+    const notificationOptions = {
+      body: payload.data?.body || '',
+      icon: '/favicon.ico',
+      badge: '/favicon.ico',
+      tag: payload.data?.type || 'general',
+      requireInteraction: true,
+      vibrate: [200, 100, 200],
+      data: payload.data
+    };
 
-  self.registration.showNotification(notificationTitle, notificationOptions);
+    self.registration.showNotification(notificationTitle, notificationOptions);
+  }
 });
 
 // Handle notification click
