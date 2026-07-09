@@ -19,6 +19,17 @@
   let isSpeaking = false;
   let currentUtterance = null;
 
+  // ─── Conversation State Machine ──────────────────────────────────────────
+  // Tracks multi-step guided flows (note save, whatsapp confirm, etc.)
+  let chatState = {
+    mode: 'normal',   // 'normal' | 'awaiting_note_content' | 'awaiting_note_confirm' | 'awaiting_wa_confirm'
+    data: {}          // holds temp data for the current flow
+  };
+
+  function resetState() {
+    chatState = { mode: 'normal', data: {} };
+  }
+
   // ─── Inject HTML ─────────────────────────────────────────────────────────
   function injectChatWidget() {
     const html = `
@@ -191,6 +202,57 @@
     sendMessage();
   };
 
+  // ─── State: Note Save Confirm ────────────────────────────────────────────
+  window.confirmNoteSave = async function () {
+    const { title, content } = chatState.data;
+    resetState();
+    addMessage('bot', '⏳ Note save ho raha hai...');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    try {
+      await axios.post(`${getApiBase()}/chat`, {
+        query: `save note ${title}: ${content}`
+      }, { headers: { Authorization: `Bearer ${token}` }, timeout: 20000 });
+      addMessage('bot',
+        `✅ **Note saved!**\n\n📌 Subject: **"${title}"**\n📝 Content: "${content}"\n\n` +
+        `💡 Jab bhejnna ho bolo: *"${title} wala note dikhao"* ya *"[Student naam] ko ${title} WhatsApp karo"*`
+      );
+    } catch (e) {
+      addMessage('bot', '❌ Save nahi ho paya. Dobara try karo.');
+    }
+  };
+
+  window.editNote = function () {
+    const { title } = chatState.data;
+    chatState.mode = 'awaiting_note_content';
+    chatState.data = { title };
+    addMessage('bot', `✏️ Theek hai! **"${title}"** ke liye naya message type karo:`);
+  };
+
+  window.cancelNote = function () {
+    resetState();
+    addMessage('bot', '🚫 Note save cancel kar diya. Koi aur kaam ho to batao!');
+  };
+
+  // ─── State: WhatsApp Confirm ─────────────────────────────────────────────
+  window.confirmWhatsAppSend = async function () {
+    const { mobile, name, noteContent } = chatState.data;
+    resetState();
+    let cleanMobile = mobile.replace(/\D/g, '');
+    if (cleanMobile.length === 10) cleanMobile = '91' + cleanMobile;
+    let waUrl = `https://wa.me/${cleanMobile}`;
+    if (noteContent) waUrl += `?text=${encodeURIComponent(noteContent)}`;
+    addMessage('bot',
+      `✅ WhatsApp khul raha hai **${name}** ke liye!\n\n` +
+      (noteContent ? `📝 Pre-filled message:\n"${noteContent}"` : `📞 Number: ${mobile}`)
+    );
+    setTimeout(() => window.open(waUrl, '_blank'), 500);
+  };
+
+  window.cancelWhatsApp = function () {
+    resetState();
+    addMessage('bot', '🚫 WhatsApp send cancel. Koi aur kaam ho to batao!');
+  };
+
   // ─── Voice Input ─────────────────────────────────────────────────────────
   function toggleVoice() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
@@ -300,67 +362,241 @@
     }
   }
 
-  // ─── Send Message ────────────────────────────────────────────────────────
+  // ─── Send Message (State Router) ─────────────────────────────────────────
   async function sendMessage() {
     const input = document.getElementById('chat-input');
     const query = input.value.trim();
-
     if (!query) return;
 
-    // Show user message
     addMessage('user', query);
     input.value = '';
 
-    // Show typing indicator
+    // ── Route based on current conversation state ──
+    if (chatState.mode === 'awaiting_note_title') {
+      return handleNoteTitle(query);
+    }
+    if (chatState.mode === 'awaiting_note_content') {
+      return handleNoteContent(query);
+    }
+    if (chatState.mode === 'awaiting_note_confirm_edit') {
+      return handleNoteConfirmEdit(query);
+    }
+    if (chatState.mode === 'awaiting_wa_target') {
+      return handleWaTarget(query);
+    }
+
+    // ── Detect local intents before API call ──
+    const lower = query.toLowerCase();
+    const isSaveIntent = /\b(save|store|note|template|message|message save|note save|save kro|save karna|likhna|note banana)\b/.test(lower);
+    const isShowNoteIntent = /\b(dikhao|show|notes|templates|saved|dekho|search note|dhundho)\b/.test(lower) && /\b(note|template|message|msg)\b/.test(lower);
+
+    if (isSaveIntent && !isShowNoteIntent) {
+      return startSaveNoteFlow();
+    }
+
+    // ── Normal API call ──
+    await callChatApi(query);
+  }
+
+  // ─── Save Note: Step 1 — Ask subject ────────────────────────────────────
+  function startSaveNoteFlow() {
+    chatState.mode = 'awaiting_note_title';
+    chatState.data = {};
+    addMessage('bot',
+      `📝 **Note/Template save karte hain!**\n\n` +
+      `Pehle mujhe **subject / title** batao — jaise:\n` +
+      `• *Admission message*\n• *Fee reminder*\n• *Batch timing*\n• *Discount offer*\n\n` +
+      `Koi bhi naam de do jisse baad mein yaad aaye 👇`
+    );
+  }
+
+  // ─── Save Note: Step 2 — Got title, ask content ──────────────────────────
+  function handleNoteTitle(title) {
+    chatState.data.title = title;
+    chatState.mode = 'awaiting_note_content';
+    addMessage('bot',
+      `👍 Subject: **"${title}"**\n\n` +
+      `Ab poora **message / content** type karo jo save karna hai 👇\n\n` +
+      `_(Example: "Aapka admission ho gaya hai. Fees 6000 hai. Pehle din 15 July ko aaiye.")_`
+    );
+  }
+
+  // ─── Save Note: Step 3 — Got content, show preview + confirm ─────────────
+  function handleNoteContent(content) {
+    chatState.data.content = content;
+    chatState.mode = 'awaiting_note_confirm_edit';
+    const { title } = chatState.data;
+    addMessage('bot',
+      `📋 **Preview — Note ready hai:**\n\n` +
+      `🏷️ Subject: **"${title}"**\n` +
+      `📄 Content:\n_"${content}"_\n\n` +
+      `Isko save karun ya edit karna hai?`,
+      false, selectedLang, null,
+      [
+        { label: '✅ Haan, Save Karo!', action: 'confirmNoteSave()' },
+        { label: '✏️ Edit Karna Hai', action: 'editNote()' },
+        { label: '❌ Cancel', action: 'cancelNote()' }
+      ]
+    );
+  }
+
+  // ─── Save Note: Step 4 — Handle typed confirm/edit ───────────────────────
+  function handleNoteConfirmEdit(query) {
+    const lower = query.toLowerCase();
+    if (/^(haan|ha|yes|save|kar do|theek|ok|bilkul|confirm)/.test(lower)) {
+      window.confirmNoteSave();
+    } else if (/^(edit|badlo|change|nahi|no|cancel)/.test(lower)) {
+      if (/cancel|nahi|no/.test(lower)) {
+        window.cancelNote();
+      } else {
+        window.editNote();
+      }
+    } else {
+      // Treat typed text as new content
+      chatState.data.content = query;
+      chatState.mode = 'awaiting_note_confirm_edit';
+      const { title } = chatState.data;
+      addMessage('bot',
+        `📋 **Updated Preview:**\n\n🏷️ Subject: **"${title}"**\n📄 Content:\n_"${query}"_\n\nAb save karun?`,
+        false, selectedLang, null,
+        [
+          { label: '✅ Save Karo!', action: 'confirmNoteSave()' },
+          { label: '✏️ Phir Edit', action: 'editNote()' },
+          { label: '❌ Cancel', action: 'cancelNote()' }
+        ]
+      );
+    }
+  }
+
+  // ─── WhatsApp: Ask for target after note shown ────────────────────────────
+  window.startWhatsAppFromNote = function(noteTitle, noteContent) {
+    chatState.mode = 'awaiting_wa_target';
+    chatState.data = { noteTitle, noteContent };
+    addMessage('bot',
+      `💬 Kisko **WhatsApp** karna hai?\n\nStudent ka **naam** ya **mobile number** type karo 👇`
+    );
+  };
+
+  // ─── WhatsApp: Look up student, show confirm ─────────────────────────────
+  async function handleWaTarget(query) {
+    const { noteContent } = chatState.data;
     const typingId = showTyping();
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    try {
+      const response = await axios.post(`${getApiBase()}/chat`, {
+        query: `whatsapp ${query}`
+      }, { headers: { Authorization: `Bearer ${token}` }, timeout: 20000 });
+      removeTyping(typingId);
+
+      if (response.data.success) {
+        const action = response.data.data.action;
+        if (action && action.mobile) {
+          // We have a student — show WhatsApp confirm
+          chatState.mode = 'awaiting_wa_confirm';
+          chatState.data = {
+            mobile: action.mobile,
+            name: action.name,
+            noteContent: noteContent || action.text
+          };
+          addMessage('bot',
+            `✅ Mila! **${action.name}** — 📱 ${action.mobile}\n\n` +
+            (noteContent ? `📝 Message:\n_"${noteContent}"_\n\n` : '') +
+            `Inhe WhatsApp karu?`,
+            false, selectedLang, null,
+            [
+              { label: `💬 Haan, WhatsApp Karo!`, action: 'confirmWhatsAppSend()' },
+              { label: '❌ Cancel', action: 'cancelWhatsApp()' }
+            ]
+          );
+        } else {
+          resetState();
+          addMessage('bot', response.data.data.message || '❌ Contact nahi mila.');
+        }
+      } else {
+        resetState();
+        addMessage('bot', '❌ Contact dhundh nahi paya. Sahi naam ya number do.');
+      }
+    } catch (e) {
+      removeTyping(typingId);
+      resetState();
+      addMessage('bot', '⚠️ Server error. Dobara try karo.');
+    }
+  }
+
+  // ─── Normal API Call ─────────────────────────────────────────────────────
+  async function callChatApi(query) {
+    const typingId = showTyping();
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+    if (!token) {
+      removeTyping(typingId);
+      addMessage('bot', '❌ Login session expire ho gayi. Please reload karke dobara login karo.');
+      return;
+    }
 
     try {
-      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-
-      if (!token) {
-        removeTyping(typingId);
-        addMessage('bot', '❌ Login session expire ho gayi. Please page reload karo aur dobara login karo.');
-        return;
-      }
-
       const response = await axios.post(`${getApiBase()}/chat`, { query }, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 30000
       });
-
       removeTyping(typingId);
 
       if (response.data.success) {
-        const message = response.data.data.message;
-        const lang = response.data.data.language || selectedLang;
-        const action = response.data.data.action;
-        addMessage('bot', message, true, lang, action);
+        const { message, language, action } = response.data.data;
+        const lang = language || selectedLang;
+
+        // If backend returned notes list, show with WhatsApp buttons
+        if (action && action.type === 'notes_list' && action.notes) {
+          addMessage('bot', message, true, lang);
+          action.notes.forEach(note => {
+            addNoteCard(note);
+          });
+        } else {
+          addMessage('bot', message, true, lang, action);
+        }
       } else {
         addMessage('bot', '⚠️ Kuch gadbad hui. Dobara try karo.');
       }
-
     } catch (error) {
       removeTyping(typingId);
       let errorMsg = '⚠️ Server se connect nahi ho pa raha.';
-
       if (error.response) {
-        if (error.response.status === 401) {
-          errorMsg = '❌ Login session expire. Reload karke login karo.';
-        } else if (error.response.status === 400) {
-          errorMsg = `❌ ${error.response.data?.message || 'Invalid query.'}`;
-        } else if (error.response.status === 500) {
-          errorMsg = '⚠️ Server error. Thodi der baad try karo.';
-        }
+        if (error.response.status === 401) errorMsg = '❌ Login session expire. Reload karke login karo.';
+        else if (error.response.status === 400) errorMsg = `❌ ${error.response.data?.message || 'Invalid query.'}`;
+        else if (error.response.status === 500) errorMsg = '⚠️ Server error. Thodi der baad try karo.';
       } else if (error.code === 'ECONNABORTED') {
-        errorMsg = '⏱️ Response aane mein zyada time lag raha hai. Try again.';
+        errorMsg = '⏱️ Response time out. Dobara try karo.';
       }
-
       addMessage('bot', errorMsg);
     }
   }
 
+  // ─── Note Card (with WhatsApp button) ───────────────────────────────────
+  function addNoteCard(note) {
+    const messages = document.getElementById('chat-messages');
+    const card = document.createElement('div');
+    card.className = 'chat-msg bot';
+    const titleEsc = escapeHtml(note.title || 'General');
+    const contentEsc = escapeHtml(note.content || '');
+    const safeTitle = (note.title || 'General').replace(/'/g, "\\'");
+    const safeContent = (note.content || '').replace(/'/g, "\\'");
+    card.innerHTML = `
+      <div class="msg-bubble note-card">
+        <div class="note-card-header">📌 <strong>${titleEsc}</strong></div>
+        <div class="note-card-body">${contentEsc}</div>
+        <div class="note-card-actions">
+          <button class="msg-action-btn whatsapp-btn" onclick="window.startWhatsAppFromNote('${safeTitle}', '${safeContent}')">
+            💬 WhatsApp Bhejo
+          </button>
+        </div>
+      </div>
+    `;
+    messages.appendChild(card);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
   // ─── Add Message to Chat ─────────────────────────────────────────────────
-  function addMessage(role, text, withSpeakBtn = false, lang = selectedLang, action = null) {
+  function addMessage(role, text, withSpeakBtn = false, lang = selectedLang, action = null, confirmButtons = null) {
     const messages = document.getElementById('chat-messages');
 
     // Remove welcome message on first real message
@@ -379,6 +615,16 @@
     if (withSpeakBtn && role === 'bot') {
       const escapedForAttr = text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
       speakBtnHtml = `<button class="speak-btn" onclick="window.chatSpeak('${escapedForAttr}', '${lang}')" title="Isko sunao">🔊 Sunao</button>`;
+    }
+
+    // Confirm/Action Buttons (for multi-step flows)
+    let confirmBtnsHtml = '';
+    if (confirmButtons && confirmButtons.length) {
+      confirmBtnsHtml = `<div class="msg-confirm-buttons">` +
+        confirmButtons.map(btn =>
+          `<button class="msg-confirm-btn" onclick="window.${btn.action}">${btn.label}</button>`
+        ).join('') +
+        `</div>`;
     }
 
     let actionBtnHtml = '';
@@ -411,9 +657,11 @@
       }
     }
 
+
     msg.innerHTML = `
       <div class="msg-bubble">
         ${bubbleText}
+        ${confirmBtnsHtml}
         ${actionBtnHtml}
       </div>
       ${timeEl}
