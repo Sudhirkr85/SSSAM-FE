@@ -8,7 +8,11 @@
   'use strict';
 
   // ─── Config ─────────────────────────────────────────────────────────────
-  const API_BASE = window.API_BASE_URL || 'http://localhost:5000/api';
+  // NOTE: URL is resolved at call-time (not init-time) to pick up window.API_BASE_URL
+  // which is set by api.js. Hardcode Render as production fallback.
+  function getApiBase() {
+    return window.API_BASE_URL || 'https://sssam-r3pz.onrender.com/api';
+  }
   let selectedLang = 'hindi'; // default language
   let isListening = false;
   let recognition = null;
@@ -319,7 +323,7 @@
         return;
       }
 
-      const response = await axios.post(`${API_BASE}/chat`, { query }, {
+      const response = await axios.post(`${getApiBase()}/chat`, { query }, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 30000
       });
