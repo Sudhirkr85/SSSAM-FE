@@ -524,3 +524,22 @@
   transform: translateY(-1px);
   box-shadow: 0 4px 12px rgba(22, 163, 74, 0.3);
 }
+
+/* ─── Full Screen Mode Web ────────────────────────── */
+#chat-panel.fullscreen {
+  width: 100vw !important;
+  height: 100vh !important;
+  max-height: none !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  border-radius: 0 !important;
+  border: none !important;
+  z-index: 999999 !important;
+}
+
+#chat-panel.fullscreen #chat-messages {
+  max-height: calc(100vh - 180px) !important;
+}
+

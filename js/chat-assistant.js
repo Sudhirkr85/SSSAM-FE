@@ -35,6 +35,11 @@
             <h4>SSSAM AI Assistant</h4>
             <p>Data search • Follow-ups • Fees</p>
           </div>
+          <button id="chat-fullscreen-btn" title="Full Screen" aria-label="Toggle Full Screen" style="background: transparent; border: none; color: white; cursor: pointer; padding: 4px; display: flex; align-items: center; margin-right: 8px; opacity: 0.8; transition: opacity 0.2s;">
+            <svg id="fullscreen-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+            </svg>
+          </button>
           <div class="chat-header-status" title="Online"></div>
         </div>
 
@@ -128,6 +133,25 @@
     // Send button
     sendBtn.addEventListener('click', sendMessage);
 
+    // Full Screen Toggle
+    const fullscreenBtn = document.getElementById('chat-fullscreen-btn');
+    fullscreenBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isFullscreen = panel.classList.contains('fullscreen');
+      panel.classList.toggle('fullscreen', !isFullscreen);
+      
+      const icon = document.getElementById('fullscreen-icon');
+      if (!isFullscreen) {
+        // Minimize icon
+        icon.innerHTML = `<path d="M4 14h6v6m10-6h-6v6M4 10h6V4m10 6h-6V4"/>`;
+        fullscreenBtn.title = "Exit Full Screen";
+      } else {
+        // Maximize icon
+        icon.innerHTML = `<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>`;
+        fullscreenBtn.title = "Full Screen";
+      }
+    });
+
     // Voice button
     voiceBtn.addEventListener('click', toggleVoice);
 
@@ -136,6 +160,11 @@
       if (!panel.contains(e.target) && !fab.contains(e.target)) {
         panel.classList.remove('open');
         fab.classList.remove('open');
+        panel.classList.remove('fullscreen');
+        const icon = document.getElementById('fullscreen-icon');
+        if (icon) {
+          icon.innerHTML = `<path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>`;
+        }
       }
     });
   }
@@ -364,9 +393,13 @@
         if (cleanMobile.length === 10) {
           cleanMobile = '91' + cleanMobile;
         }
+        let waUrl = `https://wa.me/${cleanMobile}`;
+        if (action.text) {
+          waUrl += `?text=${encodeURIComponent(action.text)}`;
+        }
         actionBtnHtml = `
           <div class="msg-action-container">
-            <a href="https://wa.me/${cleanMobile}" target="_blank" class="msg-action-btn whatsapp-btn">
+            <a href="${waUrl}" target="_blank" class="msg-action-btn whatsapp-btn">
               <span style="font-size: 16px; margin-right: 6px;">💬</span> WhatsApp ${action.name || 'Student'}
             </a>
           </div>
