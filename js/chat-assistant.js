@@ -47,18 +47,19 @@
 
         <!-- Quick Action Chips -->
         <div class="chat-quick-actions">
-          <button class="quick-chip" onclick="window.chatSendQuick('आज के follow up बताओ')">📅 आज के Follow-ups</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('pending fees किसकी है')">💰 Pending Fees</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('today follow-ups')">📋 Today Followups</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('help')">📖 Guide / Help</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('aaj ke follow up')">📅 Follow-ups</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('pending fees')">💰 Pending Fees</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('saved notes dikhao')">📝 Saved Notes</button>
         </div>
 
         <!-- Messages -->
         <div id="chat-messages">
           <div class="chat-welcome">
             <span class="welcome-icon">🎙️</span>
-            <strong>Namaste! Main aapka AI Assistant hoon</strong>
-            Kisi ka bhi data search karo — naam, mobile, email se.<br>
-            Follow-ups ya pending fees bhi puch sakte ho!
+            <strong>Namaste! SSSAM AI Assistant mein aapka swagat hai</strong>
+            Aap bolkar ya likhkar kisi ka bhi data check kar sakte hain, call/whatsapp commands use kar sakte hain, aur notes save kar sakte hain.<br>
+            <span style="color:#818cf8;font-weight:600;display:block;margin-top:6px;">📖 "Guide / Help" chip par click karke details dekhain!</span>
           </div>
         </div>
 
@@ -299,7 +300,8 @@
       if (response.data.success) {
         const message = response.data.data.message;
         const lang = response.data.data.language || selectedLang;
-        addMessage('bot', message, true, lang);
+        const action = response.data.data.action;
+        addMessage('bot', message, true, lang, action);
       } else {
         addMessage('bot', '⚠️ Kuch gadbad hui. Dobara try karo.');
       }
@@ -325,7 +327,7 @@
   }
 
   // ─── Add Message to Chat ─────────────────────────────────────────────────
-  function addMessage(role, text, withSpeakBtn = false, lang = selectedLang) {
+  function addMessage(role, text, withSpeakBtn = false, lang = selectedLang, action = null) {
     const messages = document.getElementById('chat-messages');
 
     // Remove welcome message on first real message
@@ -346,8 +348,37 @@
       speakBtnHtml = `<button class="speak-btn" onclick="window.chatSpeak('${escapedForAttr}', '${lang}')" title="Isko sunao">🔊 Sunao</button>`;
     }
 
+    let actionBtnHtml = '';
+    if (action && action.mobile) {
+      if (action.type === 'call') {
+        actionBtnHtml = `
+          <div class="msg-action-container">
+            <a href="tel:${action.mobile}" class="msg-action-btn call-btn">
+              <span style="font-size: 16px; margin-right: 6px;">📞</span> Call ${action.name || 'Student'}
+            </a>
+          </div>
+        `;
+      } else if (action.type === 'whatsapp') {
+        // Remove leading 91 or +91 if present for wa.me formatting
+        let cleanMobile = action.mobile.replace(/\D/g, '');
+        if (cleanMobile.length === 10) {
+          cleanMobile = '91' + cleanMobile;
+        }
+        actionBtnHtml = `
+          <div class="msg-action-container">
+            <a href="https://wa.me/${cleanMobile}" target="_blank" class="msg-action-btn whatsapp-btn">
+              <span style="font-size: 16px; margin-right: 6px;">💬</span> WhatsApp ${action.name || 'Student'}
+            </a>
+          </div>
+        `;
+      }
+    }
+
     msg.innerHTML = `
-      <div class="msg-bubble">${bubbleText}</div>
+      <div class="msg-bubble">
+        ${bubbleText}
+        ${actionBtnHtml}
+      </div>
       ${timeEl}
       ${speakBtnHtml}
     `;
