@@ -1,6 +1,6 @@
 /**
  * SSSAM CRM — AI Chat Assistant
- * Voice + Text search using Gemini AI
+ * Voice + Text search using Groq AI
  * Supports Hindi & English
  */
 
@@ -18,6 +18,20 @@
   let recognition = null;
   let isSpeaking = false;
   let currentUtterance = null;
+  function getCurrentChatUser() {
+    try {
+      const item = localStorage.getItem('user');
+      return item ? JSON.parse(item) : null;
+    } catch (error) {
+      console.warn('Error parsing user for chat assistant', error);
+      return null;
+    }
+  }
+
+  function getChatWelcomeName() {
+    const user = getCurrentChatUser();
+    return user && user.name ? user.name.trim().split(' ')[0] : '';
+  }
 
   // ─── Conversation State Machine ──────────────────────────────────────────
   // Tracks multi-step guided flows (note save, whatsapp confirm, etc.)
@@ -32,6 +46,10 @@
 
   // ─── Inject HTML ─────────────────────────────────────────────────────────
   function injectChatWidget() {
+    const welcomeName = getChatWelcomeName();
+    const welcomeTitle = welcomeName
+      ? `Namaste ${welcomeName}! SSSAM AI Assistant mein aapka swagat hai`
+      : 'Namaste! SSSAM AI Assistant mein aapka swagat hai';
     const html = `
       <!-- Floating Action Button -->
       <button id="chat-fab" aria-label="AI Chat Assistant" title="AI Chat Assistant">
@@ -48,7 +66,7 @@
           <div class="chat-header-avatar">🤖</div>
           <div class="chat-header-info">
             <h4>SSSAM AI Assistant</h4>
-            <p>Data search • Follow-ups • Fees</p>
+            <p>Groq AI • Follow-ups • Fees</p>
           </div>
           <button id="chat-fullscreen-btn" title="Full Screen" aria-label="Toggle Full Screen" style="background: transparent; border: none; color: white; cursor: pointer; padding: 4px; display: flex; align-items: center; margin-right: 8px; opacity: 0.8; transition: opacity 0.2s;">
             <svg id="fullscreen-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -76,10 +94,10 @@
         <!-- Messages -->
         <div id="chat-messages">
           <div class="chat-welcome">
-            <span class="welcome-icon">🎙️</span>
-            <strong>Namaste! SSSAM AI Assistant mein aapka swagat hai</strong>
-            Aap bolkar ya likhkar kisi ka bhi data check kar sakte hain, call/whatsapp commands use kar sakte hain, aur notes save kar sakte hain.<br>
-            <span style="color:#818cf8;font-weight:600;display:block;margin-top:6px;">📖 "Guide / Help" chip par click karke details dekhain!</span>
+            <span class="welcome-icon">🌟</span>
+            <strong>${welcomeTitle}</strong>
+            Hindi mode mein Hinglish use karo, English mode mein proper English. Aap bolkar ya likhkar data check, call/whatsapp commands aur notes save kar sakte hain.<br>
+            <span class="welcome-tip">📖 "Guide / Help" chip par click karke examples dekhain!</span>
           </div>
         </div>
 
@@ -88,7 +106,7 @@
           <input
             type="text"
             id="chat-input"
-            placeholder="Type karo ya mic click karo..."
+            placeholder="Hinglish mein puchho... jaise: aaj ke follow up dikhao"
             autocomplete="off"
             aria-label="Chat input"
           />
@@ -233,6 +251,20 @@
     addMessage('bot', '🚫 Note save cancel kar diya. Koi aur kaam ho to batao!');
   };
 
+  window.sendWithoutSavingNote = function () {
+    const { title, content } = chatState.data;
+    chatState.mode = 'awaiting_wa_target';
+    chatState.data = {
+      noteTitle: title || 'Custom message',
+      noteContent: content,
+      skipSave: true
+    };
+    addMessage(
+      'bot',
+      `💬 Theek hai, bina save kiye bhejte hain.\n\nStudent ka **naam** ya **mobile number** type karo jisko WhatsApp bhejna hai 👇`
+    );
+  };
+
   // ─── State: WhatsApp Confirm ─────────────────────────────────────────────
   window.confirmWhatsAppSend = async function () {
     const { mobile, name, noteContent } = chatState.data;
@@ -298,7 +330,9 @@
     recognition.onend = () => {
       isListening = false;
       voiceBtn.classList.remove('listening');
-      input.placeholder = selectedLang === 'hindi' ? 'Hindi ya English mein puchho...' : 'Type your question...';
+      input.placeholder = selectedLang === 'hindi'
+        ? 'Hinglish mein puchho... jaise: pending fees dikhao'
+        : 'Ask in proper English...';
 
       // Auto-send if we got something
       if (input.value.trim()) {
@@ -435,6 +469,7 @@
       [
         { label: '✅ Haan, Save Karo!', action: 'confirmNoteSave()' },
         { label: '✏️ Edit Karna Hai', action: 'editNote()' },
+        { label: '💬 Save Bina Bhejo', action: 'sendWithoutSavingNote()' },
         { label: '❌ Cancel', action: 'cancelNote()' }
       ]
     );
@@ -445,6 +480,8 @@
     const lower = query.toLowerCase();
     if (/^(haan|ha|yes|save|kar do|theek|ok|bilkul|confirm)/.test(lower)) {
       window.confirmNoteSave();
+    } else if (/^(bhejo|bhj do|send|send now|whatsapp|abhi bhejo)/.test(lower)) {
+      window.sendWithoutSavingNote();
     } else if (/^(edit|badlo|change|nahi|no|cancel)/.test(lower)) {
       if (/cancel|nahi|no/.test(lower)) {
         window.cancelNote();
@@ -462,6 +499,7 @@
         [
           { label: '✅ Save Karo!', action: 'confirmNoteSave()' },
           { label: '✏️ Phir Edit', action: 'editNote()' },
+          { label: '💬 Save Bina Bhejo', action: 'sendWithoutSavingNote()' },
           { label: '❌ Cancel', action: 'cancelNote()' }
         ]
       );
@@ -535,7 +573,14 @@
     }
 
     try {
-      const response = await axios.post(`${getApiBase()}/chat`, { query }, {
+      const response = await axios.post(`${getApiBase()}/chat`, {
+        query,
+        language: selectedLang,
+        inputMode: selectedLang === 'hindi' ? 'hinglish' : 'english',
+        responseStyle: selectedLang === 'hindi'
+          ? 'Understand Hinglish typed in English letters and reply in natural Hindi using English letters unless the user asks otherwise.'
+          : 'Reply in clear, proper English.'
+      }, {
         headers: { Authorization: `Bearer ${token}` },
         timeout: 30000
       });
