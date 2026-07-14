@@ -387,37 +387,8 @@ async function renderTimeline(statusHistory) {
         return dateB - dateA;
     });
 
-    // Fetch user details for all unique user IDs
-    const userIds = [...new Set(sortedHistory
-        .map(item => item.changedBy)
-        .filter(id => id && id !== 'undefined' && id !== 'null')
-    )];
-
-    const userMap = new Map();
-    
-    // Fetch user details in parallel
-    if (userIds.length > 0) {
-        try {
-            const userPromises = userIds.map(async (userId) => {
-                try {
-                    const user = await getUserById(userId);
-                    return { id: userId, user: user.data?.user || user.data || user };
-                } catch (error) {
-                    console.error(`Failed to fetch user ${userId}:`, error);
-                    return { id: userId, user: null };
-                }
-            });
-
-            const userResults = await Promise.all(userPromises);
-            userResults.forEach(({ id, user }) => {
-                if (user && user.name) {
-                    userMap.set(id, user.name);
-                }
-            });
-        } catch (error) {
-            console.error('Error fetching user details:', error);
-        }
-    }
+    // changedBy is already populated by the backend (name, email)
+    // No need to fetch users separately
 
     let html = '<div class="relative pl-6 border-l-2 border-gray-200 space-y-6">';
 
@@ -438,8 +409,11 @@ async function renderTimeline(statusHistory) {
         const dotColor = dotColors[currentStatus] || 'bg-gray-400';
         const formattedDate = formatDateTime(item.changedAt);
         
-        // Get user name from map or fallback
-        const userName = userMap.get(item.changedBy) || 'Unknown User';
+        // Get user name directly from the already-populated changedBy object
+        const changedByUser = item.changedBy;
+        const userName = (changedByUser && typeof changedByUser === 'object' && changedByUser.name)
+            ? changedByUser.name
+            : (typeof changedByUser === 'string' && changedByUser ? changedByUser : 'Unknown User');
 
         html += `
             <div class="relative">
