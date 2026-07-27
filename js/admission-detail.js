@@ -1045,8 +1045,8 @@ async function submitDropStudent() {
       // Reload data
       await loadAdmissionDetail();
     } catch (err) {
-      console.error('Failed to drop student:', err);
-      const message = err.response?.data?.error?.message || err.response?.data?.message || 'Failed to drop student';
+      const resData = err.response?.data;
+      const message = typeof resData?.message === 'string' ? resData.message : (resData?.error?.message || resData?.error || 'Failed to drop student');
       errorEl.textContent = message;
       errorEl.classList.remove('hidden');
     } finally {
