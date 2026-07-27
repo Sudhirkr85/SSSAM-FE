@@ -620,11 +620,18 @@ function openSetInstallmentsModal() {
   document.getElementById('planRegistration').textContent = formatCurrency(registrationAmount);
   document.getElementById('planRemaining').textContent = formatCurrency(remaining);
   
-  // Initialize rows (default 2 installments)
-  installmentRows = [
-    { amount: Math.floor(remaining / 2), dueDate: '' },
-    { amount: Math.ceil(remaining / 2), dueDate: '' }
-  ];
+  // Initialize rows from existing installments if available
+  if (admissionData.installments && admissionData.installments.length > 0) {
+    installmentRows = admissionData.installments.map(inst => ({
+      amount: inst.amount || '',
+      dueDate: inst.dueDate ? new Date(inst.dueDate).toISOString().split('T')[0] : ''
+    }));
+  } else {
+    installmentRows = [
+      { amount: Math.floor(remaining / 2), dueDate: '' },
+      { amount: Math.ceil(remaining / 2), dueDate: '' }
+    ];
+  }
   
   renderInstallmentRows();
   document.getElementById('planError').classList.add('hidden');

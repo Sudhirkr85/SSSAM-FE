@@ -359,6 +359,9 @@ function renderTable() {
             <a href="admission-detail.html?id=${admission._id}" onclick="event.stopPropagation();" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Detail">
               <i data-lucide="eye" class="w-4 h-4"></i>
             </a>
+            <button onclick="event.stopPropagation(); openPaymentPlanModal('${admission._id}')" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Installment Plan">
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+            </button>
             <button onclick="event.stopPropagation(); openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Add Payment">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
             </button>
@@ -440,13 +443,16 @@ function renderMobileCards() {
         <div class="flex items-center justify-between pt-2 border-t border-gray-100" onclick="event.stopPropagation();">
           <div class="text-sm text-gray-600">${escapeHtml(course)}</div>
           <div class="flex items-center gap-1">
-            <a href="admission-detail.html?id=${admission._id}" onclick="event.stopPropagation();" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+            <a href="admission-detail.html?id=${admission._id}" onclick="event.stopPropagation();" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Detail">
               <i data-lucide="eye" class="w-4 h-4"></i>
             </a>
-            <button onclick="event.stopPropagation(); openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors">
+            <button onclick="event.stopPropagation(); openPaymentPlanModal('${admission._id}')" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Installment Plan">
+              <i data-lucide="calendar" class="w-4 h-4"></i>
+            </button>
+            <button onclick="event.stopPropagation(); openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Add Payment">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
             </button>
-            <button onclick="event.stopPropagation(); openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+            <button onclick="event.stopPropagation(); openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payments">
               <i data-lucide="receipt" class="w-4 h-4"></i>
             </button>
           </div>
@@ -1057,7 +1063,14 @@ function openPaymentPlanModal(admissionId) {
   document.getElementById('planRemaining').textContent = formatCurrency(remaining);
   
   // Initialize installment rows
-  installmentRows = [{ amount: '', dueDate: '' }];
+  if (admission.installments && admission.installments.length > 0) {
+    installmentRows = admission.installments.map(inst => ({
+      amount: inst.amount || '',
+      dueDate: inst.dueDate ? new Date(inst.dueDate).toISOString().split('T')[0] : ''
+    }));
+  } else {
+    installmentRows = [{ amount: remaining > 0 ? remaining : '', dueDate: '' }];
+  }
   renderInstallmentRows();
   
   document.getElementById('planError').classList.add('hidden');
