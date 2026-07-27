@@ -1068,7 +1068,7 @@ function getBaseUrl() {
     if (typeof BASE_URL !== 'undefined') {
         return BASE_URL.replace('/api', '');
     }
-    return 'http://localhost:5000';
+    return 'https://sssam-r3pz.onrender.com';
 }
 
 // Close dropdown when clicking outside
