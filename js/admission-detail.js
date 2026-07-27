@@ -205,6 +205,10 @@ function renderAdmissionDetail() {
 }
 
 function calculateNextDue(admission, paymentsList) {
+  if (admission.status === 'DROPPED') {
+    return { amount: 0, date: 'Dropped', isOverdue: false };
+  }
+
   const totalFees = admission.totalFees || 0;
   // Calculate total paid from payments array (excluding refunds)
   const calculatedPaid = paymentsList
@@ -285,19 +289,25 @@ function renderInstallmentTable() {
   today.setHours(0, 0, 0, 0);
   
   let cumulativeAmount = registrationAmount;
+  const isDroppedOrCleared = admissionData?.status === 'DROPPED' || remaining <= 0;
   
   table.innerHTML = installments.map((inst, index) => {
     cumulativeAmount += inst.amount;
     
-    const isPaid = paidAmount >= cumulativeAmount;
+    const isFullyPaid = paidAmount >= cumulativeAmount;
+    const isPaid = isFullyPaid || isDroppedOrCleared;
     const dueDate = new Date(inst.dueDate);
     const isOverdue = !isPaid && dueDate < today;
     
     let statusClass, statusText, statusIcon;
-    if (isPaid) {
+    if (isFullyPaid) {
       statusClass = 'status-paid';
       statusText = 'Paid';
       statusIcon = 'check-circle';
+    } else if (isDroppedOrCleared) {
+      statusClass = 'bg-gray-100 text-gray-600';
+      statusText = admissionData?.status === 'DROPPED' ? 'Waived / Dropped' : 'Cleared';
+      statusIcon = 'user-x';
     } else if (isOverdue) {
       statusClass = 'status-overdue';
       statusText = 'Overdue';

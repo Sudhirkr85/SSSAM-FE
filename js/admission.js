@@ -580,6 +580,10 @@ function formatDateDisplay(dateString) {
 }
 
 function calculateNextDue(admission) {
+  if (admission.status === 'DROPPED') {
+    return { text: 'Dropped', date: null, isOverdue: false, isUpcoming: false, amount: 0 };
+  }
+
   const totalFees = admission.totalFees || 0;
   const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
 
