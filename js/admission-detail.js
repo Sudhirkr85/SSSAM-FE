@@ -144,7 +144,8 @@ function renderAdmissionDetail() {
   const totalRefunded = admissionData.totalRefunded ?? payments
     .filter(p => p.type === 'refund')
     .reduce((sum, p) => sum + (p.amount || 0), 0);
-  const remaining = admissionData.remainingAmount ?? (totalFees - paidAmount);
+  const isDropped = (admissionData.status || '').toLowerCase() === 'dropped';
+  const remaining = isDropped ? 0 : (admissionData.remainingAmount ?? Math.max(0, totalFees - paidAmount - (admissionData.writeOffAmount || 0)));
   
   // Student info
   document.getElementById('studentName').textContent = studentName;

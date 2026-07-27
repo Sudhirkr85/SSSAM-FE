@@ -390,8 +390,8 @@ function renderMobileCards() {
     const mobile = admission.mobile || '';
     const course = admission.course || '-';
     const totalFees = admission.totalFees || 0;
-    // Backend sends remainingAmount, calculate paid from it
-    const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
+    const isDropped = (admission.status || '').toLowerCase() === 'dropped';
+    const remaining = isDropped ? 0 : (admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0)));
     const paidAmount = totalFees - remaining;
     const paymentType = admission.paymentType || 'ONE_TIME';
     const nextDue = calculateNextDue(admission);
