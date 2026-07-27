@@ -390,7 +390,7 @@ function renderSummaryCards(data) {
     totalCollectedEl.textContent = formatCurrency(data.totalPaid || 0);
   }
   
-  // 3. Total Baaki (Due)
+  // 3. Pending Dues
   const totalDueEl = document.getElementById('totalDue');
   if (totalDueEl) {
     totalDueEl.textContent = formatCurrency(data.totalPending || 0);
