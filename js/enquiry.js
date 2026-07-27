@@ -187,47 +187,25 @@ function checkAdminFeatures() {
 // ==================== STATUS COUNTS ====================
 async function loadStatusCounts() {
   try {
-    // Fetch counts from API for accurate server-side logic
-    const [allRes, todayRes, pendingRes] = await Promise.all([
-      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 }),
+    // Use server-side counts for accuracy — one call per filter
+    const [allRes, newRes, contactedRes, notInterestedRes, todayRes, pendingRes] = await Promise.all([
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 1 }),
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { status: 'NEW', page: 1, limit: 1 }),
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { status: 'CONTACTED', page: 1, limit: 1 }),
+      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { status: 'NOT_INTERESTED', page: 1, limit: 1 }),
       apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { filterType: 'today_followups', page: 1, limit: 1 }),
       apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { filterType: 'pending_followups', page: 1, limit: 1 })
     ]);
-    
-    const pagination = allRes.pagination || {};
-    const totalCount = pagination.totalCount || 0;
-    const totalPages = pagination.totalPages || 1;
-    
-    let allEnquiries = [];
-    
-    // If there's only one page, use the data we already have
-    if (totalPages <= 1) {
-      allEnquiries = allRes.data || allRes.enquiries || [];
-    } else {
-      // Fetch all pages to get accurate counts for status-based filters
-      const pagePromises = [];
-      for (let page = 1; page <= totalPages; page++) {
-        pagePromises.push(apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page, limit: 100 }));
-      }
-      
-      const pageResults = await Promise.all(pagePromises);
-      allEnquiries = pageResults.flatMap(res => res.data || res.enquiries || []);
-    }
-    
-    // Count by status from available data (3-status system)
-    statusCounts.all = totalCount;
-    statusCounts.NEW = allEnquiries.filter(e => isCreatedToday(e)).length;
-    statusCounts.CONTACTED = allEnquiries.filter(e => e.status === 'CONTACTED').length;
-    statusCounts.NOT_INTERESTED = allEnquiries.filter(e => e.status === 'NOT_INTERESTED').length;
-    
-    // Use server-side counts for followup filters to ensure accuracy
-    statusCounts.TODAY_FOLLOWUPS = (todayRes.pagination?.totalCount || 0);
-    statusCounts.PENDING_FOLLOWUPS = (pendingRes.pagination?.totalCount || 0);
-    
-    // Update UI
+
+    statusCounts.all = allRes.pagination?.totalCount || 0;
+    statusCounts.NEW = newRes.pagination?.totalCount || 0;
+    statusCounts.CONTACTED = contactedRes.pagination?.totalCount || 0;
+    statusCounts.NOT_INTERESTED = notInterestedRes.pagination?.totalCount || 0;
+    statusCounts.TODAY_FOLLOWUPS = todayRes.pagination?.totalCount || 0;
+    statusCounts.PENDING_FOLLOWUPS = pendingRes.pagination?.totalCount || 0;
+
     updateCountDisplay();
   } catch (err) {
-    // Set default values on error
     statusCounts.all = 0;
     statusCounts.NEW = 0;
     statusCounts.CONTACTED = 0;
@@ -287,24 +265,27 @@ function updateCountDisplay() {
 function applyQuickFilter(filter) {
   lastFilterRequestId++;
   const currentRequestId = lastFilterRequestId;
-  
-  // Show loading state immediately
+
   showLoadingState();
-  
+
   currentQuickFilter = filter;
   currentPage = 1;
-  
-  // Update button active states
+
+  // Remove active ring from all buttons
   document.querySelectorAll('[id^="quickBtn-"]').forEach(btn => {
-    btn.classList.remove('ring-2', 'ring-blue-500', 'bg-blue-50');
+    btn.classList.remove('ring-2', 'ring-offset-1', 'ring-white', 'opacity-100', 'scale-100');
+    btn.style.boxShadow = '';
+    btn.style.outline = '';
   });
-  
+
+  // Add active indicator — white ring outline around the active button
   const activeBtn = document.getElementById(`quickBtn-${filter}`);
   if (activeBtn) {
-    activeBtn.classList.add('ring-2', 'ring-blue-500', 'bg-blue-50');
+    activeBtn.style.outline = '3px solid white';
+    activeBtn.style.outlineOffset = '2px';
+    activeBtn.style.boxShadow = '0 0 0 5px rgba(59,130,246,0.4)';
   }
-  
-  // Load data with smooth transition
+
   loadEnquiries(currentRequestId);
 }
 
