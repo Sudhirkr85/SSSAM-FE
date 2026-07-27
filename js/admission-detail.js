@@ -439,6 +439,17 @@ function renderTimeline() {
     });
   }
   
+  // Add student dropped event if applicable
+  if (admissionData?.status === 'DROPPED') {
+    timeline.push({
+      type: 'dropped',
+      title: 'Student Dropped',
+      description: `Reason: ${admissionData.dropReason || 'No reason provided'}${admissionData.writeOffAmount ? ` (Dues Waived: ₹${admissionData.writeOffAmount.toLocaleString('en-IN')})` : ''}`,
+      date: admissionData.dropDate || admissionData.updatedAt,
+      user: admissionData?.updatedBy?.name || ''
+    });
+  }
+
   // Add payments
   payments.forEach(p => {
     const typeLabels = {
@@ -976,7 +987,7 @@ function openDropStudentModal() {
   // Reset form
   document.getElementById('dropReason').value = '';
   document.getElementById('dropDate').value = new Date().toISOString().split('T')[0];
-  document.getElementById('clearDues').checked = false;
+  document.getElementById('clearDues').checked = true;
   document.getElementById('dropNote').value = '';
   document.getElementById('dropError').classList.add('hidden');
   
