@@ -742,29 +742,14 @@
       const statusEsc = escapeHtml(item.status);
       const extraEsc = escapeHtml(item.extra);
 
-      const notesHtml = Array.isArray(item.recentNotes) && item.recentNotes.length > 0
-        ? `<div style="margin-top: 8px; padding: 8px 10px; background: #f8fafc; border-left: 3px solid #2563eb; border-radius: 6px; font-size: 11.5px; color: #334155;">
-             <div style="font-weight: bold; color: #1e293b; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-               📜 Recent Timeline Notes (Last ${item.recentNotes.length}):
-             </div>
-             ${item.recentNotes.map(n => `
-               <div style="margin-bottom: 3px;">
-                 • <span style="font-weight: 600; color: #0f172a;">${escapeHtml(n.note || n.text || '')}</span>
-                 ${n.date ? `<span style="color: #94a3b8; font-size: 10px;"> (${escapeHtml(n.date)})</span>` : ''}
-               </div>
-             `).join('')}
-           </div>`
-        : '';
-
       card.innerHTML = `
         <div class="msg-bubble lead-card" style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 14px; padding: 14px; margin-top: 8px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); color: #0f172a; font-family: inherit;">
           <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 15px; color: #0f172a; margin-bottom: 6px;">
             <span>👤 ${nameEsc}</span>
             <span style="background: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; border: 1px solid #bfdbfe;">${statusEsc}</span>
           </div>
-          ${courseEsc ? `<div style="font-size: 12.5px; color: #334155; font-weight: 600; margin-bottom: 4px;">🎓 Course: <span style="color: #0f172a;">${courseEsc}</span></div>` : ''}
+          ${courseEsc ? `<div style="font-size: 13px; color: #334155; font-weight: 600; margin-bottom: 4px;">🎓 Course: <span style="color: #0f172a;">${courseEsc}</span></div>` : ''}
           ${extraEsc ? `<div style="font-size: 12.5px; color: #ea580c; font-weight: 700; margin-bottom: 6px; background: #fff7ed; padding: 4px 8px; border-radius: 6px; border: 1px solid #ffedd5; display: inline-block;">ℹ️ ${extraEsc}</div>` : ''}
-          ${notesHtml}
           <div style="display: flex; gap: 10px; margin-top: 12px;">
             <a href="tel:${cleanMobile}" style="flex: 1; text-align: center; text-decoration: none; background: #2563eb; color: #ffffff; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); transition: all 0.2s;">
               📞 Call Now
