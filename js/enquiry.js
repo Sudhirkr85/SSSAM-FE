@@ -187,61 +187,23 @@ function checkAdminFeatures() {
 // ==================== STATUS COUNTS ====================
 async function loadStatusCounts() {
   try {
-    // Use server-side counts for accuracy — one call per filter
-    const [allRes, newRes, contactedRes, notInterestedRes, todayRes, pendingRes] = await Promise.all([
-      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 1 }),
-      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { status: 'NEW', page: 1, limit: 1 }),
-      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { status: 'CONTACTED', page: 1, limit: 1 }),
-      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { status: 'NOT_INTERESTED', page: 1, limit: 1 }),
-      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { filterType: 'today_followups', page: 1, limit: 1 }),
-      apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { filterType: 'pending_followups', page: 1, limit: 1 })
-    ]);
-
-    statusCounts.all = allRes.pagination?.totalCount || 0;
-    statusCounts.NEW = newRes.pagination?.totalCount || 0;
-    statusCounts.CONTACTED = contactedRes.pagination?.totalCount || 0;
-    statusCounts.NOT_INTERESTED = notInterestedRes.pagination?.totalCount || 0;
-    statusCounts.TODAY_FOLLOWUPS = todayRes.pagination?.totalCount || 0;
-    statusCounts.PENDING_FOLLOWUPS = pendingRes.pagination?.totalCount || 0;
+    const res = await apiGet('/enquiries/stats');
+    const data = res.data || res;
+    statusCounts.all = data.all || 0;
+    statusCounts.NEW = data.new || data.NEW || 0;
+    statusCounts.CONTACTED = data.contacted || data.CONTACTED || 0;
+    statusCounts.NOT_INTERESTED = data.not_interested || data.NOT_INTERESTED || 0;
+    statusCounts.TODAY_FOLLOWUPS = data.today_followups || data.TODAY_FOLLOWUPS || 0;
+    statusCounts.PENDING_FOLLOWUPS = data.pending_followups || data.PENDING_FOLLOWUPS || 0;
 
     updateCountDisplay();
   } catch (err) {
-    statusCounts.all = 0;
-    statusCounts.NEW = 0;
-    statusCounts.CONTACTED = 0;
-    statusCounts.NOT_INTERESTED = 0;
-    statusCounts.TODAY_FOLLOWUPS = 0;
-    statusCounts.PENDING_FOLLOWUPS = 0;
     updateCountDisplay();
   }
 }
 
 function updateStatusCountsFromCurrentData() {
-  // Update counts based on currently loaded enquiries
-  statusCounts.NEW = enquiries.filter(e => !e.status || e.status === null).length;
-  statusCounts.CONTACTED = enquiries.filter(e => e.status === 'CONTACTED').length;
-  statusCounts.NOT_INTERESTED = enquiries.filter(e => e.status === 'NOT_INTERESTED').length;
-  
-  // Calculate today followups
-  statusCounts.TODAY_FOLLOWUPS = enquiries.filter(e => 
-    e.followUpDate && isToday(e.followUpDate)
-  ).length;
-  
-  // Calculate pending followups
-  statusCounts.PENDING_FOLLOWUPS = enquiries.filter(e => {
-    // A. Overdue followups
-    if (e.followUpDate && isPast(e.followUpDate)) return true;
-    
-    // B. No follow-up date set
-    if (!e.followUpDate) return true;
-    
-    // C. New enquiry created today with no action taken today
-    if (isCreatedToday(e) && !hasActionToday(e)) return true;
-    
-    return false;
-  }).length;
-  
-  updateCountDisplay();
+  loadStatusCounts();
 }
 
 function updateCountDisplay() {

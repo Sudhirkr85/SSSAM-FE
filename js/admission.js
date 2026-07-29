@@ -433,10 +433,12 @@ function renderMobileCards() {
           </div>
         </div>
 
-        <div class="flex items-center justify-between text-xs">
-          <span class="text-gray-500">Next Due</span>
-          <span class="font-medium ${nextDue.isOverdue ? 'text-red-600' : nextDue.isUpcoming ? 'text-amber-600' : nextDue.text === 'Paid' ? 'text-green-600' : 'text-gray-600'}">
-            ${nextDue.text}
+        <div class="flex items-center justify-between text-xs pt-1 border-t border-dashed border-gray-100">
+          <span class="text-gray-500 font-medium flex items-center gap-1">
+            <i data-lucide="calendar" class="w-3.5 h-3.5 text-amber-600"></i> Next Due Date:
+          </span>
+          <span class="font-semibold ${nextDue.isOverdue ? 'bg-red-100 text-red-700 px-2 py-0.5 rounded-md border border-red-200' : nextDue.isUpcoming ? 'bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md border border-amber-200' : nextDue.text === 'Paid' ? 'bg-green-100 text-green-700 px-2 py-0.5 rounded-md' : 'bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md'}">
+            ${nextDue.isOverdue ? '<i data-lucide="alert-circle" class="w-3 h-3 inline mr-1"></i>' : ''}${nextDue.text}
           </span>
         </div>
 
