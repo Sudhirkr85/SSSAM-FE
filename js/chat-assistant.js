@@ -11,7 +11,7 @@
   // NOTE: URL is resolved at call-time (not init-time) to pick up window.API_BASE_URL
   // which is set by api.js. Hardcode Render as production fallback.
   function getApiBase() {
-    return window.API_BASE_URL || 'https://sssam-r3pz.onrender.com/api';
+    return window.API_BASE_URL || 'https://crm.sssamacademy.com/api';
   }
   let selectedLang = 'hindi'; // default language
   let isListening = false;
@@ -85,10 +85,14 @@
 
         <!-- Quick Action Chips -->
         <div class="chat-quick-actions">
-          <button class="quick-chip" onclick="window.chatSendQuick('help')">📖 Guide / Help</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('aaj ke follow up')">📅 Follow-ups</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('aaj ke follow up')">📅 Today's Follow-ups</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('pending followups dikhao')">⏳ Pending Follow-ups</button>
           <button class="quick-chip" onclick="window.chatSendQuick('pending fees')">💰 Pending Fees</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('new enquiries dikhao')">🆕 New Enquiries</button>
           <button class="quick-chip" onclick="window.chatSendQuick('saved notes dikhao')">📝 Saved Notes</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('call kro')">📞 Call</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('whatsapp kro')">💬 WhatsApp</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('help')">📖 Guide / Help</button>
         </div>
 
         <!-- Messages -->
