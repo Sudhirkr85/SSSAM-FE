@@ -1,7 +1,7 @@
 // Import axios
 const axios = window.axios;
 
-const BASE_URL = 'https://sssam-r3pz.onrender.com/api';
+const BASE_URL = 'https://crm.sssamacademy.com/api';
 // const BASE_URL = 'http://localhost:5000/api';
 window.API_BASE_URL = BASE_URL;
 
