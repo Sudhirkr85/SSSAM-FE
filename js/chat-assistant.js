@@ -743,18 +743,26 @@
       const extraEsc = escapeHtml(item.extra);
 
       card.innerHTML = `
-        <div class="msg-bubble lead-card" style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 14px; padding: 14px; margin-top: 8px; box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08); color: #0f172a; font-family: inherit;">
-          <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 800; font-size: 15px; color: #0f172a; margin-bottom: 6px;">
-            <span>👤 ${nameEsc}</span>
-            <span style="background: #dbeafe; color: #1d4ed8; font-size: 11px; font-weight: 800; padding: 3px 10px; border-radius: 20px; border: 1px solid #bfdbfe;">${statusEsc}</span>
+        <div class="msg-bubble lead-card" style="background: #ffffff; border: 1.5px solid #cbd5e1; border-radius: 12px; padding: 10px 12px; margin-top: 6px; box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06); color: #0f172a; font-family: inherit;">
+          <!-- Row 1: Identity & Status -->
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+            <div style="font-weight: 800; font-size: 14px; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+              <span>👤 ${nameEsc}</span>
+              ${courseEsc ? `<span style="color: #94a3b8; font-weight: normal; margin: 0 4px;">•</span><span style="font-size: 12px; color: #475569; font-weight: 600;">${courseEsc}</span>` : ''}
+            </div>
+            <span style="background: #dbeafe; color: #1d4ed8; font-size: 10px; font-weight: 800; padding: 2px 8px; border-radius: 12px; border: 1px solid #bfdbfe; flex-shrink: 0; margin-left: 6px;">${statusEsc}</span>
           </div>
-          ${courseEsc ? `<div style="font-size: 13px; color: #334155; font-weight: 600; margin-bottom: 4px;">🎓 Course: <span style="color: #0f172a;">${courseEsc}</span></div>` : ''}
-          ${extraEsc ? `<div style="font-size: 12.5px; color: #ea580c; font-weight: 700; margin-bottom: 6px; background: #fff7ed; padding: 4px 8px; border-radius: 6px; border: 1px solid #ffedd5; display: inline-block;">ℹ️ ${extraEsc}</div>` : ''}
-          <div style="display: flex; gap: 10px; margin-top: 12px;">
-            <a href="tel:${cleanMobile}" style="flex: 1; text-align: center; text-decoration: none; background: #2563eb; color: #ffffff; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.2); transition: all 0.2s;">
-              📞 Call Now
+          <!-- Row 2: Secondary Info -->
+          <div style="display: flex; align-items: center; gap: 6px; font-size: 12px; color: #475569; margin-bottom: 8px;">
+            <span>📱 ${cleanMobile}</span>
+            ${extraEsc ? `<span style="color: #94a3b8;">•</span><span style="color: #ea580c; font-weight: 700;">${extraEsc}</span>` : ''}
+          </div>
+          <!-- Row 3: Compact Action Strip -->
+          <div style="display: flex; gap: 8px;">
+            <a href="tel:${cleanMobile}" style="flex: 1; text-align: center; text-decoration: none; background: #2563eb; color: #ffffff; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(37, 99, 235, 0.2); transition: opacity 0.2s;">
+              📞 Call
             </a>
-            <a href="https://wa.me/${waMobile}" target="_blank" style="flex: 1; text-align: center; text-decoration: none; background: #16a34a; color: #ffffff; padding: 8px 14px; border-radius: 10px; font-size: 13px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 2px 4px rgba(22, 163, 74, 0.2); transition: all 0.2s;">
+            <a href="https://wa.me/${waMobile}" target="_blank" style="flex: 1; text-align: center; text-decoration: none; background: #16a34a; color: #ffffff; padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 800; display: flex; align-items: center; justify-content: center; gap: 4px; box-shadow: 0 1px 3px rgba(22, 163, 74, 0.2); transition: opacity 0.2s;">
               💬 WhatsApp
             </a>
           </div>
