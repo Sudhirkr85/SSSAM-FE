@@ -591,7 +591,7 @@
       removeTyping(typingId);
 
       if (response.data.success) {
-        const { message, language, action } = response.data.data;
+        const { message, language, action, rawData } = response.data.data;
         const lang = language || selectedLang;
 
         // If backend returned notes list, show with WhatsApp buttons
@@ -602,6 +602,9 @@
           });
         } else {
           addMessage('bot', message, true, lang, action);
+          if (rawData) {
+            addLeadCards(rawData);
+          }
         }
       } else {
         addMessage('bot', '⚠️ Kuch gadbad hui. Dobara try karo.');
@@ -641,6 +644,124 @@
       </div>
     `;
     messages.appendChild(card);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // ─── Lead / Student Card Box (with Call & WhatsApp buttons) ────────────────
+  function addLeadCards(rawData) {
+    if (!rawData) return;
+    const items = [];
+
+    if (Array.isArray(rawData.enquiries)) {
+      rawData.enquiries.forEach(e => {
+        if (e && e.mobile) {
+          items.push({
+            name: e.name || 'Enquiry',
+            mobile: e.mobile,
+            course: e.course || '',
+            status: e.status || 'NEW',
+            extra: e.followUpDate ? `Follow-up: ${e.followUpDate}` : ''
+          });
+        }
+      });
+    }
+
+    if (Array.isArray(rawData.admissions)) {
+      rawData.admissions.forEach(a => {
+        if (a && a.mobile) {
+          items.push({
+            name: a.name || 'Student',
+            mobile: a.mobile,
+            course: a.course || '',
+            status: a.status || 'ACTIVE',
+            extra: a.pendingAmount != null ? `Pending Fee: ₹${a.pendingAmount}` : ''
+          });
+        }
+      });
+    }
+
+    if (Array.isArray(rawData.followups)) {
+      rawData.followups.forEach(f => {
+        if (f && f.mobile) {
+          items.push({
+            name: f.name || 'Lead',
+            mobile: f.mobile,
+            course: f.course || '',
+            status: f.status || 'PENDING',
+            extra: f.followUpTime ? `Time: ${f.followUpTime}` : ''
+          });
+        }
+      });
+    }
+
+    if (Array.isArray(rawData.students)) {
+      rawData.students.forEach(s => {
+        if (s && s.mobile) {
+          items.push({
+            name: s.name || 'Student',
+            mobile: s.mobile,
+            course: s.course || '',
+            status: 'PENDING FEE',
+            extra: `Pending Dues: ₹${s.pendingAmount}`
+          });
+        }
+      });
+    }
+
+    if (rawData.type === 'mobile_search') {
+      if (rawData.admission && rawData.admission.mobile) {
+        items.push({
+          name: rawData.admission.name || 'Student',
+          mobile: rawData.admission.mobile,
+          course: rawData.admission.course || '',
+          status: rawData.admission.status || 'ACTIVE',
+          extra: `Pending Fee: ₹${rawData.admission.pendingAmount || 0}`
+        });
+      }
+      if (rawData.enquiry && rawData.enquiry.mobile) {
+        items.push({
+          name: rawData.enquiry.name || 'Enquiry',
+          mobile: rawData.enquiry.mobile,
+          course: rawData.enquiry.course || '',
+          status: rawData.enquiry.status || 'NEW',
+          extra: rawData.enquiry.followUpDate ? `Follow-up: ${rawData.enquiry.followUpDate}` : ''
+        });
+      }
+    }
+
+    if (items.length === 0) return;
+
+    const messages = document.getElementById('chat-messages');
+    items.forEach(item => {
+      const card = document.createElement('div');
+      card.className = 'chat-msg bot';
+      const cleanMobile = (item.mobile || '').toString().replace(/\D/g, '');
+      const waMobile = cleanMobile.length === 10 ? `91${cleanMobile}` : cleanMobile;
+      const nameEsc = escapeHtml(item.name);
+      const courseEsc = escapeHtml(item.course);
+      const statusEsc = escapeHtml(item.status);
+      const extraEsc = escapeHtml(item.extra);
+
+      card.innerHTML = `
+        <div class="msg-bubble lead-card" style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 12px; margin-top: 6px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); color: #1e293b; font-family: inherit;">
+          <div style="display: flex; justify-content: space-between; align-items: center; font-weight: bold; font-size: 14px; margin-bottom: 4px;">
+            <span>👤 ${nameEsc}</span>
+            <span style="background: #dbeafe; color: #1d4ed8; font-size: 10px; font-weight: bold; padding: 2px 8px; border-radius: 6px;">${statusEsc}</span>
+          </div>
+          ${courseEsc ? `<div style="font-size: 12px; color: #64748b; margin-bottom: 2px;">🎓 Course: ${courseEsc}</div>` : ''}
+          ${extraEsc ? `<div style="font-size: 12px; color: #ea580c; font-weight: 600; margin-bottom: 8px;">ℹ️ ${extraEsc}</div>` : ''}
+          <div style="display: flex; gap: 8px; margin-top: 8px;">
+            <a href="tel:${cleanMobile}" style="flex: 1; text-align: center; text-decoration: none; background: #2563eb; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; transition: opacity 0.2s;">
+              📞 Call
+            </a>
+            <a href="https://wa.me/${waMobile}" target="_blank" style="flex: 1; text-align: center; text-decoration: none; background: #25d366; color: #ffffff; padding: 6px 12px; border-radius: 8px; font-size: 12px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 4px; transition: opacity 0.2s;">
+              💬 WhatsApp
+            </a>
+          </div>
+        </div>
+      `;
+      messages.appendChild(card);
+    });
     messages.scrollTop = messages.scrollHeight;
   }
 
