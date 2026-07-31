@@ -670,38 +670,29 @@ function playNotificationSound() {
     if (!soundEnabled) return;
 
     try {
-        const AudioCtx = window.AudioContext || window.webkitAudioContext;
-        if (!AudioCtx) return;
+        notificationSound.currentTime = 0;
+        const playPromise = notificationSound.play();
 
-        const audioContext = new AudioCtx();
-        const now = audioContext.currentTime;
+        if (playPromise !== undefined) {
+            playPromise.then(() => {
+            }).catch(error => {
+                // Try to create audio context and play - single beep
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
 
-        // Tone 1: Soft warm bell note (E5 - 659 Hz)
-        const osc1 = audioContext.createOscillator();
-        const gain1 = audioContext.createGain();
-        osc1.type = 'sine';
-        osc1.frequency.setValueAtTime(659.25, now);
-        gain1.gain.setValueAtTime(0.18, now);
-        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
-        osc1.connect(gain1);
-        gain1.connect(audioContext.destination);
-        osc1.start(now);
-        osc1.stop(now + 0.35);
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
 
-        // Tone 2: Pleasant sparkle note (B5 - 987 Hz) delayed by 0.08s
-        const osc2 = audioContext.createOscillator();
-        const gain2 = audioContext.createGain();
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(987.77, now + 0.08);
-        gain2.gain.setValueAtTime(0.001, now);
-        gain2.gain.setValueAtTime(0.22, now + 0.08);
-        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
-        osc2.connect(gain2);
-        gain2.connect(audioContext.destination);
-        osc2.start(now + 0.08);
-        osc2.stop(now + 0.5);
+                oscillator.frequency.value = 1000;
+                oscillator.type = 'sine';
+                gainNode.gain.value = 0.3;
+
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2);
+            });
+        }
     } catch (e) {
-        console.error('Audio play error:', e);
     }
 }
 
