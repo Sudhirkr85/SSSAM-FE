@@ -361,7 +361,6 @@
                 <select id="newUserRole" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 transition-all text-sm bg-white">
                   <option value="counselor">Counselor</option>
                   <option value="employee">Employee</option>
-                  <option value="admin">Admin</option>
                 </select>
               </div>
               <p id="addUserError" class="hidden text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-2.5"></p>
@@ -707,6 +706,12 @@
 
       if (password.length < 6) {
         errorEl.textContent = 'Password must be at least 6 characters.';
+        errorEl.classList.remove('hidden');
+        return;
+      }
+
+      if (role === 'admin') {
+        errorEl.textContent = 'Creating new Admin users is disabled.';
         errorEl.classList.remove('hidden');
         return;
       }

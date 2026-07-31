@@ -44,12 +44,9 @@ function setupSidebarLinks() {
         document.getElementById('dashboardLink')?.classList.remove('hidden');
         document.getElementById('enquiriesLink')?.classList.remove('hidden');
         document.getElementById('admissionsLink')?.classList.remove('hidden');
-        
         if (isUserAdmin) {
-            // document.getElementById('paymentsLink')?.classList.remove('hidden');
             document.getElementById('reportsLink')?.classList.remove('hidden');
             document.getElementById('adminAttendanceLink')?.classList.remove('hidden');
-            document.getElementById('officeSettingsLink')?.classList.remove('hidden');
         }
     } else {
         // Employee: hide everything

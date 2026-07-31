@@ -302,41 +302,70 @@ function applyRoleBasedUI() {
         }
     });
 
-    // Dynamic sidebar link injection for User Management (Admin only)
+    // Dynamic sidebar link injection for Admin-only links (Team Attendance & Users)
     const sidebarNav = document.querySelector('#sidebar nav');
     if (sidebarNav && isAdminUser) {
+        const path = window.location.pathname.split('/').pop();
+
+        // 1. Team Attendance Link
+        let teamAttendanceMenu = document.getElementById('adminAttendanceLink') || document.getElementById('teamAttendanceMenu');
+        if (!teamAttendanceMenu) {
+            teamAttendanceMenu = Array.from(sidebarNav.querySelectorAll('a')).find(a => a.getAttribute('href') === 'admin-attendance.html');
+        }
+
+        if (!teamAttendanceMenu) {
+            teamAttendanceMenu = document.createElement('a');
+            teamAttendanceMenu.id = 'teamAttendanceMenu';
+            teamAttendanceMenu.href = 'admin-attendance.html';
+
+            const isAdminAttendancePage = path === 'admin-attendance.html';
+            if (isAdminAttendancePage) {
+                teamAttendanceMenu.className = 'bg-gradient-to-r from-purple-600 to-purple-700 text-white flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg shadow-purple-500/25';
+            } else {
+                teamAttendanceMenu.className = 'flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group';
+            }
+
+            teamAttendanceMenu.innerHTML = `
+                <i data-lucide="users" class="w-[18px] h-[18px] ${isAdminAttendancePage ? 'text-white' : 'text-gray-400 group-hover:text-white transition-colors'}"></i>
+                <span class="text-sm font-medium ${isAdminAttendancePage ? 'text-white' : 'text-gray-300 group-hover:text-white'}">Team Attendance</span>
+            `;
+
+            sidebarNav.appendChild(teamAttendanceMenu);
+        } else {
+            teamAttendanceMenu.classList.remove('hidden');
+        }
+
+        // 2. Users Link
         let usersMenu = document.getElementById('usersMenu');
+        if (!usersMenu) {
+            usersMenu = Array.from(sidebarNav.querySelectorAll('a')).find(a => a.getAttribute('href') === 'users.html');
+        }
+
         if (!usersMenu) {
             usersMenu = document.createElement('a');
             usersMenu.id = 'usersMenu';
             usersMenu.href = 'users.html';
-            
-            const path = window.location.pathname.split('/').pop();
+
             const isUsersPage = path === 'users.html';
-            
             if (isUsersPage) {
                 usersMenu.className = 'bg-gradient-to-r from-purple-600 to-purple-700 text-white flex items-center gap-3 px-4 py-2.5 rounded-lg shadow-lg shadow-purple-500/25';
             } else {
                 usersMenu.className = 'flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-white/10 transition-all duration-200 group';
             }
-            
+
             usersMenu.innerHTML = `
-                <i data-lucide="users" class="w-[18px] h-[18px] ${isUsersPage ? 'text-white' : 'text-gray-400 group-hover:text-white transition-colors'}"></i>
+                <i data-lucide="user-cog" class="w-[18px] h-[18px] ${isUsersPage ? 'text-white' : 'text-gray-400 group-hover:text-white transition-colors'}"></i>
                 <span class="text-sm font-medium ${isUsersPage ? 'text-white' : 'text-gray-300 group-hover:text-white'}">Users</span>
             `;
-            
-            // Insert before office-settings if exists, otherwise append
-            const officeSettingsLink = Array.from(sidebarNav.querySelectorAll('a')).find(a => a.getAttribute('href') === 'office-settings.html');
-            if (officeSettingsLink) {
-                sidebarNav.insertBefore(usersMenu, officeSettingsLink);
-            } else {
-                sidebarNav.appendChild(usersMenu);
-            }
-            
-            // Re-initialize Lucide Icons if available
-            if (typeof lucide !== 'undefined') {
-                lucide.createIcons();
-            }
+
+            sidebarNav.appendChild(usersMenu);
+        } else {
+            usersMenu.classList.remove('hidden');
+        }
+
+        // Re-initialize Lucide Icons if available
+        if (typeof lucide !== 'undefined') {
+            lucide.createIcons();
         }
     }
 }

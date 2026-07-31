@@ -267,6 +267,11 @@ async function submitNewUser(event) {
         return;
     }
 
+    if (role === 'admin') {
+        showToast('error', 'Creating new Admin users is disabled');
+        return;
+    }
+
     const saveUserBtn = document.getElementById('saveUserBtn');
     const originalText = saveUserBtn.innerHTML;
 
@@ -318,6 +323,11 @@ async function submitRoleChange(event) {
 
     if (!userId || !role) {
         showToast('error', 'Role selection is required');
+        return;
+    }
+
+    if (role === 'admin') {
+        showToast('error', 'Promoting users to Admin is disabled');
         return;
     }
 
