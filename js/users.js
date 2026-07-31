@@ -1,6 +1,6 @@
 /**
  * User Management Page JS script
- * Handles fetching, listing, filtering, and registering new users.
+ * Handles fetching, listing, filtering, registering, role updating, and resetting passwords for users.
  */
 
 let usersList = [];
@@ -15,54 +15,71 @@ document.addEventListener('DOMContentLoaded', () => {
 MODAL TOGGLE FUNCTIONALITY
 ====================== */
 function initModalEvents() {
+    // Add User Modal
     const addUserBtn = document.getElementById('addUserBtn');
     const closeModalBtn = document.getElementById('closeModalBtn');
     const cancelModalBtn = document.getElementById('cancelModalBtn');
     const addUserModal = document.getElementById('addUserModal');
     const modalContent = document.getElementById('modalContent');
 
-    // Open Modal
     addUserBtn?.addEventListener('click', () => {
-        // Reset form
         document.getElementById('addUserForm').reset();
-        
-        addUserModal.classList.remove('hidden');
-        addUserModal.classList.add('flex');
-        
-        // Trigger transitions
-        setTimeout(() => {
-            addUserModal.classList.remove('opacity-0');
-            addUserModal.classList.add('opacity-100');
-            modalContent.classList.remove('scale-95');
-            modalContent.classList.add('scale-100');
-        }, 10);
+        showModal(addUserModal, modalContent);
     });
 
-    // Close Modal helper
-    const closeModal = () => {
-        addUserModal.classList.remove('opacity-100');
-        addUserModal.classList.add('opacity-0');
-        modalContent.classList.remove('scale-100');
-        modalContent.classList.add('scale-95');
-        
-        setTimeout(() => {
-            addUserModal.classList.remove('flex');
-            addUserModal.classList.add('hidden');
-        }, 200);
-    };
+    const closeAddModal = () => hideModal(addUserModal, modalContent);
+    closeModalBtn?.addEventListener('click', closeAddModal);
+    cancelModalBtn?.addEventListener('click', closeAddModal);
+    addUserModal?.addEventListener('click', (e) => { if (e.target === addUserModal) closeAddModal(); });
+    window.closeAddUserModal = closeAddModal;
 
-    closeModalBtn?.addEventListener('click', closeModal);
-    cancelModalBtn?.addEventListener('click', closeModal);
-    
-    // Close on overlay click
-    addUserModal?.addEventListener('click', (e) => {
-        if (e.target === addUserModal) {
-            closeModal();
-        }
-    });
+    // Edit Role Modal
+    const editRoleModal = document.getElementById('editRoleModal');
+    const editRoleModalContent = document.getElementById('editRoleModalContent');
+    const closeEditRoleBtn = document.getElementById('closeEditRoleBtn');
+    const cancelEditRoleBtn = document.getElementById('cancelEditRoleBtn');
 
-    // Save callback to window for form submit handler to close it
-    window.closeAddUserModal = closeModal;
+    const closeEditRole = () => hideModal(editRoleModal, editRoleModalContent);
+    closeEditRoleBtn?.addEventListener('click', closeEditRole);
+    cancelEditRoleBtn?.addEventListener('click', closeEditRole);
+    editRoleModal?.addEventListener('click', (e) => { if (e.target === editRoleModal) closeEditRole(); });
+    window.closeEditRoleModal = closeEditRole;
+
+    // Reset Password Modal
+    const resetPasswordModal = document.getElementById('resetPasswordModal');
+    const resetPassModalContent = document.getElementById('resetPassModalContent');
+    const closeResetPassBtn = document.getElementById('closeResetPassBtn');
+    const cancelResetPassBtn = document.getElementById('cancelResetPassBtn');
+
+    const closeResetPass = () => hideModal(resetPasswordModal, resetPassModalContent);
+    closeResetPassBtn?.addEventListener('click', closeResetPass);
+    cancelResetPassBtn?.addEventListener('click', closeResetPass);
+    resetPasswordModal?.addEventListener('click', (e) => { if (e.target === resetPasswordModal) closeResetPass(); });
+    window.closeResetPassModal = closeResetPass;
+}
+
+function showModal(modal, content) {
+    if (!modal || !content) return;
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.classList.add('opacity-100');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+    }, 10);
+}
+
+function hideModal(modal, content) {
+    if (!modal || !content) return;
+    modal.classList.remove('opacity-100');
+    modal.classList.add('opacity-0');
+    content.classList.remove('scale-100');
+    content.classList.add('scale-95');
+    setTimeout(() => {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
+    }, 200);
 }
 
 /* ======================
@@ -98,7 +115,7 @@ async function fetchUsersList() {
             showToast('error', errorMsg);
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="5" class="px-6 py-12 text-center text-red-500 font-medium">
+                    <td colspan="6" class="px-6 py-12 text-center text-red-500 font-medium">
                         ${errorMsg}
                     </td>
                 </tr>
@@ -109,7 +126,7 @@ async function fetchUsersList() {
         showToast('error', 'Network error while loading users');
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-12 text-center text-red-500 font-medium">
+                <td colspan="6" class="px-6 py-12 text-center text-red-500 font-medium">
                     Could not load users. Please check backend connection.
                 </td>
             </tr>
@@ -125,7 +142,6 @@ function renderUsers(users) {
     const searchVal = document.getElementById('searchInput').value.toLowerCase().trim();
     const roleVal = document.getElementById('roleFilter').value;
 
-    // Filter list
     const filteredUsers = users.filter(user => {
         const matchesSearch = user.name?.toLowerCase().includes(searchVal) || 
                               user.email?.toLowerCase().includes(searchVal);
@@ -136,7 +152,7 @@ function renderUsers(users) {
     if (filteredUsers.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" class="px-6 py-8 text-center text-gray-400">
+                <td colspan="6" class="px-6 py-8 text-center text-gray-400">
                     No users found matching your search.
                 </td>
             </tr>
@@ -145,10 +161,8 @@ function renderUsers(users) {
     }
 
     tbody.innerHTML = filteredUsers.map(user => {
-        // Initials avatar
         const initials = user.name ? user.name.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase() : 'U';
         
-        // Role Styling
         let roleBadge = '';
         if (user.role === 'admin') {
             roleBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-50 text-rose-600 border border-rose-100 flex items-center gap-1 w-fit"><i data-lucide="shield-check" class="w-3 h-3"></i> Admin</span>`;
@@ -158,8 +172,6 @@ function renderUsers(users) {
             roleBadge = `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-blue-50 text-blue-600 border border-blue-100 flex items-center gap-1 w-fit"><i data-lucide="briefcase" class="w-3 h-3"></i> Employee</span>`;
         }
 
-        // Just fake joined date based on ID timestamp (since created date is not explicitly fetched/stored)
-        // Or default if not parseable
         let joinedDate = 'N/A';
         if (user._id) {
             const timestamp = parseInt(user._id.substring(0, 8), 16) * 1000;
@@ -171,6 +183,8 @@ function renderUsers(users) {
                 });
             }
         }
+
+        const safeName = (user.name || '').replace(/'/g, "\\'");
 
         return `
             <tr class="hover:bg-slate-50/50 transition-colors">
@@ -194,11 +208,26 @@ function renderUsers(users) {
                 <td class="px-6 py-4">
                     <span class="px-2 py-0.5 text-xs font-medium bg-emerald-100 text-emerald-700 rounded-md">Active</span>
                 </td>
+                <td class="px-6 py-4 text-right">
+                    ${user.role === 'admin' ? `
+                        <span class="text-xs text-slate-400 font-medium inline-flex items-center gap-1">
+                            <i data-lucide="lock" class="w-3 h-3"></i> Protected
+                        </span>
+                    ` : `
+                        <div class="flex items-center justify-end gap-2">
+                            <button onclick="openEditRoleModal('${user._id}', '${safeName}', '${user.role}')" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="Change Role">
+                                <i data-lucide="shield" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="openResetPasswordModal('${user._id}', '${safeName}')" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Reset Password">
+                                <i data-lucide="key-round" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    `}
+                </td>
             </tr>
         `;
     }).join('');
 
-    // Reinitialize Lucide Icons for dynamic role icon rendering
     if (typeof lucide !== 'undefined') {
         lucide.createIcons();
     }
@@ -228,7 +257,6 @@ async function submitNewUser(event) {
     const password = document.getElementById('passwordInput').value;
     const role = document.getElementById('roleInput').value;
 
-    // Client-side validations
     if (!name || !email || !password || !role) {
         showToast('error', 'All fields are required');
         return;
@@ -242,12 +270,9 @@ async function submitNewUser(event) {
     const saveUserBtn = document.getElementById('saveUserBtn');
     const originalText = saveUserBtn.innerHTML;
 
-    // Loading State
     saveUserBtn.disabled = true;
     saveUserBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...`;
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons();
-    }
+    if (typeof lucide !== 'undefined') lucide.createIcons();
 
     try {
         const registerData = { name, email, password, role };
@@ -255,8 +280,6 @@ async function submitNewUser(event) {
 
         if (response && response.success) {
             showToast('success', 'User registered successfully!');
-            
-            // Close modal & reload users
             window.closeAddUserModal();
             fetchUsersList();
         } else {
@@ -268,11 +291,118 @@ async function submitNewUser(event) {
         const errMsg = err.response?.data?.message || err.message || 'Error occurred';
         showToast('error', errMsg);
     } finally {
-        // Reset loading state
         saveUserBtn.disabled = false;
         saveUserBtn.innerHTML = originalText;
-        if (typeof lucide !== 'undefined') {
-            lucide.createIcons();
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+/* ======================
+EDIT ROLE MODAL & ACTION
+====================== */
+function openEditRoleModal(userId, name, currentRole) {
+    document.getElementById('editRoleIdInput').value = userId;
+    document.getElementById('editRoleNameDisplay').value = name;
+    document.getElementById('editRoleSelect').value = currentRole || 'counselor';
+    
+    const modal = document.getElementById('editRoleModal');
+    const content = document.getElementById('editRoleModalContent');
+    showModal(modal, content);
+}
+
+async function submitRoleChange(event) {
+    event.preventDefault();
+
+    const userId = document.getElementById('editRoleIdInput').value;
+    const role = document.getElementById('editRoleSelect').value;
+
+    if (!userId || !role) {
+        showToast('error', 'Role selection is required');
+        return;
+    }
+
+    const saveRoleBtn = document.getElementById('saveRoleBtn');
+    const originalText = saveRoleBtn.innerHTML;
+
+    saveRoleBtn.disabled = true;
+    saveRoleBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Updating...`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    try {
+        const response = await updateUserRole(userId, role);
+
+        if (response && response.success) {
+            showToast('success', 'User role updated successfully!');
+            window.closeEditRoleModal();
+            fetchUsersList();
+        } else {
+            const errorMsg = response?.message || response?.error?.message || 'Failed to update role';
+            showToast('error', errorMsg);
         }
+    } catch (err) {
+        console.error('Error updating role:', err);
+        const errMsg = err.response?.data?.message || err.message || 'Error occurred';
+        showToast('error', errMsg);
+    } finally {
+        saveRoleBtn.disabled = false;
+        saveRoleBtn.innerHTML = originalText;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+/* ======================
+RESET PASSWORD MODAL & ACTION
+====================== */
+function openResetPasswordModal(userId, name) {
+    document.getElementById('resetPassIdInput').value = userId;
+    document.getElementById('resetPassNameDisplay').value = name;
+    document.getElementById('newPasswordInput').value = '';
+
+    const modal = document.getElementById('resetPasswordModal');
+    const content = document.getElementById('resetPassModalContent');
+    showModal(modal, content);
+}
+
+async function submitResetPassword(event) {
+    event.preventDefault();
+
+    const userId = document.getElementById('resetPassIdInput').value;
+    const newPassword = document.getElementById('newPasswordInput').value;
+
+    if (!userId || !newPassword) {
+        showToast('error', 'New password is required');
+        return;
+    }
+
+    if (newPassword.length < 6) {
+        showToast('error', 'Password must be at least 6 characters');
+        return;
+    }
+
+    const saveResetPassBtn = document.getElementById('saveResetPassBtn');
+    const originalText = saveResetPassBtn.innerHTML;
+
+    saveResetPassBtn.disabled = true;
+    saveResetPassBtn.innerHTML = `<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Resetting...`;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+
+    try {
+        const response = await resetUserPassword(userId, newPassword);
+
+        if (response && response.success) {
+            showToast('success', 'User password reset successfully!');
+            window.closeResetPassModal();
+        } else {
+            const errorMsg = response?.message || response?.error?.message || 'Failed to reset password';
+            showToast('error', errorMsg);
+        }
+    } catch (err) {
+        console.error('Error resetting password:', err);
+        const errMsg = err.response?.data?.message || err.message || 'Error occurred';
+        showToast('error', errMsg);
+    } finally {
+        saveResetPassBtn.disabled = false;
+        saveResetPassBtn.innerHTML = originalText;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     }
 }

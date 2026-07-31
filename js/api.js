@@ -295,6 +295,14 @@ async function registerUser(userData) {
     return await apiPost(API_ENDPOINTS.AUTH.REGISTER, userData);
 }
 
+async function updateUserRole(userId, role) {
+    return await apiPut(`/users/${userId}/role`, { role });
+}
+
+async function resetUserPassword(userId, newPassword) {
+    return await apiPut(`/users/${userId}/reset-password`, { newPassword });
+}
+
 /* ======================
 DATE FORMATTING UTILITIES
 ====================== */

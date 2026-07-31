@@ -151,11 +151,22 @@ async function removeFCMTokenOnLogout() {
 FIREBASE NOTIFICATION HANDLERS
 ====================== */
 function handleFirebaseNotification(payload) {
+    // Deduplicate foreground events across fast triggers or multi-tab sync
+    const notifTitle = payload.notification?.title || payload.data?.title || '';
+    const notifBody = payload.notification?.body || payload.data?.body || '';
+    const dedupeKey = `${notifTitle}:${notifBody}`;
+    
+    if (window._lastNotifKey === dedupeKey && (Date.now() - (window._lastNotifTime || 0) < 3000)) {
+        return;
+    }
+    window._lastNotifKey = dedupeKey;
+    window._lastNotifTime = Date.now();
+
     const notification = {
         id: generateId(),
         type: payload.data?.type || 'general',
-        title: payload.notification?.title || 'New Notification',
-        message: payload.notification?.body || '',
+        title: notifTitle || 'New Notification',
+        message: notifBody,
         data: payload.data || {},
         timestamp: new Date().toISOString(),
         read: false
@@ -170,7 +181,7 @@ function handleFirebaseNotification(payload) {
     // Show modal popup for foreground
     showNotificationModal(payload.notification, payload.data);
 
-    // Show browser notification
+    // Show browser notification if tab is in background
     showBrowserNotification(notification);
 
     // Show toast
@@ -714,7 +725,8 @@ function requestBrowserNotificationPermission() {
 }
 
 function showBrowserNotification(notification) {
-    if ('Notification' in window && Notification.permission === 'granted') {
+    // Only show desktop browser pop-up notification if the tab is currently in the background
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
         const browserNotification = new Notification(notification.title, {
             body: notification.message,
             icon: '/favicon.ico',
