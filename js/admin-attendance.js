@@ -1,7 +1,8 @@
 // State to hold current calendar parameters
-let currentYear = 2026;
-let currentMonth = 6; // July (0-indexed: 6)
-let selectedCustomMonth = '2026-07';
+const _adminInitDate = new Date();
+let currentYear = _adminInitDate.getFullYear();
+let currentMonth = _adminInitDate.getMonth(); // 0-indexed
+let selectedCustomMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 let allUsersList = [];
 let attendanceLogs = [];
 
@@ -22,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Set default month in month picker input
     const monthPicker = document.getElementById('adminMonthPicker');
     if (monthPicker) {
-        monthPicker.value = '2026-07';
+        monthPicker.value = selectedCustomMonth;
     }
 
     // Load users list first

@@ -3,9 +3,11 @@ let lastPunchType = 'OUT';
 let miniMap = null;
 let userMarker = null;
 let officeCircle = null;
-let selectedCustomMonth = '2026-07';
-let currentYear = 2026;
-let currentMonth = 6; // July (0-indexed)
+
+const _initDate = new Date();
+let currentYear = _initDate.getFullYear();
+let currentMonth = _initDate.getMonth(); // 0-indexed
+let selectedCustomMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
 
 document.addEventListener('DOMContentLoaded', async () => {
     // Auth Check
@@ -21,7 +23,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Set default month in month picker input
     const monthPicker = document.getElementById('attendanceMonthPicker');
     if (monthPicker) {
-        monthPicker.value = '2026-07';
+        monthPicker.value = selectedCustomMonth;
     }
     
     // Load Personal History & Punch States first so UI doesn't block
@@ -212,21 +214,6 @@ function togglePunchButtons() {
         if (circleStatus) circleStatus.textContent = "LOCK";
         return;
     }
-    
-    // Check if user already finished dynamic transaction session
-    if (window.hasCompletedToday) {
-        btn.disabled = true;
-        btn.className = "w-full py-3.5 px-4 bg-gray-200 text-gray-400 font-semibold rounded-xl cursor-not-allowed flex items-center justify-center gap-2";
-        btn.innerHTML = '<i data-lucide="check-circle" class="w-5 h-5"></i> <span>Daily Session Completed</span>';
-        
-        statusText.textContent = "Attendance Session Completed for Today";
-        statusText.className = "text-sm font-semibold text-purple-600";
-        
-        if (circleStatus) circleStatus.textContent = "DONE";
-        setStatusProgress(100);
-        lucide.createIcons();
-        return;
-    }
 
     // Dynamic Geofence disabling check
     if (window.isWithinGeofence === false) {
@@ -257,11 +244,12 @@ function togglePunchButtons() {
         setStatusProgress(60); // 60% dynamic ring completed
     } else {
         // Active status OUT -> Next action IN (Green Button)
+        const isResume = Boolean(window.hasPunchedOutToday);
         btn.className = "w-full py-3.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-600/20 hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2";
-        btn.innerHTML = '<i data-lucide="log-in" class="w-5 h-5"></i> <span>Punch In</span>';
+        btn.innerHTML = `<i data-lucide="log-in" class="w-5 h-5"></i> <span>${isResume ? 'Punch In Again (Resume)' : 'Punch In'}</span>`;
         
-        statusText.textContent = "You are currently PUNCHED OUT";
-        statusText.className = "text-lg font-bold text-gray-500";
+        statusText.textContent = isResume ? "Punched Out — Click to Resume / Punch In Again" : "You are currently PUNCHED OUT";
+        statusText.className = isResume ? "text-sm font-bold text-indigo-600" : "text-lg font-bold text-gray-500";
         
         if (circleStatus) circleStatus.textContent = "OUT";
         setStatusProgress(20); // 20% dynamic ring completed
@@ -277,24 +265,25 @@ async function handlePunchClick() {
 
     const type = lastPunchType === 'IN' ? 'OUT' : 'IN';
     
-    // Add confirmation warning dialog specifically for Punch Out
+    // Confirmation specifically when punching Out
     if (type === 'OUT') {
-        const confirmPunchOut = confirm("Are you sure you want to Punch Out? This will end your attendance session for today.");
+        const confirmPunchOut = confirm("Are you sure you want to Punch Out? (You can punch in again anytime today to resume your shift).");
         if (!confirmPunchOut) {
             return; // Cancel execution
         }
     }
 
     const btn = document.getElementById('punchActionBtn');
-    const originalContent = btn.innerHTML;
     
     btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Processing...';
     lucide.createIcons();
     
     try {
-        await punchAttendance(userCoords);
-        showToast('Success', `Successfully punched ${type === 'IN' ? 'In' : 'Out'}!`, 'success');
+        const res = await punchAttendance(userCoords);
+        const serverMsg = res.message || res.data?.message;
+        const msg = serverMsg || `Successfully punched ${type === 'IN' ? 'In' : 'Out'}!`;
+        showToast('Success', msg, 'success');
         
         // Reload details
         await loadPersonalHistory();
@@ -410,15 +399,27 @@ async function loadPersonalHistory() {
         
         // Find latest log of today to determine state
         const todayStr = new Date().toISOString().split('T')[0];
-        const todayLog = data.find(log => log.date === todayStr);
+        let todayLog = data.find(log => log.date === todayStr);
+
+        // If currently viewing a different month in table/calendar, fetch today's actual status for the live punch console
+        const actualCurMonthStr = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
+        if (!todayLog && selectedCustomMonth !== actualCurMonthStr) {
+            try {
+                const curRes = await getPersonalAttendanceHistory(`custom_${actualCurMonthStr}`);
+                const curData = curRes.data || [];
+                todayLog = curData.find(log => log.date === todayStr);
+            } catch (e) {
+                console.warn("Could not fetch current month today log:", e);
+            }
+        }
         
-        let hasCompletedToday = false;
+        let hasPunchedOutToday = false;
         if (todayLog) {
             if (todayLog.punchIn && !todayLog.punchOut) {
                 lastPunchType = 'IN';
             } else if (todayLog.punchIn && todayLog.punchOut) {
                 lastPunchType = 'OUT';
-                hasCompletedToday = true; // Block punch action for today
+                hasPunchedOutToday = true; // Recorded OUT, but can re-punch in (First IN to Last OUT)
             } else {
                 lastPunchType = 'OUT';
             }
@@ -439,7 +440,7 @@ async function loadPersonalHistory() {
             }, 1000);
         }
         
-        window.hasCompletedToday = hasCompletedToday;
+        window.hasPunchedOutToday = hasPunchedOutToday;
         togglePunchButtons();
         
         // 1. Populate Table List View
