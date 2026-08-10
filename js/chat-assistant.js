@@ -1150,26 +1150,20 @@
     addMessage('bot', `❌ Status update cancel kar diya gaya.`);
   };
 
-  // ─── Step-wise Guided Direct Admission Flow ──────────────────────────────
+  // ─── Step-wise Guided Direct Admission Flow (100% In-Chat) ────────────────
   function startDirectAdmissionFlow() {
     chatState.mode = 'awaiting_adm_student';
     chatState.data = {};
     addMessage('bot',
       `🎓 **Direct Admission Flow (Step 1/4):**\n\n` +
-      `Kripya Student ka **Naam** aur **Mobile Number** type karein:\n` +
-      `_(Jaise: "Aarav Sharma 9876543210")_\n\n` +
-      `💡 Ya form pop-up se karne ke liye button dabayein 👇`,
+      `Kripya Student ka **Naam** aur **Mobile Number** chat mein type karein:\n` +
+      `_(Jaise: "Aarav Sharma 9876543210")_`,
       false, selectedLang, null,
       [
-        { label: '📋 Form Pop-up Kholo', action: 'openAdmissionPage()' },
         { label: '❌ Cancel', action: 'cancelAdmissionFlow()' }
       ]
     );
   }
-
-  window.openAdmissionPage = function () {
-    window.location.href = 'admissions.html?new=true';
-  };
 
   function handleAdmStudent(query) {
     const mobileMatch = query.match(/\b[6-9]\d{9}\b/);
@@ -1234,11 +1228,10 @@
       `💰 **Total Fees:** ₹${totalFees.toLocaleString('en-IN')}\n` +
       `💵 **Down Payment:** ₹${amount.toLocaleString('en-IN')} (${mode})\n` +
       `🧾 **Remaining Dues:** ₹${remaining.toLocaleString('en-IN')}\n\n` +
-      `Is admission ko save aur invoice generate karein?`,
+      `Is admission ko direct CRM mein save karein?`,
       false, selectedLang, null,
       [
         { label: '✅ Confirm Admission & Save', action: 'confirmAdmissionSave()' },
-        { label: '📋 Form Pop-up Kholo', action: 'openAdmissionPage()' },
         { label: '❌ Cancel', action: 'cancelAdmissionFlow()' }
       ]
     );
@@ -1297,26 +1290,20 @@
     addMessage('bot', `❌ Admission process cancel kar diya gaya.`);
   };
 
-  // ─── Step-wise Guided New Enquiry Flow with Validation ────────────────────
+  // ─── Step-wise Guided New Enquiry Flow (100% In-Chat) ─────────────────────
   function startNewEnquiryFlow() {
     chatState.mode = 'awaiting_enq_student';
     chatState.data = {};
     addMessage('bot',
       `📝 **New Enquiry Flow (Step 1/2):**\n\n` +
-      `Kripya Student ka **Naam** aur **10-digit Mobile Number** type karein:\n` +
-      `_(Jaise: "Pooja Verma 9876543210")_\n\n` +
-      `💡 Ya form pop-up se add karne ke liye button dabayein 👇`,
+      `Kripya Student ka **Naam** aur **10-digit Mobile Number** chat mein type karein:\n` +
+      `_(Jaise: "Pooja Verma 9876543210")_`,
       false, selectedLang, null,
       [
-        { label: '📋 Form Pop-up Kholo', action: 'openEnquiryPage()' },
         { label: '❌ Cancel', action: 'cancelEnquiryFlow()' }
       ]
     );
   }
-
-  window.openEnquiryPage = function () {
-    window.location.href = 'enquiries.html?new=true';
-  };
 
   function handleEnqStudent(query) {
     const mobileMatch = query.match(/\b[6-9]\d{9}\b/);
@@ -1359,7 +1346,6 @@
       false, selectedLang, null,
       [
         { label: '✅ Confirm & Save Enquiry', action: 'confirmEnquirySave()' },
-        { label: '📋 Form Pop-up Kholo', action: 'openEnquiryPage()' },
         { label: '❌ Cancel', action: 'cancelEnquiryFlow()' }
       ]
     );
