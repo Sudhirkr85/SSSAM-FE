@@ -213,6 +213,10 @@
               <i data-lucide="filter" class="w-4 h-4"></i>
               Filter: Pending Dues & Upcoming Sort
             </button>
+            <button id="addAdmissionBtn" onclick="openAdmissionModal()" class="px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 text-white rounded-xl shadow-lg shadow-emerald-500/20 hover:opacity-95 transition-all text-sm font-semibold flex items-center gap-2 active:scale-95">
+              <i data-lucide="plus-circle" class="w-5 h-5"></i>
+              <span>🎓 Direct Admission</span>
+            </button>
           </div>
         </div>
 
@@ -613,6 +617,15 @@
     // Show reports menu for admin
     if (user.role === 'admin') {
       document.getElementById('reportsMenu')?.classList.remove('hidden');
+    }
+
+    // Auto-open Direct Admission Modal if URL contains ?new=true
+    if (window.location.search.includes('new=true')) {
+      setTimeout(() => {
+        const btn = document.getElementById('addAdmissionBtn') || document.querySelector('[onclick*="openAdmissionModal"]');
+        if (btn) btn.click();
+        else if (typeof openAdmissionModal === 'function') openAdmissionModal();
+      }, 400);
     }
 
     // Logout

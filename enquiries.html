@@ -1157,7 +1157,17 @@
     
     // Set minimum date to today for follow-up date inputs
     const today = new Date().toISOString().split('T')[0];
-    document.getElementById('updateFollowUpDate').min = today;
+    const updateFollowUp = document.getElementById('updateFollowUpDate');
+    if (updateFollowUp) updateFollowUp.min = today;
+
+    // Auto-open New Enquiry Modal if URL contains ?new=true
+    if (window.location.search.includes('new=true')) {
+      setTimeout(() => {
+        const btn = document.getElementById('addEnquiryBtn') || document.querySelector('[onclick*="openAddModal"]');
+        if (btn) btn.click();
+        else if (typeof openAddModal === 'function') openAddModal();
+      }, 400);
+    }
 
     // Mobile menu functionality
     const mobileMenuToggle = document.getElementById('mobileMenuToggle');

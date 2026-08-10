@@ -128,6 +128,8 @@
         <!-- Quick Action Chips -->
         <div class="chat-quick-actions">
           <button class="quick-chip chip-overview" onclick="window.chatSendQuick('CRM Overview')">📊 Overview</button>
+          <button class="quick-chip" onclick="window.location.href='enquiries.html?new=true'">➕ New Enquiry</button>
+          <button class="quick-chip" onclick="window.location.href='admissions.html?new=true'">🎓 Direct Admission</button>
           <button class="quick-chip chip-followup" onclick="window.chatSendQuick('Today followups')">📅 Today Follow-ups</button>
           <button class="quick-chip chip-fee" onclick="window.chatSendQuick('Pending fees')">💰 Pending Fees</button>
           <button class="quick-chip" onclick="window.chatSendQuick('Interested leads')">⭐ Interested Leads</button>
@@ -535,9 +537,37 @@
     if (chatState.mode === 'awaiting_status_remark') {
       return handleStatusRemark(query);
     }
+    if (chatState.mode === 'awaiting_adm_student') {
+      return handleAdmStudent(query);
+    }
+    if (chatState.mode === 'awaiting_adm_course') {
+      return handleAdmCourse(query);
+    }
+    if (chatState.mode === 'awaiting_adm_fees') {
+      return handleAdmFees(query);
+    }
+    if (chatState.mode === 'awaiting_adm_payment') {
+      return handleAdmPayment(query);
+    }
+    if (chatState.mode === 'awaiting_enq_student') {
+      return handleEnqStudent(query);
+    }
+    if (chatState.mode === 'awaiting_enq_course') {
+      return handleEnqCourse(query);
+    }
+
+    // ── Detect direct admission intent ──
+    const lower = query.toLowerCase();
+    if (/\b(direct admission|admission karna|admission kar do|admission le lo|student admission)\b/.test(lower)) {
+      return startDirectAdmissionFlow();
+    }
+
+    // ── Detect new enquiry intent ──
+    if (/\b(new enquiry|nayi enquiry|enquiry add|enquiry add kar do|enquiry banao|add enquiry)\b/.test(lower)) {
+      return startNewEnquiryFlow();
+    }
 
     // ── Detect local note save intent (only if explicitly asked to save a note) ──
-    const lower = query.toLowerCase();
     const isSaveNoteIntent = /\b(save note|note save|save memo|note likho|isko save|isey save)\b/.test(lower) &&
       !/\b(draft|write|create|compose|fee reminder|attendance|payment|follow up|overview|summary)\b/.test(lower);
 
@@ -1015,6 +1045,8 @@
 
       toolsHtml = `
         <div class="msg-tools">
+          <button class="msg-tool-btn rating-btn" onclick="window.chatRateMessage(this, 'like', '${escapedForAttr}')" title="Helpful 👍">👍</button>
+          <button class="msg-tool-btn rating-btn" onclick="window.chatRateMessage(this, 'dislike', '${escapedForAttr}')" title="Not Helpful 👎">👎</button>
           <button class="msg-tool-btn" onclick="window.chatSpeak('${escapedForAttr}', '${lang}')" title="Listen">🔊 Listen</button>
           <button class="msg-tool-btn" onclick="window.chatCopy(this, '${escapedForAttr}')" title="Copy Report">📋 Copy Report</button>
           ${waSendBtn}
@@ -1040,6 +1072,48 @@
 
   window.chatOpenWhatsAppPicker = function () {
     window.openWaNotesPicker('', 'Student');
+  };
+
+  window.chatRateMessage = function (btn, type, originalText) {
+    if (type === 'like') {
+      btn.innerHTML = '👍 Liked!';
+      btn.style.color = '#86efac';
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      axios.post(`${getApiBase()}/chat`, {
+        query: 'feedback: positive rating for good response',
+        language: selectedLang
+      }, { headers: { Authorization: `Bearer ${token}` } }).catch(() => {});
+    } else if (type === 'dislike') {
+      btn.innerHTML = '👎 Disliked';
+      btn.style.color = '#fca5a5';
+
+      addMessage('bot',
+        `🙏 **Help Jiya AI Improve:**\n\n` +
+        `Is response mein kya problem thi?\n` +
+        `_(Jaise: "Response too long", "Wrong date", ya "Unclear format")_\n\n` +
+        `Niche type karein ya button dabayein 👇`,
+        false, selectedLang, null,
+        [
+          { label: '📏 Response Short Rakho', action: 'submitDislikeReason("Response short & concise rakha karo")' },
+          { label: '❌ Data Check Karo', action: 'submitDislikeReason("Double check data and dates")' },
+          { label: '❓ Format Clean Karo', action: 'submitDislikeReason("Use simple clean bullet points")' }
+        ]
+      );
+    }
+  };
+
+  window.submitDislikeReason = function (reason) {
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    axios.post(`${getApiBase()}/chat`, {
+      query: `feedback: ${reason}`,
+      language: selectedLang
+    }, { headers: { Authorization: `Bearer ${token}` } })
+    .then(res => {
+      if (res.data?.success) {
+        addMessage('bot', `✨ **Thank you!** Jiya AI ne aapka feedback save kar liya hai: _"${reason}"_. Future responses iske hisab se improve honge!`);
+      }
+    })
+    .catch(() => {});
   };
 
   function handleStatusRemark(remark) {
@@ -1074,6 +1148,258 @@
   window.cancelStatusUpdate = function () {
     resetState();
     addMessage('bot', `❌ Status update cancel kar diya gaya.`);
+  };
+
+  // ─── Step-wise Guided Direct Admission Flow ──────────────────────────────
+  function startDirectAdmissionFlow() {
+    chatState.mode = 'awaiting_adm_student';
+    chatState.data = {};
+    addMessage('bot',
+      `🎓 **Direct Admission Flow (Step 1/4):**\n\n` +
+      `Kripya Student ka **Naam** aur **Mobile Number** type karein:\n` +
+      `_(Jaise: "Aarav Sharma 9876543210")_\n\n` +
+      `💡 Ya form pop-up se karne ke liye button dabayein 👇`,
+      false, selectedLang, null,
+      [
+        { label: '📋 Form Pop-up Kholo', action: 'openAdmissionPage()' },
+        { label: '❌ Cancel', action: 'cancelAdmissionFlow()' }
+      ]
+    );
+  }
+
+  window.openAdmissionPage = function () {
+    window.location.href = 'admissions.html?new=true';
+  };
+
+  function handleAdmStudent(query) {
+    const mobileMatch = query.match(/\b[6-9]\d{9}\b/);
+    const mobile = mobileMatch ? mobileMatch[0] : '';
+    const name = query.replace(/\b[6-9]\d{9}\b/g, '').trim() || 'Student';
+
+    chatState.data.name = name;
+    chatState.data.mobile = mobile;
+    chatState.mode = 'awaiting_adm_course';
+
+    addMessage('bot',
+      `👍 Student: **${name}** ${mobile ? `(📱 ${mobile})` : ''}\n\n` +
+      `📚 **Step 2/4 (Course Selection):**\n` +
+      `Kaunse course mein admission karna hai?\n` +
+      `_(Jaise: "BCA", "DCA", "Tally Prime", "Python")_`
+    );
+  }
+
+  function handleAdmCourse(course) {
+    chatState.data.course = course;
+    chatState.mode = 'awaiting_adm_fees';
+
+    addMessage('bot',
+      `👍 Course: **${course}**\n\n` +
+      `💰 **Step 3/4 (Total Fees):**\n` +
+      `Is course ki total fees kitni hai?\n` +
+      `_(Jaise: "15000")_`
+    );
+  }
+
+  function handleAdmFees(feesStr) {
+    const fees = parseInt(feesStr.replace(/\D/g, '')) || 0;
+    chatState.data.totalFees = fees;
+    chatState.mode = 'awaiting_adm_payment';
+
+    addMessage('bot',
+      `👍 Total Fees: **₹${fees.toLocaleString('en-IN')}**\n\n` +
+      `💵 **Step 4/4 (Initial Down Payment & Payment Mode):**\n` +
+      `Initial down payment amount aur payment mode type karein:\n` +
+      `_(Jaise: "5000 UPI" ya "3000 Cash")_`
+    );
+  }
+
+  function handleAdmPayment(payStr) {
+    const amount = parseInt(payStr.replace(/\D/g, '')) || 0;
+    let mode = 'Cash';
+    if (/upi/i.test(payStr)) mode = 'UPI';
+    else if (/card/i.test(payStr)) mode = 'Card';
+    else if (/net|bank/i.test(payStr)) mode = 'NetBanking';
+
+    chatState.data.initialPayment = amount;
+    chatState.data.initialPaymentMode = mode;
+    chatState.mode = 'awaiting_adm_confirm';
+
+    const { name, mobile, course, totalFees } = chatState.data;
+    const remaining = totalFees - amount;
+
+    addMessage('bot',
+      `📋 **Direct Admission Preview:**\n\n` +
+      `👤 **Student:** ${name} ${mobile ? `(📱 ${mobile})` : ''}\n` +
+      `📚 **Course:** ${course}\n` +
+      `💰 **Total Fees:** ₹${totalFees.toLocaleString('en-IN')}\n` +
+      `💵 **Down Payment:** ₹${amount.toLocaleString('en-IN')} (${mode})\n` +
+      `🧾 **Remaining Dues:** ₹${remaining.toLocaleString('en-IN')}\n\n` +
+      `Is admission ko save aur invoice generate karein?`,
+      false, selectedLang, null,
+      [
+        { label: '✅ Confirm Admission & Save', action: 'confirmAdmissionSave()' },
+        { label: '📋 Form Pop-up Kholo', action: 'openAdmissionPage()' },
+        { label: '❌ Cancel', action: 'cancelAdmissionFlow()' }
+      ]
+    );
+  }
+
+  window.confirmAdmissionSave = async function () {
+    const data = chatState.data;
+    resetState();
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+    try {
+      const response = await axios.post(`${getApiBase()}/admissions`, {
+        name: data.name,
+        mobile: data.mobile || '9999999999',
+        course: data.course,
+        totalFees: data.totalFees,
+        initialPayment: data.initialPayment,
+        initialPaymentMode: data.initialPaymentMode,
+        admissionDate: new Date().toISOString()
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        const admission = response.data.data.admission || response.data.data;
+        const receiptMsg = `Namaste ${data.name}! Aapka ${data.course} course mein admission ho gaya hai. Total Fees: ₹${data.totalFees}, Paid: ₹${data.initialPayment}. Thank you!`;
+
+        addMessage('bot',
+          `🎉 **Admission Successfully Saved!**\n\n` +
+          `🎓 **${data.name}** ka **${data.course}** mein admission complete ho gaya hai.\n` +
+          `🧾 Receipt & Installment record created in CRM.`
+        );
+
+        if (data.mobile && data.mobile.length === 10) {
+          addMessage('bot',
+            `📲 Student ko WhatsApp invoice receipt bhejne ke liye click karein 👇`,
+            false, selectedLang, {
+              type: 'whatsapp',
+              mobile: data.mobile,
+              name: data.name,
+              text: receiptMsg
+            }
+          );
+        }
+      } else {
+        addMessage('bot', `⚠️ Admission save nahi ho saka: ${response.data.message || 'Error'}`);
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Server error';
+      addMessage('bot', `❌ Admission error: ${msg}`);
+    }
+  };
+
+  window.cancelAdmissionFlow = function () {
+    resetState();
+    addMessage('bot', `❌ Admission process cancel kar diya gaya.`);
+  };
+
+  // ─── Step-wise Guided New Enquiry Flow with Validation ────────────────────
+  function startNewEnquiryFlow() {
+    chatState.mode = 'awaiting_enq_student';
+    chatState.data = {};
+    addMessage('bot',
+      `📝 **New Enquiry Flow (Step 1/2):**\n\n` +
+      `Kripya Student ka **Naam** aur **10-digit Mobile Number** type karein:\n` +
+      `_(Jaise: "Pooja Verma 9876543210")_\n\n` +
+      `💡 Ya form pop-up se add karne ke liye button dabayein 👇`,
+      false, selectedLang, null,
+      [
+        { label: '📋 Form Pop-up Kholo', action: 'openEnquiryPage()' },
+        { label: '❌ Cancel', action: 'cancelEnquiryFlow()' }
+      ]
+    );
+  }
+
+  window.openEnquiryPage = function () {
+    window.location.href = 'enquiries.html?new=true';
+  };
+
+  function handleEnqStudent(query) {
+    const mobileMatch = query.match(/\b[6-9]\d{9}\b/);
+    if (!mobileMatch) {
+      addMessage('bot',
+        `⚠️ **Mobile Number Missing / Invalid!**\n\n` +
+        `Kripya valid **10-digit Mobile Number** bhi enter karein:\n` +
+        `_(Jaise: "Pooja Verma 9876543210")_`
+      );
+      return;
+    }
+
+    const mobile = mobileMatch[0];
+    const name = query.replace(/\b[6-9]\d{9}\b/g, '').trim() || 'Enquiry Student';
+
+    chatState.data.name = name;
+    chatState.data.mobile = mobile;
+    chatState.mode = 'awaiting_enq_course';
+
+    addMessage('bot',
+      `👍 Student: **${name}** (📱 ${mobile})\n\n` +
+      `📚 **Step 2/2 (Course Selection):**\n` +
+      `Kaunse course ke liye enquiry hai?\n` +
+      `_(Jaise: "BCA", "DCA", "Tally", "Python")_`
+    );
+  }
+
+  function handleEnqCourse(course) {
+    chatState.data.course = course;
+    chatState.mode = 'awaiting_enq_confirm';
+
+    const { name, mobile } = chatState.data;
+
+    addMessage('bot',
+      `📋 **New Enquiry Preview:**\n\n` +
+      `👤 **Student:** ${name}\n` +
+      `📱 **Mobile:** ${mobile}\n` +
+      `📚 **Course:** ${course}\n\n` +
+      `Is enquiry ko CRM database mein save karein?`,
+      false, selectedLang, null,
+      [
+        { label: '✅ Confirm & Save Enquiry', action: 'confirmEnquirySave()' },
+        { label: '📋 Form Pop-up Kholo', action: 'openEnquiryPage()' },
+        { label: '❌ Cancel', action: 'cancelEnquiryFlow()' }
+      ]
+    );
+  }
+
+  window.confirmEnquirySave = async function () {
+    const data = chatState.data;
+    resetState();
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+    try {
+      const response = await axios.post(`${getApiBase()}/enquiries`, {
+        name: data.name,
+        mobile: data.mobile,
+        course: data.course,
+        source: 'walk_in'
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.success) {
+        addMessage('bot',
+          `🎉 **Enquiry Successfully Created!**\n\n` +
+          `📝 **${data.name}** (📱 ${data.mobile}) ka enquiry record **${data.course}** course ke liye save ho gaya hai.`
+        );
+      } else {
+        addMessage('bot', `⚠️ Enquiry save nahi ho saka: ${response.data.message || 'Error'}`);
+      }
+    } catch (err) {
+      const msg = err.response?.data?.message || 'Server error';
+      addMessage('bot',
+        `❌ **Enquiry Error:** ${msg}\n\n` +
+        `Dobara try karne ke liye type karein *"New Enquiry"*`
+      );
+    }
+  };
+
+  window.cancelEnquiryFlow = function () {
+    resetState();
+    addMessage('bot', `❌ Enquiry creation process cancel kar diya gaya.`);
   };
 
   // ─── Typing Indicator ────────────────────────────────────────────────────
