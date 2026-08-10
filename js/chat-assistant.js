@@ -8,16 +8,21 @@
   'use strict';
 
   // ─── Config ─────────────────────────────────────────────────────────────
-  // NOTE: URL is resolved at call-time (not init-time) to pick up window.API_BASE_URL
-  // which is set by api.js. Hardcode Render as production fallback.
   function getApiBase() {
-    return window.API_BASE_URL || 'https://crm.sssamacademy.com/api';
+    if (window.API_BASE_URL) return window.API_BASE_URL;
+    const isLocal = typeof window !== 'undefined' && (
+      window.location.hostname === 'localhost' || 
+      window.location.hostname === '127.0.0.1' || 
+      window.location.hostname === ''
+    );
+    return isLocal ? 'http://localhost:5000/api' : 'https://crm.sssamacademy.com/api';
   }
-  let selectedLang = 'hindi'; // default language
+  let selectedLang = 'hindi'; // default language: Hindi
   let isListening = false;
   let recognition = null;
   let isSpeaking = false;
   let currentUtterance = null;
+
   function getCurrentChatUser() {
     try {
       const item = localStorage.getItem('user');
@@ -31,6 +36,47 @@
   function getChatWelcomeName() {
     const user = getCurrentChatUser();
     return user && user.name ? user.name.trim().split(' ')[0] : '';
+  }
+
+  function isAdminUser() {
+    const user = getCurrentChatUser();
+    if (user && user.role) {
+      const r = user.role.toLowerCase();
+      return r === 'admin' || r === 'superadmin';
+    }
+    try {
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      if (token) {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload && payload.role) {
+          const r = payload.role.toLowerCase();
+          return r === 'admin' || r === 'superadmin';
+        }
+      }
+    } catch (_) {}
+    return false;
+  }
+
+  function getTimeBasedGreeting(userName) {
+    const hour = new Date().getHours();
+    let salutation = 'Good Morning';
+    let icon = '🌅';
+    if (hour >= 12 && hour < 17) {
+      salutation = 'Good Afternoon';
+      icon = '☀️';
+    } else if (hour >= 17 && hour < 22) {
+      salutation = 'Good Evening';
+      icon = '🌆';
+    } else if (hour >= 22 || hour < 5) {
+      salutation = 'Hello';
+      icon = '🌙';
+    }
+
+    const namePart = userName ? ` ${userName}` : '';
+    return {
+      title: `${salutation}${namePart}! ${icon}`,
+      desc: `Main aapki <strong>Jiya AI</strong> assistant hoon. Aap mujhse <strong>bolkar 🎙️</strong> ya <strong>likhkar 💬</strong> puch sakte hain. Aapko aaj kya jankari chahiye ya kaunsa kaam karna hai?`
+    };
   }
 
   // ─── Conversation State Machine ──────────────────────────────────────────
@@ -47,12 +93,12 @@
   // ─── Inject HTML ─────────────────────────────────────────────────────────
   function injectChatWidget() {
     const welcomeName = getChatWelcomeName();
-    const welcomeTitle = welcomeName
-      ? `Namaste ${welcomeName}! SSSAM AI Assistant mein aapka swagat hai`
-      : 'Namaste! SSSAM AI Assistant mein aapka swagat hai';
+    const greeting = getTimeBasedGreeting(welcomeName);
+    const admin = isAdminUser();
+
     const html = `
       <!-- Floating Action Button -->
-      <button id="chat-fab" aria-label="AI Chat Assistant" title="AI Chat Assistant">
+      <button id="chat-fab" aria-label="Jiya AI Assistant" title="Jiya AI Assistant">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
@@ -60,48 +106,77 @@
       </button>
 
       <!-- Chat Panel -->
-      <div id="chat-panel" role="dialog" aria-label="AI Chat Assistant">
+      <div id="chat-panel" role="dialog" aria-label="Jiya AI Assistant">
         <!-- Header -->
         <div class="chat-header">
           <div class="chat-header-avatar">🤖</div>
           <div class="chat-header-info">
-            <h4>SSSAM AI Assistant</h4>
-            <p>Groq AI • Follow-ups • Fees</p>
+            <h4>Jiya AI Assistant</h4>
+            <p>● Online • Aapki Personal Assistant</p>
           </div>
-          <button id="chat-fullscreen-btn" title="Full Screen" aria-label="Toggle Full Screen" style="background: transparent; border: none; color: white; cursor: pointer; padding: 4px; display: flex; align-items: center; margin-right: 8px; opacity: 0.8; transition: opacity 0.2s;">
+          <div class="chat-lang-pill-toggle">
+            <button class="lang-pill active" id="lang-hindi" onclick="window.chatSetLang('hindi')">HI</button>
+            <button class="lang-pill" id="lang-english" onclick="window.chatSetLang('english')">EN</button>
+          </div>
+          <button id="chat-fullscreen-btn" title="Full Screen" aria-label="Toggle Full Screen" style="background: transparent; border: none; color: white; cursor: pointer; padding: 4px; display: flex; align-items: center; margin-left: 4px; opacity: 0.85; transition: opacity 0.2s;">
             <svg id="fullscreen-icon" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
             </svg>
           </button>
-          <div class="chat-header-status" title="Online"></div>
-        </div>
-
-        <!-- Language Toggle -->
-        <div class="chat-lang-toggle">
-          <span>भाषा / Language:</span>
-          <button class="lang-btn active" id="lang-hindi" onclick="window.chatSetLang('hindi')">हिंदी</button>
-          <button class="lang-btn" id="lang-english" onclick="window.chatSetLang('english')">English</button>
         </div>
 
         <!-- Quick Action Chips -->
         <div class="chat-quick-actions">
-          <button class="quick-chip" onclick="window.chatSendQuick('aaj ke follow up')">📅 Today's Follow-ups</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('pending followups dikhao')">⏳ Pending Follow-ups</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('pending fees')">💰 Pending Fees</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('new enquiries dikhao')">🆕 New Enquiries</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('saved notes dikhao')">📝 Saved Notes</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('call kro')">📞 Call</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('whatsapp kro')">💬 WhatsApp</button>
-          <button class="quick-chip" onclick="window.chatSendQuick('help')">📖 Guide / Help</button>
+          <button class="quick-chip chip-overview" onclick="window.chatSendQuick('CRM Overview')">📊 Overview</button>
+          <button class="quick-chip chip-followup" onclick="window.chatSendQuick('Today followups')">📅 Today Follow-ups</button>
+          <button class="quick-chip chip-fee" onclick="window.chatSendQuick('Pending fees')">💰 Pending Fees</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('Interested leads')">⭐ Interested Leads</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('New enquiries')">🆕 New Enquiries</button>
+          <button class="quick-chip" onclick="window.chatSendQuick('Draft message')">✍️ Draft Message</button>
+          ${admin ? `<button class="quick-chip" onclick="window.chatSendQuick('Staff attendance')">📋 Staff Attendance</button>` : ''}
         </div>
 
         <!-- Messages -->
         <div id="chat-messages">
           <div class="chat-welcome">
-            <span class="welcome-icon">🌟</span>
-            <strong>${welcomeTitle}</strong>
-            Hindi mode mein Hinglish use karo, English mode mein proper English. Aap bolkar ya likhkar data check, call/whatsapp commands aur notes save kar sakte hain.<br>
-            <span class="welcome-tip">📖 "Guide / Help" chip par click karke examples dekhain!</span>
+            <div class="chat-welcome-header">
+              <span class="welcome-icon">💖</span>
+              <strong>${greeting.title}</strong>
+            </div>
+            <p class="welcome-desc">${greeting.desc}</p>
+            <div class="welcome-starters-title">⚡ Quick Starters</div>
+            <div class="welcome-starters-grid">
+              <button class="starter-card" onclick="window.chatSendQuick('CRM Overview')">
+                <span class="starter-icon">📊</span>
+                <span class="starter-text">Overview</span>
+              </button>
+              <button class="starter-card" onclick="window.chatSendQuick('Today followups')">
+                <span class="starter-icon">📅</span>
+                <span class="starter-text">Today Follow-ups</span>
+              </button>
+              <button class="starter-card" onclick="window.chatSendQuick('Pending fees')">
+                <span class="starter-icon">💰</span>
+                <span class="starter-text">Pending Fees</span>
+              </button>
+              <button class="starter-card" onclick="window.chatSendQuick('Interested leads')">
+                <span class="starter-icon">⭐</span>
+                <span class="starter-text">Interested Leads</span>
+              </button>
+              <button class="starter-card" onclick="window.chatSendQuick('New enquiries')">
+                <span class="starter-icon">🆕</span>
+                <span class="starter-text">New Enquiries</span>
+              </button>
+              <button class="starter-card" onclick="window.chatSendQuick('Draft message')">
+                <span class="starter-icon">✍️</span>
+                <span class="starter-text">Draft Message</span>
+              </button>
+              ${admin ? `
+              <button class="starter-card" onclick="window.chatSendQuick('Staff attendance')">
+                <span class="starter-icon">📋</span>
+                <span class="starter-text">Staff Attendance</span>
+              </button>
+              ` : ''}
+            </div>
           </div>
         </div>
 
@@ -110,7 +185,7 @@
           <input
             type="text"
             id="chat-input"
-            placeholder="Hinglish mein puchho... jaise: aaj ke follow up dikhao"
+            placeholder="Ask anything... e.g. show today's follow-ups"
             autocomplete="off"
             aria-label="Chat input"
           />
@@ -218,10 +293,20 @@
       : 'Type your question...';
   };
 
-  // ─── Quick Send ──────────────────────────────────────────────────────────
+  // ─── Quick Send (also opens panel if closed) ───────────────────────
   window.chatSendQuick = function (text) {
-    document.getElementById('chat-input').value = text;
-    sendMessage();
+    // Open panel if closed
+    const panel = document.getElementById('chat-panel');
+    const fab = document.getElementById('chat-fab');
+    if (panel && !panel.classList.contains('open')) {
+      panel.classList.add('open');
+      if (fab) fab.classList.add('open');
+    }
+    const input = document.getElementById('chat-input');
+    if (input) {
+      input.value = text;
+      sendMessage();
+    }
   };
 
   // ─── State: Note Save Confirm ────────────────────────────────────────────
@@ -290,6 +375,26 @@
   };
 
   // ─── Voice Input ─────────────────────────────────────────────────────────
+  let wasVoiceQuery = false;
+
+  function showVoiceListeningBanner() {
+    removeVoiceListeningBanner();
+    const messages = document.getElementById('chat-messages');
+    if (!messages) return;
+    const banner = document.createElement('div');
+    banner.id = 'jiya-listening-banner';
+    banner.className = 'chat-msg bot';
+    const listeningText = selectedLang === 'hindi' ? 'Jiya AI sun rahi hai...' : 'Jiya AI is listening...';
+    banner.innerHTML = `<div class="msg-bubble listening-bubble"><span>🎙️</span> <strong>${listeningText}</strong> <span class="wave-dots"><span></span><span></span><span></span></span></div>`;
+    messages.appendChild(banner);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function removeVoiceListeningBanner() {
+    const banner = document.getElementById('jiya-listening-banner');
+    if (banner) banner.remove();
+  }
+
   function toggleVoice() {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       addMessage('bot', '❌ Aapka browser voice input support nahi karta. Chrome use karo.');
@@ -319,8 +424,12 @@
 
     recognition.onstart = () => {
       isListening = true;
+      wasVoiceQuery = true;
       voiceBtn.classList.add('listening');
-      input.placeholder = '🎙️ Sun raha hoon...';
+      input.placeholder = selectedLang === 'hindi'
+        ? '🎙️ Jiya AI sun rahi hai...'
+        : '🎙️ Jiya AI is listening...';
+      showVoiceListeningBanner();
     };
 
     recognition.onresult = (event) => {
@@ -334,6 +443,7 @@
     recognition.onend = () => {
       isListening = false;
       voiceBtn.classList.remove('listening');
+      removeVoiceListeningBanner();
       input.placeholder = selectedLang === 'hindi'
         ? 'Hinglish mein puchho... jaise: pending fees dikhao'
         : 'Ask in proper English...';
@@ -422,17 +532,20 @@
     if (chatState.mode === 'awaiting_wa_target') {
       return handleWaTarget(query);
     }
+    if (chatState.mode === 'awaiting_status_remark') {
+      return handleStatusRemark(query);
+    }
 
-    // ── Detect local intents before API call ──
+    // ── Detect local note save intent (only if explicitly asked to save a note) ──
     const lower = query.toLowerCase();
-    const isSaveIntent = /\b(save|store|note|template|message|message save|note save|save kro|save karna|likhna|note banana)\b/.test(lower);
-    const isShowNoteIntent = /\b(dikhao|show|notes|templates|saved|dekho|search note|dhundho)\b/.test(lower) && /\b(note|template|message|msg)\b/.test(lower);
+    const isSaveNoteIntent = /\b(save note|note save|save memo|note likho|isko save|isey save)\b/.test(lower) &&
+      !/\b(draft|write|create|compose|fee reminder|attendance|payment|follow up|overview|summary)\b/.test(lower);
 
-    if (isSaveIntent && !isShowNoteIntent) {
+    if (isSaveNoteIntent) {
       return startSaveNoteFlow();
     }
 
-    // ── Normal API call ──
+    // ── Normal API call (Direct to Backend AI) ──
     await callChatApi(query);
   }
 
@@ -591,20 +704,43 @@
       removeTyping(typingId);
 
       if (response.data.success) {
-        const { message, language, action, rawData } = response.data.data;
+        const { message, language, action, rawData, suggestions } = response.data.data;
         const lang = language || selectedLang;
+        const intent = response.data.data.intent;
 
-        // If backend returned notes list, show with WhatsApp buttons
-        if (action && action.type === 'notes_list' && action.notes) {
-          addMessage('bot', message, true, lang);
-          action.notes.forEach(note => {
-            addNoteCard(note);
-          });
-        } else {
-          addMessage('bot', message, true, lang, action);
-          if (rawData) {
-            addLeadCards(rawData);
-          }
+        // If action is status_update_prompt, enter guided confirmation & note state
+        if (action && action.type === 'status_update_prompt') {
+          chatState.mode = 'awaiting_status_remark';
+          chatState.data = {
+            enquiryId: action.enquiryId,
+            name: action.name,
+            newStatus: action.newStatus
+          };
+          addMessage('bot',
+            `❓ **Status Update Confirmation:**\n\n` +
+            `Kya aap **${action.name}** ka status **${action.newStatus}** update karna chahte hain?\n\n` +
+            `📝 *Koi note/remark likhna hai to niche type karein, ya button dabayein 👇*`,
+            false, selectedLang, null,
+            [
+              { label: '✅ Haan, Update Karo', action: 'confirmStatusUpdate("")' },
+              { label: '❌ Cancel', action: 'cancelStatusUpdate()' }
+            ]
+          );
+          return;
+        }
+
+        // Render pure chat message
+        addMessage('bot', message, true, lang);
+
+        // Auto-speak response if query was spoken via Mic (Walkie-Talkie mode)
+        if (wasVoiceQuery) {
+          speakText(message, lang);
+          wasVoiceQuery = false;
+        }
+
+        // Only show contact suggestions if user explicitly requested a call/WhatsApp lookup without exact match
+        if (suggestions && suggestions.length > 0 && (intent === 'call' || intent === 'whatsapp')) {
+          addContactSuggestionCards(suggestions, intent);
         }
       } else {
         addMessage('bot', '⚠️ Kuch gadbad hui. Dobara try karo.');
@@ -733,45 +869,86 @@
 
     const messages = document.getElementById('chat-messages');
     items.forEach(item => {
-      const card = document.createElement('div');
+      const card = buildContactCard(item.name, item.mobile, item.course, item.status, item.extra);
       card.className = 'chat-msg bot';
-      const cleanMobile = (item.mobile || '').toString().replace(/\D/g, '');
-      const waMobile = cleanMobile.length === 10 ? `91${cleanMobile}` : cleanMobile;
-      const nameEsc = escapeHtml(item.name);
-      const courseEsc = escapeHtml(item.course);
-      const statusEsc = escapeHtml(item.status);
-      const cleanExtra = (item.extra || '').replace(/Time:\s*[^•|]+/gi, '').replace(/Follow-up:\s*[^•|]+/gi, '').trim();
-
-      card.innerHTML = `
-        <div class="msg-bubble lead-card" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; padding: 8px 10px; margin-top: 4px; box-shadow: 0 1px 4px rgba(15, 23, 42, 0.05); color: #0f172a; max-width: 320px; font-family: inherit;">
-          <!-- Row 1: Identity & Status -->
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
-            <div style="font-weight: 700; font-size: 13px; color: #0f172a; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-              <span>👤 ${nameEsc}</span>
-              ${courseEsc ? `<span style="color: #94a3b8; font-weight: normal; margin: 0 3px;">•</span><span style="font-size: 11.5px; color: #475569; font-weight: 500;">${courseEsc}</span>` : ''}
-            </div>
-            <span style="background: #e0f2fe; color: #0369a1; font-size: 9.5px; font-weight: 700; padding: 1px 6px; border-radius: 8px; flex-shrink: 0; margin-left: 4px;">${statusEsc}</span>
-          </div>
-          <!-- Row 2: Secondary Info -->
-          <div style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b; margin-bottom: 6px;">
-            <span>📱 ${cleanMobile}</span>
-            ${cleanExtra ? `<span style="color: #94a3b8;">•</span><span style="color: #ea580c; font-weight: 600;">${cleanExtra}</span>` : ''}
-          </div>
-          <!-- Row 3: Micro Action Strip -->
-          <div style="display: flex; gap: 6px;">
-            <a href="tel:${cleanMobile}" style="flex: 1; text-align: center; text-decoration: none; background: #2563eb; color: #ffffff; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 3px;">
-              <span style="font-size: 10px;">📞</span> Call
-            </a>
-            <a href="https://wa.me/${waMobile}" target="_blank" style="flex: 1; text-align: center; text-decoration: none; background: #16a34a; color: #ffffff; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 3px;">
-              <span style="font-size: 10px;">💬</span> WhatsApp
-            </a>
-          </div>
-        </div>
-      `;
       messages.appendChild(card);
     });
     messages.scrollTop = messages.scrollHeight;
   }
+
+
+  // ─── Build a contact card DOM element (shared by both card renderers) ────
+  function buildContactCard(name, mobile, course, status, extra) {
+    const cleanMobile = (mobile || '').toString().replace(/\D/g, '');
+    const waMobile = cleanMobile.length === 10 ? `91${cleanMobile}` : cleanMobile;
+    const nameEsc = escapeHtml(name || '');
+    const courseEsc = course ? escapeHtml(course) : '';
+    const statusEsc = status ? escapeHtml(status) : '';
+    const cleanExtra = (extra || '').replace(/Time:\s*[^\u2022|]+/gi, '').replace(/Follow-up:\s*[^\u2022|]+/gi, '').trim();
+
+    const card = document.createElement('div');
+    card.innerHTML = `
+      <div class="msg-bubble lead-card" style="background:#fff;border:1px solid #e2e8f0;border-radius:9px;padding:7px 9px;margin-top:3px;box-shadow:0 1px 3px rgba(0,0,0,0.06);color:#0f172a;max-width:260px;font-family:inherit;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:2px;gap:4px;">
+          <div style="font-weight:700;font-size:12px;color:#0f172a;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;">
+            ${nameEsc}${courseEsc ? ` <span style="color:#94a3b8;font-weight:400;font-size:10.5px;">• ${courseEsc}</span>` : ''}
+          </div>
+          ${statusEsc ? `<span style="background:#e0f2fe;color:#0369a1;font-size:9px;font-weight:700;padding:1px 5px;border-radius:6px;flex-shrink:0;">${statusEsc}</span>` : ''}
+        </div>
+        <div style="font-size:10.5px;color:#64748b;margin-bottom:5px;">
+          📱 ${cleanMobile}${cleanExtra ? ` • <span style="color:#ea580c;font-weight:600;">${cleanExtra}</span>` : ''}
+        </div>
+        <div style="display:flex;gap:5px;">
+          <a href="tel:${cleanMobile}" style="flex:1;text-align:center;text-decoration:none;background:#2563eb;color:#fff;padding:3px 6px;border-radius:5px;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:2px;">
+            📞 Call
+          </a>
+          <button class="wa-pick-btn" data-mobile="${waMobile}" data-name="${nameEsc}" style="flex:1;text-align:center;border:none;cursor:pointer;background:#16a34a;color:#fff;padding:3px 6px;border-radius:5px;font-size:10.5px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:2px;">
+            💬 WhatsApp
+          </button>
+        </div>
+      </div>
+    `;
+    card.querySelector('.wa-pick-btn').addEventListener('click', function() {
+      window.openWaNotesPicker(this.dataset.mobile, this.dataset.name);
+    });
+    return card;
+  }
+
+  // ─── Contact Suggestion Cards (Call/WhatsApp) ────────────────────────────
+  function addContactSuggestionCards(suggestions, intent) {
+    const messages = document.getElementById('chat-messages');
+    const wrapper = document.createElement('div');
+    wrapper.style.cssText = 'display:flex;flex-direction:column;gap:6px;margin-top:6px;';
+
+    suggestions.forEach(item => {
+      const c = buildContactCard(item.name, item.mobile, item.course, '', '');
+      c.className = 'chat-msg bot';
+      wrapper.appendChild(c);
+    });
+
+    const outer = document.createElement('div');
+    outer.className = 'chat-msg bot';
+    outer.appendChild(wrapper);
+    messages.appendChild(outer);
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  // ─── Copy to Clipboard ──────────────────────────────────────────────────
+  window.chatCopy = function (btn, text) {
+    if (!navigator.clipboard) {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand('copy');
+      document.body.removeChild(ta);
+    } else {
+      navigator.clipboard.writeText(text);
+    }
+    const orig = btn.innerHTML;
+    btn.innerHTML = '✅ Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 1600);
+  };
 
   // ─── Add Message to Chat ─────────────────────────────────────────────────
   function addMessage(role, text, withSpeakBtn = false, lang = selectedLang, action = null, confirmButtons = null) {
@@ -788,12 +965,6 @@
 
     const bubbleText = escapeHtml(text);
     const timeEl = `<span class="msg-time">${time}</span>`;
-
-    let speakBtnHtml = '';
-    if (withSpeakBtn && role === 'bot') {
-      const escapedForAttr = text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
-      speakBtnHtml = `<button class="speak-btn" onclick="window.chatSpeak('${escapedForAttr}', '${lang}')" title="Isko sunao">🔊 Sunao</button>`;
-    }
 
     // Confirm/Action Buttons (for multi-step flows)
     let confirmBtnsHtml = '';
@@ -816,7 +987,6 @@
           </div>
         `;
       } else if (action.type === 'whatsapp') {
-        // Remove leading 91 or +91 if present for wa.me formatting
         let cleanMobile = action.mobile.replace(/\D/g, '');
         if (cleanMobile.length === 10) {
           cleanMobile = '91' + cleanMobile;
@@ -835,16 +1005,25 @@
       }
     }
 
+    let toolsHtml = '';
+    if (role === 'bot') {
+      const escapedForAttr = text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
+      const isDraftOrTemplate = /\b(draft|template|message|salutation|dear|namaste|fees|reminder|apka|aapka)\b/i.test(text);
+      const waSendBtn = isDraftOrTemplate
+        ? `<button class="msg-tool-btn wa-tool-btn" onclick="window.chatOpenWhatsAppPicker()" title="WhatsApp Direct Send">📲 WhatsApp Pe Bhejo</button>`
+        : '';
 
-    msg.innerHTML = `
-      <div class="msg-bubble">
-        ${bubbleText}
-        ${confirmBtnsHtml}
-        ${actionBtnHtml}
-      </div>
-      ${timeEl}
-      ${speakBtnHtml}
-    `;
+      toolsHtml = `
+        <div class="msg-tools">
+          <button class="msg-tool-btn" onclick="window.chatSpeak('${escapedForAttr}', '${lang}')" title="Listen">🔊 Listen</button>
+          <button class="msg-tool-btn" onclick="window.chatCopy(this, '${escapedForAttr}')" title="Copy Report">📋 Copy Report</button>
+          ${waSendBtn}
+        </div>
+      `;
+    }
+
+    msg.innerHTML = `<div class="msg-bubble">${bubbleText}${confirmBtnsHtml}${actionBtnHtml}</div><div class="msg-footer">${timeEl}${toolsHtml}</div>`;
+
 
     messages.appendChild(msg);
     messages.scrollTop = messages.scrollHeight;
@@ -857,6 +1036,44 @@
     } else {
       speakText(text, lang || selectedLang);
     }
+  };
+
+  window.chatOpenWhatsAppPicker = function () {
+    window.openWaNotesPicker('', 'Student');
+  };
+
+  function handleStatusRemark(remark) {
+    const lower = remark.toLowerCase();
+    if (lower === 'skip' || lower === 'no' || lower === 'nahi') {
+      window.confirmStatusUpdate('');
+    } else if (lower === 'cancel') {
+      window.cancelStatusUpdate();
+    } else {
+      window.confirmStatusUpdate(remark);
+    }
+  }
+
+  window.confirmStatusUpdate = async function (remark) {
+    const { enquiryId, name, newStatus } = chatState.data || {};
+    resetState();
+    if (!enquiryId) return;
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    try {
+      await axios.put(`${getApiBase()}/enquiries/${enquiryId}`, {
+        status: newStatus,
+        remarks: remark || undefined
+      }, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      addMessage('bot', `✅ **Done!** **${name}** ka status **${newStatus}** update ho gaya hai.` + (remark ? `\n\n📝 Note: _"${remark}"_` : ''));
+    } catch (e) {
+      addMessage('bot', `⚠️ Status update nahi ho paya. Dobara try karo.`);
+    }
+  };
+
+  window.cancelStatusUpdate = function () {
+    resetState();
+    addMessage('bot', `❌ Status update cancel kar diya gaya.`);
   };
 
   // ─── Typing Indicator ────────────────────────────────────────────────────
@@ -896,6 +1113,112 @@
       .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
       .replace(/\*(.*?)\*/g, '<em>$1</em>');
   }
+
+  // ─── WhatsApp Notes Picker Popup ──────────────────────────────────
+  window.openWaNotesPicker = async function (waMobile, contactName) {
+    // Remove any existing popup
+    const old = document.getElementById('wa-notes-popup');
+    if (old) old.remove();
+
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+
+    // Build popup
+    const overlay = document.createElement('div');
+    overlay.id = 'wa-notes-popup';
+    overlay.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,0.55);display:flex;align-items:flex-end;justify-content:center;padding:0 0 60px;';
+
+    overlay.innerHTML = `
+      <div id="wa-notes-sheet" style="background:#1e293b;border-radius:16px 16px 0 0;width:100%;max-width:420px;padding:0;box-shadow:0 -8px 32px rgba(0,0,0,0.4);overflow:hidden;">
+        <!-- Header -->
+        <div style="background:linear-gradient(135deg,#16a34a,#15803d);padding:12px 14px 10px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;">
+            <div>
+              <div style="font-weight:700;font-size:13px;color:#fff;">\u{1F4AC} WhatsApp to <span style='color:#bbf7d0;'>${contactName}</span></div>
+              <div style="font-size:10.5px;color:#86efac;margin-top:1px;">Pick a saved note or send without message</div>
+            </div>
+            <button onclick="document.getElementById('wa-notes-popup').remove()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;line-height:1;">&times;</button>
+          </div>
+          <input id="wa-note-search" placeholder="\u{1F50D} Search notes..." style="margin-top:8px;width:100%;box-sizing:border-box;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;outline:none;" />
+        </div>
+        <!-- Notes List -->
+        <div id="wa-notes-list" style="max-height:240px;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:6px;">
+          <div style="color:#94a3b8;font-size:12px;text-align:center;padding:20px 0;">Loading notes...</div>
+        </div>
+        <!-- Footer: send without note -->
+        <div style="padding:8px 10px 12px;border-top:1px solid rgba(255,255,255,0.08);">
+          <button onclick="window.open('https://wa.me/${waMobile}','_blank');document.getElementById('wa-notes-popup').remove();" style="width:100%;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.15);color:#94a3b8;border-radius:8px;padding:8px;font-size:11.5px;font-weight:600;cursor:pointer;">\u{1F4F1} Open WhatsApp without message</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(overlay);
+
+    // Close on backdrop click
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) overlay.remove();
+    });
+
+    // Fetch notes
+    let allNotes = [];
+    try {
+      const res = await axios.get(`${getApiBase()}/notes`, { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 });
+      allNotes = (res.data.data && res.data.data.notes) ? res.data.data.notes : (Array.isArray(res.data.data) ? res.data.data : []);
+    } catch (e) {
+      // fallback: try chat query for notes
+      try {
+        const res2 = await axios.post(`${getApiBase()}/chat`, { query: 'show my saved notes' }, { headers: { Authorization: `Bearer ${token}` }, timeout: 10000 });
+        if (res2.data.data && res2.data.data.action && res2.data.data.action.notes) {
+          allNotes = res2.data.data.action.notes;
+        }
+      } catch (_) {}
+    }
+
+    function renderNotes(filter) {
+      const list = document.getElementById('wa-notes-list');
+      if (!list) return;
+      const filtered = allNotes.filter(n =>
+        !filter || (n.title || '').toLowerCase().includes(filter) || (n.content || '').toLowerCase().includes(filter)
+      );
+      if (!filtered.length) {
+        list.innerHTML = `<div style="color:#94a3b8;font-size:12px;text-align:center;padding:16px 0;">
+          ${allNotes.length === 0
+            ? '\u{1F4DD} No saved notes yet.<br><span style="font-size:11px;">Type <em>&quot;save note: your message&quot;</em> in chat to save one.</span>'
+            : 'No notes match your search.'}
+        </div>`;
+        return;
+      }
+      list.innerHTML = '';
+      filtered.forEach(note => {
+        const row = document.createElement('button');
+        row.style.cssText = 'width:100%;text-align:left;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1);border-radius:8px;padding:8px 10px;cursor:pointer;color:#e2e8f0;display:block;';
+        row.innerHTML = `
+          <div style="font-weight:700;font-size:12px;color:#fff;margin-bottom:2px;">\u{1F4CC} ${escapeHtml(note.title || 'Untitled')}</div>
+          <div style="font-size:11px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escapeHtml((note.content || '').substring(0, 80))}${(note.content || '').length > 80 ? '...' : ''}</div>
+        `;
+        row.addEventListener('click', () => {
+          const text = encodeURIComponent(note.content || '');
+          window.open(`https://wa.me/${waMobile}?text=${text}`, '_blank');
+          overlay.remove();
+        });
+        row.addEventListener('mouseenter', () => { row.style.background = 'rgba(22,163,74,0.2)'; row.style.borderColor = 'rgba(22,163,74,0.4)'; });
+        row.addEventListener('mouseleave', () => { row.style.background = 'rgba(255,255,255,0.05)'; row.style.borderColor = 'rgba(255,255,255,0.1)'; });
+        list.appendChild(row);
+      });
+    }
+
+    renderNotes('');
+    const searchInput = document.getElementById('wa-note-search');
+    if (searchInput) searchInput.addEventListener('input', (e) => renderNotes(e.target.value.toLowerCase().trim()));
+  };
+
+  // ─── Toggle "More" Chips ────────────────────────────────────────────────
+  window.chatToggleMoreChips = function () {
+    const panel = document.getElementById('chat-more-chips');
+    const btn = document.getElementById('chat-more-btn');
+    if (!panel) return;
+    const isOpen = panel.style.display !== 'none';
+    panel.style.display = isOpen ? 'none' : 'flex';
+    if (btn) btn.textContent = isOpen ? '⋯ More' : '✕ Less';
+  };
 
   // ─── Init ────────────────────────────────────────────────────────────────
   function init() {

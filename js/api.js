@@ -1,8 +1,13 @@
 // Import axios
 const axios = window.axios;
 
-const BASE_URL = 'https://crm.sssamacademy.com/api';
-// const BASE_URL = 'http://localhost:5000/api';
+// Auto-detect environment: localhost uses local backend on port 5000
+const isLocal = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' || 
+    window.location.hostname === '127.0.0.1' || 
+    window.location.hostname === ''
+);
+const BASE_URL = isLocal ? 'http://localhost:5000/api' : 'https://crm.sssamacademy.com/api';
 window.API_BASE_URL = BASE_URL;
 
 /* ======================
