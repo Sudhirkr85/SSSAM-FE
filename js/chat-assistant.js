@@ -1038,8 +1038,8 @@
     let toolsHtml = '';
     if (role === 'bot') {
       const escapedForAttr = text.replace(/'/g, "\\'").replace(/"/g, '&quot;').replace(/\n/g, ' ');
-      const isDraftOrTemplate = /\b(draft|template|message|salutation|dear|namaste|fees|reminder|apka|aapka)\b/i.test(text);
-      const waSendBtn = isDraftOrTemplate
+      const isExplicitWaDraft = action && action.type === 'whatsapp';
+      const waSendBtn = isExplicitWaDraft
         ? `<button class="msg-tool-btn wa-tool-btn" onclick="window.chatOpenWhatsAppPicker()" title="WhatsApp Direct Send">📲 WhatsApp Pe Bhejo</button>`
         : '';
 
