@@ -896,58 +896,55 @@ function updateAdmissionInstallmentRow(index, field, value) {
 async function submitAddAdmission() {
   clearAddErrors();
 
-  const enquiryId = document.getElementById('selectedEnquiryId').value;
+  const enquiryId = document.getElementById('selectedEnquiryId')?.value || '';
   const course = document.getElementById('courseInput').value.trim();
   const totalFees = parseInt(document.getElementById('totalFeesInput').value) || 0;
   const registrationAmount = parseInt(document.getElementById('registrationAmountInput').value) || 0;
   const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value || 'ONE_TIME';
-  const admissionDate = document.getElementById('paymentDateInput').value;
-  const initialPayment = parseInt(document.getElementById('initialPaymentInput').value) || 0;
-  const initialPaymentMode = document.getElementById('paymentModeInput').value;
+  const admissionDate = document.getElementById('paymentDateInput')?.value || new Date().toISOString().split('T')[0];
+  const initialPaymentInputVal = parseInt(document.getElementById('initialPaymentInput')?.value) || 0;
+  const initialPayment = registrationAmount > 0 ? registrationAmount : initialPaymentInputVal;
+  const initialPaymentMode = document.getElementById('paymentModeInput')?.value || 'CASH';
 
   let hasError = false;
 
   if (!enquiryId) {
-    document.getElementById('enquiryError').classList.remove('hidden');
+    const enqErr = document.getElementById('enquiryError');
+    if (enqErr) enqErr.classList.remove('hidden');
     hasError = true;
   }
 
   if (!course) {
-    document.getElementById('courseError').classList.remove('hidden');
-    document.getElementById('courseInput').classList.add('border-red-500');
+    const courseErr = document.getElementById('courseError');
+    if (courseErr) courseErr.classList.remove('hidden');
+    document.getElementById('courseInput')?.classList.add('border-red-500');
     hasError = true;
   }
 
   if (totalFees <= 0) {
-    document.getElementById('totalFeesError').classList.remove('hidden');
-    document.getElementById('totalFeesInput').classList.add('border-red-500');
+    const totalFeesErr = document.getElementById('totalFeesError');
+    if (totalFeesErr) totalFeesErr.classList.remove('hidden');
+    document.getElementById('totalFeesInput')?.classList.add('border-red-500');
     hasError = true;
   }
 
   if (registrationAmount > totalFees) {
-    document.getElementById('registrationAmountError').textContent = 'Registration amount cannot exceed total fees';
-    document.getElementById('registrationAmountError').classList.remove('hidden');
-    document.getElementById('registrationAmountInput').classList.add('border-red-500');
-    hasError = true;
-  }
-
-  if (!admissionDate) {
-    document.getElementById('paymentDateError').classList.remove('hidden');
-    document.getElementById('paymentDateInput').classList.add('border-red-500');
-    hasError = true;
-  }
-
-  if (initialPayment <= 0) {
-    document.getElementById('initialPaymentError').textContent = 'Initial payment is required and must be greater than 0';
-    document.getElementById('initialPaymentError').classList.remove('hidden');
-    document.getElementById('initialPaymentInput').classList.add('border-red-500');
+    const regErr = document.getElementById('registrationAmountError');
+    if (regErr) {
+      regErr.textContent = 'Registration amount cannot exceed total fees';
+      regErr.classList.remove('hidden');
+    }
+    document.getElementById('registrationAmountInput')?.classList.add('border-red-500');
     hasError = true;
   }
 
   if (initialPayment > totalFees) {
-    document.getElementById('initialPaymentError').textContent = 'Initial payment cannot exceed total fees';
-    document.getElementById('initialPaymentError').classList.remove('hidden');
-    document.getElementById('initialPaymentInput').classList.add('border-red-500');
+    const initErr = document.getElementById('initialPaymentError');
+    if (initErr) {
+      initErr.textContent = 'Initial payment cannot exceed total fees';
+      initErr.classList.remove('hidden');
+    }
+    document.getElementById('initialPaymentInput')?.classList.add('border-red-500');
     hasError = true;
   }
 
