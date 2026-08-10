@@ -587,8 +587,18 @@
       <!-- Form -->
       <div class="p-6 space-y-4 overflow-y-auto">
         
+        <!-- Mode Switch: Select Enquiry vs Direct Walk-In -->
+        <div class="bg-gray-100 p-1 rounded-xl flex gap-1 mb-2">
+          <button type="button" id="tabSelectEnquiry" onclick="switchAdmissionMode('enquiry')" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-white text-gray-800 shadow-sm">
+            🔍 Existing Enquiry Lead
+          </button>
+          <button type="button" id="tabDirectWalkIn" onclick="switchAdmissionMode('direct')" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all text-gray-500 hover:text-gray-800">
+            ✏️ Direct Walk-In (Manual Name & Mobile)
+          </button>
+        </div>
+
         <!-- Enquiry Selection -->
-        <div class="relative">
+        <div id="enquirySelectSection" class="relative">
           <label class="block text-sm font-medium text-gray-700 mb-1.5">
             Select Student / Enquiry <span class="text-red-500">*</span>
           </label>
@@ -607,6 +617,24 @@
             <div id="enquiryOptionsList" class="overflow-y-auto flex-1 p-1 divide-y divide-gray-50">
               <!-- Options populated dynamically -->
             </div>
+          </div>
+        </div>
+
+        <!-- Direct Walk-In Section -->
+        <div id="directWalkInSection" class="hidden space-y-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+              Student Full Name <span class="text-red-500">*</span>
+            </label>
+            <input type="text" id="directStudentName" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" placeholder="e.g. Aarav Sharma" />
+            <p id="directNameError" class="hidden text-red-500 text-xs mt-1">Student name is required</p>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+              Mobile Number <span class="text-red-500">*</span>
+            </label>
+            <input type="tel" id="directStudentMobile" maxlength="10" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" placeholder="e.g. 9876543210" />
+            <p id="directMobileError" class="hidden text-red-500 text-xs mt-1">Valid 10-digit mobile number is required</p>
           </div>
         </div>
 

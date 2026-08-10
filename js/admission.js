@@ -744,8 +744,32 @@ function closeAddModal() {
   }, 200);
 }
 
+let currentAdmissionMode = 'enquiry'; // 'enquiry' or 'direct'
+
+function switchAdmissionMode(mode) {
+  currentAdmissionMode = mode;
+  const tabEnquiry = document.getElementById('tabSelectEnquiry');
+  const tabDirect = document.getElementById('tabDirectWalkIn');
+  const sectionEnquiry = document.getElementById('enquirySelectSection');
+  const sectionDirect = document.getElementById('directWalkInSection');
+
+  if (mode === 'direct') {
+    if (tabEnquiry) tabEnquiry.className = 'flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all text-gray-500 hover:text-gray-800';
+    if (tabDirect) tabDirect.className = 'flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-white text-gray-800 shadow-sm';
+    if (sectionEnquiry) sectionEnquiry.classList.add('hidden');
+    if (sectionDirect) sectionDirect.classList.remove('hidden');
+  } else {
+    if (tabEnquiry) tabEnquiry.className = 'flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-white text-gray-800 shadow-sm';
+    if (tabDirect) tabDirect.className = 'flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all text-gray-500 hover:text-gray-800';
+    if (sectionEnquiry) sectionEnquiry.classList.remove('hidden');
+    if (sectionDirect) sectionDirect.classList.add('hidden');
+  }
+}
+
+window.switchAdmissionMode = switchAdmissionMode;
+
 function clearAddErrors() {
-  ['enquiry', 'course', 'totalFees', 'registrationAmount', 'paymentDate', 'initialPayment', 'paymentMode'].forEach(id => {
+  ['enquiry', 'course', 'totalFees', 'registrationAmount', 'paymentDate', 'initialPayment', 'paymentMode', 'directName', 'directMobile'].forEach(id => {
     document.getElementById(`${id}Error`)?.classList.add('hidden');
     document.getElementById(`${id}Input`)?.classList.remove('border-red-500');
   });
@@ -864,13 +888,14 @@ function renderAdmissionInstallmentRows() {
           class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
         >
       </div>
-      <button
-        onclick="removeAdmissionInstallmentRow(${index})"
-        class="mt-5 p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-        ${admissionInstallmentRows.length === 1 ? 'disabled' : ''}
-      >
-        <i data-lucide="trash-2" class="w-4 h-4"></i>
-      </button>
+      ${index > 0 ? `
+        <button
+          onclick="removeAdmissionInstallmentRow(${index})"
+          class="mt-5 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
+        >
+          <i data-lucide="trash-2" class="w-4 h-4"></i>
+        </button>
+      ` : ''}
     </div>
   `).join('');
 
@@ -883,10 +908,8 @@ function addAdmissionInstallmentRow() {
 }
 
 function removeAdmissionInstallmentRow(index) {
-  if (admissionInstallmentRows.length > 1) {
-    admissionInstallmentRows.splice(index, 1);
-    renderAdmissionInstallmentRows();
-  }
+  admissionInstallmentRows.splice(index, 1);
+  renderAdmissionInstallmentRows();
 }
 
 function updateAdmissionInstallmentRow(index, field, value) {
@@ -897,6 +920,8 @@ async function submitAddAdmission() {
   clearAddErrors();
 
   const enquiryId = document.getElementById('selectedEnquiryId')?.value || '';
+  const directName = document.getElementById('directStudentName')?.value.trim() || '';
+  const directMobile = document.getElementById('directStudentMobile')?.value.trim().replace(/\D/g, '') || '';
   const course = document.getElementById('courseInput').value.trim();
   const totalFees = parseInt(document.getElementById('totalFeesInput').value) || 0;
   const registrationAmount = parseInt(document.getElementById('registrationAmountInput').value) || 0;
@@ -908,10 +933,19 @@ async function submitAddAdmission() {
 
   let hasError = false;
 
-  if (!enquiryId) {
+  if (currentAdmissionMode === 'enquiry' && !enquiryId) {
     const enqErr = document.getElementById('enquiryError');
     if (enqErr) enqErr.classList.remove('hidden');
     hasError = true;
+  } else if (currentAdmissionMode === 'direct') {
+    if (!directName) {
+      document.getElementById('directNameError')?.classList.remove('hidden');
+      hasError = true;
+    }
+    if (directMobile.length !== 10) {
+      document.getElementById('directMobileError')?.classList.remove('hidden');
+      hasError = true;
+    }
   }
 
   if (!course) {
@@ -1006,14 +1040,15 @@ async function submitAddAdmission() {
     
     // Build payload per API documentation
     const payload = {
-      name: enquiry?.name || '',
+      name: currentAdmissionMode === 'direct' ? directName : (enquiry?.name || ''),
       email: enquiry?.email || '',
-      mobile: enquiry?.mobile || '',
+      mobile: currentAdmissionMode === 'direct' ? directMobile : (enquiry?.mobile || ''),
       course,
-      admissionDate: admissionDate, // Use admissionDate as per documentation
+      admissionDate: admissionDate,
       totalFees,
-      registrationAmount,
-      paymentMode: initialPaymentMode // Use paymentMode as per documentation
+      registrationAmount: registrationAmount || initialPayment || 0,
+      paymentMode: initialPaymentMode,
+      enquiryId: currentAdmissionMode === 'enquiry' ? selectedEnquiryId : undefined
     };
 
     // Add installments for INSTALLMENT type
