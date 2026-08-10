@@ -75,7 +75,7 @@
     const namePart = userName ? ` ${userName}` : '';
     return {
       title: `${salutation}${namePart}! ${icon}`,
-      desc: `Main aapki <strong>Jiya AI</strong> assistant hoon. Aap mujhse <strong>bolkar 🎙️</strong> ya <strong>likhkar 💬</strong> puch sakte hain. Aapko aaj kya jankari chahiye ya kaunsa kaam karna hai?`
+      desc: `Main aapki <strong>Khushi AI</strong> assistant hoon. Aap mujhse <strong>bolkar 🎙️</strong> ya <strong>likhkar 💬</strong> puch sakte hain. Aapko aaj kya jankari chahiye ya kaunsa kaam karna hai?`
     };
   }
 
@@ -98,7 +98,7 @@
 
     const html = `
       <!-- Floating Action Button -->
-      <button id="chat-fab" aria-label="Jiya AI Assistant" title="Jiya AI Assistant">
+      <button id="chat-fab" aria-label="Khushi AI Assistant" title="Khushi AI Assistant">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
         </svg>
@@ -106,12 +106,12 @@
       </button>
 
       <!-- Chat Panel -->
-      <div id="chat-panel" role="dialog" aria-label="Jiya AI Assistant">
+      <div id="chat-panel" role="dialog" aria-label="Khushi AI Assistant">
         <!-- Header -->
         <div class="chat-header">
           <div class="chat-header-avatar">🤖</div>
           <div class="chat-header-info">
-            <h4>Jiya AI Assistant</h4>
+            <h4>Khushi AI Assistant</h4>
             <p>● Online • Aapki Personal Assistant</p>
           </div>
           <div class="chat-lang-pill-toggle">
@@ -393,7 +393,7 @@
     const banner = document.createElement('div');
     banner.id = 'jiya-listening-banner';
     banner.className = 'chat-msg bot';
-    const listeningText = selectedLang === 'hindi' ? 'Jiya AI sun rahi hai...' : 'Jiya AI is listening...';
+    const listeningText = selectedLang === 'hindi' ? 'Khushi AI sun rahi hai...' : 'Khushi AI is listening...';
     banner.innerHTML = `<div class="msg-bubble listening-bubble"><span>🎙️</span> <strong>${listeningText}</strong> <span class="wave-dots"><span></span><span></span><span></span></span></div>`;
     messages.appendChild(banner);
     messages.scrollTop = messages.scrollHeight;
@@ -436,8 +436,8 @@
       wasVoiceQuery = true;
       voiceBtn.classList.add('listening');
       input.placeholder = selectedLang === 'hindi'
-        ? '🎙️ Jiya AI sun rahi hai...'
-        : '🎙️ Jiya AI is listening...';
+        ? '🎙️ Khushi AI sun rahi hai...'
+        : '🎙️ Khushi AI is listening...';
       showVoiceListeningBanner();
     };
 
@@ -1095,7 +1095,7 @@
       btn.style.color = '#fca5a5';
 
       addMessage('bot',
-        `🙏 **Help Jiya AI Improve:**\n\n` +
+        `🙏 **Help Khushi AI Improve:**\n\n` +
         `Is response mein kya problem thi?\n` +
         `_(Jaise: "Response too long", "Wrong date", ya "Unclear format")_\n\n` +
         `Niche type karein ya button dabayein 👇`,
@@ -1117,7 +1117,7 @@
     }, { headers: { Authorization: `Bearer ${token}` } })
     .then(res => {
       if (res.data?.success) {
-        addMessage('bot', `✨ **Thank you!** Jiya AI ne aapka feedback save kar liya hai: _"${reason}"_. Future responses iske hisab se improve honge!`);
+        addMessage('bot', `✨ **Thank you!** Khushi AI ne aapka feedback save kar liya hai: _"${reason}"_. Future responses iske hisab se improve honge!`);
       }
     })
     .catch(() => {});
