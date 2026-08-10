@@ -5,6 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard • SSSAM CRM</title>
 
+  <script>
+    window.chatSendQuick = window.chatSendQuick || function(q) {
+      window._pendingQuickChat = q;
+    };
+  </script>
+
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <!-- Axios -->
@@ -161,14 +167,14 @@
 
         <!-- MOBILE & DASHBOARD DIRECT QUICK ACTIONS -->
         <div class="grid grid-cols-2 gap-3">
-          <button onclick="window.chatSendQuick('Nayi enquiry add karo')" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-xl shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2.5 hover:opacity-95 transition-all font-semibold text-sm active:scale-95 border-0 cursor-pointer">
+          <a href="enquiries.html?new=true" class="bg-gradient-to-r from-purple-600 to-indigo-600 text-white p-4 rounded-xl shadow-lg shadow-purple-500/20 flex items-center justify-center gap-2.5 hover:opacity-95 transition-all font-semibold text-sm active:scale-95 text-decoration-none">
             <i data-lucide="plus-circle" class="w-5 h-5"></i>
             <span>➕ New Enquiry</span>
-          </button>
-          <button onclick="window.chatSendQuick('Direct admission karna hai')" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2.5 hover:opacity-95 transition-all font-semibold text-sm active:scale-95 border-0 cursor-pointer">
+          </a>
+          <a href="admissions.html?new=true" class="bg-gradient-to-r from-emerald-600 to-teal-600 text-white p-4 rounded-xl shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2.5 hover:opacity-95 transition-all font-semibold text-sm active:scale-95 text-decoration-none">
             <i data-lucide="graduation-cap" class="w-5 h-5"></i>
             <span>🎓 Direct Admission</span>
-          </button>
+          </a>
         </div>
 
         <!-- ATTENDANCE QUICK WIDGET -->
@@ -1472,10 +1478,241 @@
       }
     });
 
+    // ─── DASHBOARD DIRECT POPUP MODALS ───────────────────────────────────────
+    function openDashEnquiryModal() {
+      document.getElementById('dashEnqName').value = '';
+      document.getElementById('dashEnqMobile').value = '';
+      document.getElementById('dashEnqEmail').value = '';
+      document.getElementById('dashEnqCourse').value = '';
+      const modal = document.getElementById('dashEnquiryModal');
+      const content = document.getElementById('dashEnquiryModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeDashEnquiryModal() {
+      const modal = document.getElementById('dashEnquiryModal');
+      const content = document.getElementById('dashEnquiryModalContent');
+      modal.classList.add('opacity-0');
+      content.classList.remove('scale-100');
+      content.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }, 200);
+    }
+
+    async function submitDashEnquiry() {
+      const name = document.getElementById('dashEnqName').value.trim();
+      const mobile = document.getElementById('dashEnqMobile').value.trim().replace(/\D/g, '');
+      const email = document.getElementById('dashEnqEmail').value.trim();
+      const course = document.getElementById('dashEnqCourse').value.trim();
+      const source = document.getElementById('dashEnqSource').value;
+
+      if (!name || mobile.length !== 10 || !course) {
+        alert('Please enter valid Name, 10-digit Mobile Number, and Course.');
+        return;
+      }
+
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const btn = document.getElementById('dashEnqSubmitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Saving...';
+
+      try {
+        const res = await axios.post(`${window.API_BASE_URL || 'http://localhost:5000/api'}/enquiries`, {
+          name, mobile, email: email || null, course, source: source || 'walk_in'
+        }, { headers: { Authorization: `Bearer ${token}` } });
+
+        if (res.data.success) {
+          closeDashEnquiryModal();
+          alert('🎉 New Enquiry successfully saved!');
+          loadDashboardStats();
+        } else {
+          alert('⚠️ ' + (res.data.message || 'Failed to save enquiry'));
+        }
+      } catch (err) {
+        alert('❌ Error: ' + (err.response?.data?.message || 'Failed to save enquiry'));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Enquiry';
+      }
+    }
+
+    function openDashAdmissionModal() {
+      document.getElementById('dashAdmName').value = '';
+      document.getElementById('dashAdmMobile').value = '';
+      document.getElementById('dashAdmCourse').value = '';
+      document.getElementById('dashAdmTotalFees').value = '';
+      document.getElementById('dashAdmDownPayment').value = '';
+      const modal = document.getElementById('dashAdmissionModal');
+      const content = document.getElementById('dashAdmissionModalContent');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+      }, 10);
+    }
+
+    function closeDashAdmissionModal() {
+      const modal = document.getElementById('dashAdmissionModal');
+      const content = document.getElementById('dashAdmissionModalContent');
+      modal.classList.add('opacity-0');
+      content.classList.remove('scale-100');
+      content.classList.add('scale-95');
+      setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+      }, 200);
+    }
+
+    async function submitDashAdmission() {
+      const name = document.getElementById('dashAdmName').value.trim();
+      const mobile = document.getElementById('dashAdmMobile').value.trim().replace(/\D/g, '');
+      const course = document.getElementById('dashAdmCourse').value.trim();
+      const totalFees = parseInt(document.getElementById('dashAdmTotalFees').value) || 0;
+      const initialPayment = parseInt(document.getElementById('dashAdmDownPayment').value) || 0;
+      const initialPaymentMode = document.getElementById('dashAdmPaymentMode').value;
+
+      if (!name || mobile.length !== 10 || !course || totalFees <= 0) {
+        alert('Please enter valid Student Name, 10-digit Mobile Number, Course, and Total Fees.');
+        return;
+      }
+
+      const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+      const btn = document.getElementById('dashAdmSubmitBtn');
+      btn.disabled = true;
+      btn.innerHTML = '⏳ Saving...';
+
+      try {
+        const res = await axios.post(`${window.API_BASE_URL || 'http://localhost:5000/api'}/admissions`, {
+          name, mobile, course, totalFees, initialPayment, initialPaymentMode, admissionDate: new Date().toISOString()
+        }, { headers: { Authorization: `Bearer ${token}` } });
+
+        if (res.data.success) {
+          closeDashAdmissionModal();
+          alert('🎉 Direct Admission successfully saved!');
+          loadDashboardStats();
+          loadCourseWiseAdmissions();
+        } else {
+          alert('⚠️ ' + (res.data.message || 'Failed to save admission'));
+        }
+      } catch (err) {
+        alert('❌ Error: ' + (err.response?.data?.message || 'Failed to save admission'));
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Admission';
+      }
+    }
+
     // ==================== INIT ====================
     loadDashboardStats();
     loadCourseWiseAdmissions();
   </script>
+
+  <!-- DASHBOARD NEW ENQUIRY POPUP MODAL -->
+  <div id="dashEnquiryModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200 p-4">
+    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col" id="dashEnquiryModalContent">
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100 flex-shrink-0">
+        <div class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">➕</div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">Add New Enquiry</h2>
+          <p class="text-xs text-gray-500">Enter student details below</p>
+        </div>
+        <button onclick="closeDashEnquiryModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">&times;</button>
+      </div>
+      <div class="p-6 space-y-4 overflow-y-auto">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Student Name *</label>
+          <input type="text" id="dashEnqName" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-purple-500" placeholder="e.g. Aarav Sharma" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Mobile Number (10 digits) *</label>
+          <input type="tel" id="dashEnqMobile" maxlength="10" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-purple-500" placeholder="9876543210" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Email (Optional)</label>
+          <input type="email" id="dashEnqEmail" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-purple-500" placeholder="student@gmail.com" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Course *</label>
+          <input type="text" id="dashEnqCourse" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-purple-500" placeholder="e.g. BCA, DCA, Tally" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Source</label>
+          <select id="dashEnqSource" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white cursor-pointer">
+            <option value="walk_in">🚶 Walk In</option>
+            <option value="phone_call">📞 Phone Call</option>
+            <option value="social_media">📱 Social Media</option>
+            <option value="website">🌐 Website</option>
+            <option value="referral">👥 Referral</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closeDashEnquiryModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-xl text-sm font-medium">Cancel</button>
+        <button id="dashEnqSubmitBtn" onclick="submitDashEnquiry()" class="px-5 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-semibold text-sm shadow-md">Save Enquiry</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD DIRECT ADMISSION POPUP MODAL -->
+  <div id="dashAdmissionModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200 p-4">
+    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col" id="dashAdmissionModalContent">
+      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100 flex-shrink-0">
+        <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">🎓</div>
+        <div>
+          <h2 class="text-lg font-semibold text-gray-800">🎓 Direct Admission</h2>
+          <p class="text-xs text-gray-500">Instant student registration & payment setup</p>
+        </div>
+        <button onclick="closeDashAdmissionModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">&times;</button>
+      </div>
+      <div class="p-6 space-y-4 overflow-y-auto">
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Student Name *</label>
+          <input type="text" id="dashAdmName" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-500" placeholder="e.g. Aarav Sharma" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Mobile Number (10 digits) *</label>
+          <input type="tel" id="dashAdmMobile" maxlength="10" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-500" placeholder="9876543210" />
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Course *</label>
+          <input type="text" id="dashAdmCourse" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-500" placeholder="e.g. Python Full Stack, BCA" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Total Fees (₹) *</label>
+            <input type="number" id="dashAdmTotalFees" min="0" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-500" placeholder="25000" />
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-gray-700 mb-1">Down Payment (₹)</label>
+            <input type="number" id="dashAdmDownPayment" min="0" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:border-emerald-500" placeholder="5000" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1">Payment Mode</label>
+          <select id="dashAdmPaymentMode" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-white cursor-pointer">
+            <option value="UPI">📱 UPI</option>
+            <option value="CASH">💵 Cash</option>
+            <option value="CARD">💳 Card</option>
+            <option value="ONLINE">🏦 Bank Transfer</option>
+          </select>
+        </div>
+      </div>
+      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl">
+        <button onclick="closeDashAdmissionModal()" class="px-4 py-2 text-gray-600 hover:bg-gray-200 rounded-xl text-sm font-medium">Cancel</button>
+        <button id="dashAdmSubmitBtn" onclick="submitDashAdmission()" class="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold text-sm shadow-md">Save Admission</button>
+      </div>
+    </div>
+  </div>
 
   <script src="js/sidebar.js"></script>
   <script src="js/notifications.js"></script>

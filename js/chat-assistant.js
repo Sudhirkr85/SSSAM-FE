@@ -305,10 +305,12 @@
 
   // ─── Quick Send (also opens panel if closed) ───────────────────────
   window.chatSendQuick = function (text) {
-    // Open panel if closed
+    if (!document.getElementById('chat-panel')) {
+      injectChatWidget();
+    }
     const panel = document.getElementById('chat-panel');
     const fab = document.getElementById('chat-fab');
-    if (panel && !panel.classList.contains('open')) {
+    if (panel) {
       panel.classList.add('open');
       if (fab) fab.classList.add('open');
     }
@@ -1559,6 +1561,13 @@
       const badge = document.getElementById('chat-badge');
       if (badge) badge.style.display = 'flex';
     }, 3000);
+
+    // Process any early clicked pending quick chat
+    if (window._pendingQuickChat) {
+      const pendingText = window._pendingQuickChat;
+      delete window._pendingQuickChat;
+      setTimeout(() => window.chatSendQuick(pendingText), 150);
+    }
   }
 
   // Run when DOM ready

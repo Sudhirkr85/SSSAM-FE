@@ -143,7 +143,7 @@
             <i data-lucide="upload" class="w-3.5 h-3.5"></i>
             <span class="hidden sm:inline">Bulk Upload</span>
           </button>
-          <button onclick="openAddModal()" class="bg-white hover:bg-white/90 text-purple-700 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all font-medium text-sm shadow-lg relative z-10">
+          <button id="addEnquiryBtn" onclick="openAddModal()" class="bg-white hover:bg-white/90 text-purple-700 px-3 py-1.5 rounded-lg flex items-center gap-2 transition-all font-medium text-sm shadow-lg relative z-10">
             <i data-lucide="plus" class="w-3.5 h-3.5"></i>
             <span>Add Enquiry</span>
           </button>
@@ -1202,6 +1202,14 @@
         closeAssignModal();
       }
     });
+
+    // Auto-open New Enquiry Modal if URL contains ?new=true
+    if (window.location.search.includes('new=true')) {
+      setTimeout(() => {
+        if (typeof openAddModal === 'function') openAddModal();
+        else document.getElementById('addEnquiryBtn')?.click();
+      }, 300);
+    }
 
     // Logout function
     function logout() {
