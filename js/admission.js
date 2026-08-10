@@ -251,6 +251,18 @@ async function loadAdmissions(search = '', filters = {}) {
   }
 }
 
+async function loadEnquiriesForModal() {
+  try {
+    const response = await apiGet(API_ENDPOINTS.ENQUIRIES.LIST, { page: 1, limit: 100 });
+    enquiries = response.data || response.enquiries || [];
+    renderEnquiryDropdown('');
+  } catch (err) {
+    console.error('Failed to load enquiries for modal:', err);
+  }
+}
+
+// Expose globally
+window.loadEnquiriesForModal = loadEnquiriesForModal;
 
 // ==================== RENDER FUNCTIONS ====================
 function renderTable() {
@@ -677,12 +689,8 @@ function openAddModal() {
   const safeSetVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
 
   // Reset form safely
-  safeSetVal('selectedEnquiryId', '');
-  const selectText = getEl('enquirySelectText');
-  if (selectText) {
-    selectText.textContent = 'Select an enquiry...';
-    selectText.classList.add('text-gray-500');
-  }
+  safeSetVal('directStudentName', '');
+  safeSetVal('directStudentMobile', '');
   safeSetVal('courseInput', '');
   safeSetVal('totalFeesInput', '');
   safeSetVal('registrationAmountInput', '');
@@ -789,7 +797,8 @@ function filterEnquiries(search) {
 }
 
 function renderEnquiryDropdown(search = '') {
-  const list = document.getElementById('enquiryList');
+  const list = document.getElementById('enquiryList') || document.getElementById('enquiryOptionsList');
+  if (!list) return;
   
   const filtered = search 
     ? enquiries.filter(e => 
@@ -809,54 +818,119 @@ function renderEnquiryDropdown(search = '') {
   
   list.innerHTML = filtered.map(e => {
     const isSelected = selectedEnquiryId === e._id;
+    const courseName = e.course || e.courseInterested || '';
     return `
       <div 
-        class="enquiry-option p-3 cursor-pointer ${isSelected ? 'selected' : ''}"
-        onclick="selectEnquiry('${e._id}', '${escapeHtml(e.name)}', '${e.mobile || ''}')"
+        class="enquiry-option p-3 cursor-pointer ${isSelected ? 'selected' : ''} hover:bg-gray-50 flex items-center justify-between"
+        onclick="selectEnquiry('${e._id}', '${escapeHtml(e.name)}', '${e.mobile || ''}', '${escapeHtml(courseName)}')"
       >
-        <div class="font-medium text-gray-800">${escapeHtml(e.name)}</div>
-        <div class="text-xs text-gray-500 flex items-center gap-2">
-          <span>${e.mobile || 'No mobile'}</span>
-          ${e.courseInterested ? `<span class="text-blue-600">• ${escapeHtml(e.courseInterested)}</span>` : ''}
+        <div>
+          <div class="font-medium text-gray-800 text-sm">${escapeHtml(e.name)}</div>
+          <div class="text-xs text-gray-500">📱 ${e.mobile || 'No mobile'}</div>
         </div>
+        ${courseName ? `<span class="text-xs bg-blue-50 text-blue-700 px-2 py-0.5 rounded-full font-medium">${escapeHtml(courseName)}</span>` : ''}
       </div>
     `;
   }).join('');
 }
 
-function selectEnquiry(id, name, mobile) {
+function selectEnquiry(id, name, mobile, courseParam = '') {
   selectedEnquiryId = id;
-  document.getElementById('selectedEnquiryId').value = id;
+  const selInput = document.getElementById('selectedEnquiryId');
+  if (selInput) selInput.value = id;
   
   const displayText = mobile ? `${name} (${mobile})` : name;
   const textEl = document.getElementById('enquirySelectText');
-  textEl.textContent = displayText;
-  textEl.classList.remove('text-gray-500');
-  textEl.classList.add('text-gray-800');
+  if (textEl) {
+    textEl.textContent = displayText;
+    textEl.classList.remove('text-gray-500');
+    textEl.classList.add('text-gray-800');
+  }
   
-  document.getElementById('enquiryDropdown').classList.add('hidden');
+  document.getElementById('enquiryDropdown')?.classList.add('hidden');
   document.getElementById('enquiryError')?.classList.add('hidden');
   
-  // Auto-fill course if enquiry has courseInterested
+  // Auto-fill course if available
   const enquiry = enquiries.find(e => e._id === id);
-  if (enquiry?.courseInterested) {
-    document.getElementById('courseInput').value = enquiry.courseInterested;
+  const matchedCourse = courseParam || enquiry?.course || enquiry?.courseInterested || '';
+  const courseInp = document.getElementById('courseInput');
+  if (matchedCourse && courseInp) {
+    courseInp.value = matchedCourse;
   }
 }
 
-function handlePaymentTypeChange(value) {
+function calcRemainingAdmissionAmount() {
+  const totalFees = parseInt(document.getElementById('totalFeesInput')?.value) || 0;
+  const initialPayment = parseInt(document.getElementById('registrationAmountInput')?.value) || 0;
+  const remaining = Math.max(0, totalFees - initialPayment);
+
+  const displayEl = document.getElementById('remainingAmountDisplay');
+  if (displayEl) {
+    displayEl.textContent = `₹${remaining.toLocaleString('en-IN')}`;
+  }
+
+  const paymentType = document.getElementById('paymentTypeSelect')?.value || 'ONE_TIME';
+  const pendingSection = document.getElementById('pendingAmountSection');
+  const pendingAmountInput = document.getElementById('pendingAmount');
+
+  if (paymentType === 'ONE_TIME') {
+    if (remaining > 0) {
+      pendingSection?.classList.remove('hidden');
+      if (pendingAmountInput) pendingAmountInput.value = remaining;
+    } else {
+      pendingSection?.classList.add('hidden');
+    }
+  } else {
+    pendingSection?.classList.add('hidden');
+  }
+
+  validateAdmissionInstallmentTotals();
+}
+
+function onAdmissionPaymentTypeChange(type) {
   const installmentsSection = document.getElementById('installmentsSection');
-  if (value === 'INSTALLMENT') {
-    installmentsSection.classList.remove('hidden');
-    if (admissionInstallmentRows.length === 0) {
+  const pendingSection = document.getElementById('pendingAmountSection');
+
+  if (type === 'INSTALLMENT') {
+    pendingSection?.classList.add('hidden');
+    installmentsSection?.classList.remove('hidden');
+    if (!admissionInstallmentRows || admissionInstallmentRows.length === 0) {
       admissionInstallmentRows = [{ amount: '', dueDate: '' }];
     }
     renderAdmissionInstallmentRows();
   } else {
-    installmentsSection.classList.add('hidden');
+    installmentsSection?.classList.add('hidden');
+    calcRemainingAdmissionAmount();
   }
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
+
+function validateAdmissionInstallmentTotals() {
+  const paymentType = document.getElementById('paymentTypeSelect')?.value || 'ONE_TIME';
+  if (paymentType !== 'INSTALLMENT') return;
+
+  const totalFees = parseInt(document.getElementById('totalFeesInput')?.value) || 0;
+  const initialPayment = parseInt(document.getElementById('registrationAmountInput')?.value) || 0;
+  const remaining = Math.max(0, totalFees - initialPayment);
+
+  const instTotal = admissionInstallmentRows.reduce((sum, r) => sum + (parseInt(r.amount) || 0), 0);
+  const errEl = document.getElementById('installmentsTotalError');
+
+  if (errEl) {
+    if (instTotal !== remaining) {
+      const diff = Math.abs(remaining - instTotal);
+      const isLess = instTotal < remaining;
+      errEl.textContent = `Installments total (₹${instTotal.toLocaleString('en-IN')}) is ₹${diff.toLocaleString('en-IN')} ${isLess ? 'less' : 'more'} than remaining amount (₹${remaining.toLocaleString('en-IN')}). Please add installments to cover the full remaining amount.`;
+      errEl.classList.remove('hidden');
+    } else {
+      errEl.classList.add('hidden');
+    }
+  }
+}
+
+// Expose globally
+window.calcRemainingAdmissionAmount = calcRemainingAdmissionAmount;
+window.onAdmissionPaymentTypeChange = onAdmissionPaymentTypeChange;
 
 // ==================== ADMISSION INSTALLMENT ROWS ====================
 function renderAdmissionInstallmentRows() {
@@ -864,42 +938,38 @@ function renderAdmissionInstallmentRows() {
   if (!container) return;
 
   container.innerHTML = admissionInstallmentRows.map((row, index) => `
-    <div class="installment-row flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-      <div class="flex-1">
-        <label class="text-xs text-gray-500 mb-1 block">Amount (₹)</label>
-        <div class="relative">
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">₹</span>
-          <input
-            type="number"
-            value="${row.amount}"
-            onchange="updateAdmissionInstallmentRow(${index}, 'amount', this.value)"
-            class="w-full pl-7 pr-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
-            placeholder="Amount"
-            min="1"
-          >
-        </div>
+    <div class="installment-row grid grid-cols-[1fr_1fr_auto] gap-2 p-2 bg-gray-50 rounded-lg items-center">
+      <div class="relative">
+        <input
+          type="number"
+          value="${row.amount}"
+          placeholder="Amount"
+          min="0"
+          step="1"
+          oninput="updateAdmissionInstallmentRow(${index}, 'amount', this.value)"
+          class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
+        >
       </div>
-      <div class="flex-1">
-        <label class="text-xs text-gray-500 mb-1 block">Due Date</label>
+      <div class="relative">
         <input
           type="date"
           value="${row.dueDate}"
           onchange="updateAdmissionInstallmentRow(${index}, 'dueDate', this.value)"
-          class="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+          class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 text-sm focus:outline-none focus:border-purple-500"
         >
       </div>
-      ${index > 0 ? `
-        <button
-          onclick="removeAdmissionInstallmentRow(${index})"
-          class="mt-5 p-2 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg transition-colors"
-        >
-          <i data-lucide="trash-2" class="w-4 h-4"></i>
-        </button>
-      ` : ''}
+      <button
+        type="button"
+        onclick="removeAdmissionInstallmentRow(${index})"
+        class="text-red-500 hover:text-red-700 px-2 h-[40px] flex items-center justify-center"
+      >
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
     </div>
   `).join('');
 
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
+  validateAdmissionInstallmentTotals();
 }
 
 function addAdmissionInstallmentRow() {
@@ -914,50 +984,42 @@ function removeAdmissionInstallmentRow(index) {
 
 function updateAdmissionInstallmentRow(index, field, value) {
   admissionInstallmentRows[index][field] = value;
+  validateAdmissionInstallmentTotals();
 }
 
 async function submitAddAdmission() {
   clearAddErrors();
 
-  const enquiryId = document.getElementById('selectedEnquiryId')?.value || '';
-  const directName = document.getElementById('directStudentName')?.value.trim() || '';
-  const directMobile = document.getElementById('directStudentMobile')?.value.trim().replace(/\D/g, '') || '';
-  const course = document.getElementById('courseInput').value.trim();
-  const totalFees = parseInt(document.getElementById('totalFeesInput').value) || 0;
-  const registrationAmount = parseInt(document.getElementById('registrationAmountInput').value) || 0;
-  const paymentType = document.querySelector('input[name="paymentType"]:checked')?.value || 'ONE_TIME';
+  const name = document.getElementById('directStudentName')?.value.trim() || '';
+  const mobile = document.getElementById('directStudentMobile')?.value.trim().replace(/\D/g, '') || '';
+  const course = document.getElementById('courseInput')?.value.trim() || '';
+  const totalFees = parseInt(document.getElementById('totalFeesInput')?.value) || 0;
+  const registrationAmount = parseInt(document.getElementById('registrationAmountInput')?.value) || 0;
+  const paymentType = document.getElementById('paymentTypeSelect')?.value || 'ONE_TIME';
   const admissionDate = document.getElementById('paymentDateInput')?.value || new Date().toISOString().split('T')[0];
-  const initialPaymentInputVal = parseInt(document.getElementById('initialPaymentInput')?.value) || 0;
-  const initialPayment = registrationAmount > 0 ? registrationAmount : initialPaymentInputVal;
   const initialPaymentMode = document.getElementById('paymentModeInput')?.value || 'CASH';
+  const pendingDueDate = document.getElementById('pendingDueDate')?.value || null;
 
   let hasError = false;
 
-  if (currentAdmissionMode === 'enquiry' && !enquiryId) {
-    const enqErr = document.getElementById('enquiryError');
-    if (enqErr) enqErr.classList.remove('hidden');
+  if (!name) {
+    document.getElementById('directNameError')?.classList.remove('hidden');
     hasError = true;
-  } else if (currentAdmissionMode === 'direct') {
-    if (!directName) {
-      document.getElementById('directNameError')?.classList.remove('hidden');
-      hasError = true;
-    }
-    if (directMobile.length !== 10) {
-      document.getElementById('directMobileError')?.classList.remove('hidden');
-      hasError = true;
-    }
+  }
+
+  if (mobile.length !== 10) {
+    document.getElementById('directMobileError')?.classList.remove('hidden');
+    hasError = true;
   }
 
   if (!course) {
-    const courseErr = document.getElementById('courseError');
-    if (courseErr) courseErr.classList.remove('hidden');
+    document.getElementById('courseError')?.classList.remove('hidden');
     document.getElementById('courseInput')?.classList.add('border-red-500');
     hasError = true;
   }
 
   if (totalFees <= 0) {
-    const totalFeesErr = document.getElementById('totalFeesError');
-    if (totalFeesErr) totalFeesErr.classList.remove('hidden');
+    document.getElementById('totalFeesError')?.classList.remove('hidden');
     document.getElementById('totalFeesInput')?.classList.add('border-red-500');
     hasError = true;
   }
@@ -972,22 +1034,6 @@ async function submitAddAdmission() {
     hasError = true;
   }
 
-  if (initialPayment > totalFees) {
-    const initErr = document.getElementById('initialPaymentError');
-    if (initErr) {
-      initErr.textContent = 'Initial payment cannot exceed total fees';
-      initErr.classList.remove('hidden');
-    }
-    document.getElementById('initialPaymentInput')?.classList.add('border-red-500');
-    hasError = true;
-  }
-
-  if (!initialPaymentMode) {
-    document.getElementById('paymentModeError').classList.remove('hidden');
-    document.getElementById('paymentModeInput').classList.add('border-red-500');
-    hasError = true;
-  }
-
   // Validate installments for INSTALLMENT type
   let installments = null;
   if (paymentType === 'INSTALLMENT') {
@@ -995,15 +1041,19 @@ async function submitAddAdmission() {
     for (const row of admissionInstallmentRows) {
       if (!row.amount || parseInt(row.amount) <= 0) {
         const errorEl = document.getElementById('installmentsError');
-        errorEl.textContent = 'All installments must have a valid amount';
-        errorEl.classList.remove('hidden');
+        if (errorEl) {
+          errorEl.textContent = 'All installments must have a valid amount';
+          errorEl.classList.remove('hidden');
+        }
         hasError = true;
         break;
       }
       if (!row.dueDate) {
         const errorEl = document.getElementById('installmentsError');
-        errorEl.textContent = 'All installments must have a due date';
-        errorEl.classList.remove('hidden');
+        if (errorEl) {
+          errorEl.textContent = 'All installments must have a due date';
+          errorEl.classList.remove('hidden');
+        }
         hasError = true;
         break;
       }
@@ -1014,13 +1064,15 @@ async function submitAddAdmission() {
     }
 
     // Validate total matches
-    if (!hasError && installments.length > 0) {
+    if (!hasError) {
       const totalInstallments = installments.reduce((sum, inst) => sum + inst.amount, 0);
-      const expectedRemaining = totalFees - initialPayment;
+      const expectedRemaining = Math.max(0, totalFees - registrationAmount);
       if (totalInstallments !== expectedRemaining) {
-        const errorEl = document.getElementById('installmentsError');
-        errorEl.textContent = `Installments total (${formatCurrency(totalInstallments)}) must equal remaining amount (${formatCurrency(expectedRemaining)})`;
-        errorEl.classList.remove('hidden');
+        const errorEl = document.getElementById('installmentsTotalError') || document.getElementById('installmentsError');
+        if (errorEl) {
+          errorEl.textContent = `Installments total (${formatCurrency(totalInstallments)}) must equal remaining amount (${formatCurrency(expectedRemaining)})`;
+          errorEl.classList.remove('hidden');
+        }
         hasError = true;
       }
     }
@@ -1029,77 +1081,42 @@ async function submitAddAdmission() {
   if (hasError) return;
 
   // Submit
-  const submitBtn = document.getElementById('addSubmitBtn');
-  submitBtn.disabled = true;
-  submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
-  lucide.createIcons();
+  const submitBtn = document.getElementById('submitAddBtn') || document.getElementById('addSubmitBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i data-lucide="loader-2" class="w-4 h-4 animate-spin"></i> Saving...';
+  }
+  if (window.lucide) lucide.createIcons();
 
   try {
-    // Get selected enquiry data for student info
-    const enquiry = enquiries.find(e => e._id === selectedEnquiryId);
-    
-    // Build payload per API documentation
     const payload = {
-      name: currentAdmissionMode === 'direct' ? directName : (enquiry?.name || ''),
-      email: enquiry?.email || '',
-      mobile: currentAdmissionMode === 'direct' ? directMobile : (enquiry?.mobile || ''),
+      name,
+      mobile,
       course,
-      admissionDate: admissionDate,
+      admissionDate,
       totalFees,
-      registrationAmount: registrationAmount || initialPayment || 0,
+      registrationAmount: registrationAmount || 0,
       paymentMode: initialPaymentMode,
-      enquiryId: currentAdmissionMode === 'enquiry' ? selectedEnquiryId : undefined
+      installments: paymentType === 'INSTALLMENT' ? installments : undefined,
+      fullPaymentDueDate: paymentType === 'ONE_TIME' && (totalFees - registrationAmount > 0) ? pendingDueDate : undefined
     };
-
-    // Add installments for INSTALLMENT type
-    if (paymentType === 'INSTALLMENT' && installments && installments.length > 0) {
-      payload.installments = installments;
-    }
-
-    // For ONE_TIME, we still need to record the initial payment separately
-    if (paymentType === 'ONE_TIME') {
-      // The initial payment will be recorded as a separate payment after admission creation
-      payload.initialPaymentAmount = initialPayment;
-    }
 
     const response = await apiPost(API_ENDPOINTS.ADMISSIONS.CREATE, payload);
 
     closeAddModal();
+    showToast('Success', 'Admission created successfully', 'success');
 
-    // Handle already exists case
-    if (response?.data?.alreadyExists) {
-      showToast('Info', 'Admission already exists for this enquiry', 'success');
-    } else {
-      showToast('Success', 'Admission created successfully', 'success');
-      
-      // Record initial payment for ONE_TIME payments
-      if (paymentType === 'ONE_TIME' && initialPayment > 0) {
-        try {
-          const admissionId = response.data?.admission?._id;
-          if (admissionId) {
-            await recordPayment(admissionId, {
-              amount: initialPayment,
-              paymentMode: initialPaymentMode,
-              paymentDate: admissionDate,
-              note: 'Initial payment'
-            });
-          }
-        } catch (paymentErr) {
-          console.error('Failed to record initial payment:', paymentErr);
-          // Don't show error to user as admission was created successfully
-        }
-      }
-    }
-
+    // Reload admissions table
     loadAdmissions();
   } catch (err) {
     console.error('Failed to create admission:', err);
-    const message = err.response?.data?.message || err.message || 'Failed to create admission';
-    showToast('Error', message, 'error');
+    showToast('Error', err.message || 'Failed to create admission', 'error');
   } finally {
-    submitBtn.disabled = false;
-    submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Admission';
-    lucide.createIcons();
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i> Save Admission';
+      if (window.lucide) lucide.createIcons();
+    }
   }
 }
 

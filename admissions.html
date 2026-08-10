@@ -566,141 +566,159 @@
   </div>
 
   
-  <!-- ADD ADMISSION MODAL -->
-  <div id="addModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 opacity-0 transition-opacity duration-200 p-4">
-    <div class="bg-white rounded-2xl w-full max-w-xl shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col" id="addModalContent">
+  <!-- ADD ADMISSION MODAL (EXACT SETUP FEES DESIGN MATCH) -->
+  <div id="addModal" class="fixed inset-0 bg-black/60 backdrop-blur-sm hidden flex items-center justify-center z-50 opacity-0 transition-opacity duration-200 p-4">
+    <div class="bg-white rounded-2xl w-full max-w-lg shadow-2xl transform scale-95 transition-transform duration-200 max-h-[90vh] flex flex-col p-6 overflow-y-auto" id="addModalContent">
       
       <!-- Header -->
-      <div class="flex items-center gap-3 px-6 py-5 border-b border-gray-100 flex-shrink-0">
-        <div class="w-10 h-10 bg-emerald-600 rounded-xl flex items-center justify-center">
-          <i data-lucide="user-check" class="text-white w-5 h-5"></i>
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 bg-purple-600 rounded-xl flex items-center justify-center flex-shrink-0">
+          <i data-lucide="wallet" class="text-white w-5 h-5"></i>
         </div>
         <div>
-          <h2 class="text-lg font-semibold text-gray-800">🎓 New Direct Admission</h2>
-          <p class="text-sm text-gray-500">Select enquiry lead or enter new student details</p>
+          <h2 class="text-xl font-bold text-gray-800">Setup Fees</h2>
         </div>
-        <button onclick="closeAddModal()" class="ml-auto w-8 h-8 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg flex items-center justify-center transition-colors">
+        <button onclick="closeAddModal()" class="ml-auto text-gray-400 hover:text-gray-600 p-1">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
 
       <!-- Form -->
-      <div class="p-6 space-y-4 overflow-y-auto">
-        
-        <!-- Mode Switch: Select Enquiry vs Direct Walk-In -->
-        <div class="bg-gray-100 p-1 rounded-xl flex gap-1 mb-2">
-          <button type="button" id="tabSelectEnquiry" onclick="switchAdmissionMode('enquiry')" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all bg-white text-gray-800 shadow-sm">
-            🔍 Existing Enquiry Lead
-          </button>
-          <button type="button" id="tabDirectWalkIn" onclick="switchAdmissionMode('direct')" class="flex-1 py-1.5 px-3 rounded-lg text-xs font-semibold transition-all text-gray-500 hover:text-gray-800">
-            ✏️ Direct Walk-In (Manual Name & Mobile)
-          </button>
-        </div>
+      <div class="space-y-4">
 
-        <!-- Enquiry Selection -->
-        <div id="enquirySelectSection" class="relative">
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Select Student / Enquiry <span class="text-red-500">*</span>
-          </label>
-          <input type="hidden" id="selectedEnquiryId" />
-          <button type="button" id="enquirySelectBtn" onclick="toggleEnquiryDropdown()" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-left flex justify-between items-center bg-white hover:bg-gray-50 transition-colors text-sm">
-            <span id="enquirySelectText" class="text-gray-500">Select an enquiry...</span>
-            <i data-lucide="chevron-down" class="w-4 h-4 text-gray-400"></i>
-          </button>
-          <p id="enquiryError" class="hidden text-red-500 text-xs mt-1">Please select an enquiry lead</p>
-
-          <!-- Dropdown -->
-          <div id="enquiryDropdown" class="hidden absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-20 max-h-60 overflow-hidden flex flex-col">
-            <div class="p-2 border-b border-gray-100 bg-gray-50">
-              <input type="text" id="enquirySearchInput" oninput="filterEnquiries(this.value)" placeholder="🔍 Search student name or mobile..." class="w-full px-3 py-1.5 border border-gray-200 rounded-lg text-xs outline-none focus:border-blue-500" />
-            </div>
-            <div id="enquiryOptionsList" class="overflow-y-auto flex-1 p-1 divide-y divide-gray-50">
-              <!-- Options populated dynamically -->
-            </div>
-          </div>
-        </div>
-
-        <!-- Direct Walk-In Section -->
-        <div id="directWalkInSection" class="hidden space-y-3">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-              Student Full Name <span class="text-red-500">*</span>
+        <!-- Student Name & Mobile -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div class="relative">
+            <input type="text" id="directStudentName" required
+              class="peer w-full px-4 py-2.5 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all text-sm"
+              placeholder="Full Name">
+            <label for="directStudentName" class="absolute left-4 -top-2 bg-white px-1 text-xs text-gray-500">
+              Full Name <span class="text-red-500">*</span>
             </label>
-            <input type="text" id="directStudentName" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" placeholder="e.g. Aarav Sharma" />
-            <p id="directNameError" class="hidden text-red-500 text-xs mt-1">Student name is required</p>
+            <p id="directNameError" class="hidden text-red-500 text-xs mt-0.5">Name is required</p>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
+          <div class="relative">
+            <input type="tel" id="directStudentMobile" maxlength="10" required
+              class="peer w-full px-4 py-2.5 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all text-sm"
+              placeholder="Mobile Number">
+            <label for="directStudentMobile" class="absolute left-4 -top-2 bg-white px-1 text-xs text-gray-500">
               Mobile Number <span class="text-red-500">*</span>
             </label>
-            <input type="tel" id="directStudentMobile" maxlength="10" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" placeholder="e.g. 9876543210" />
-            <p id="directMobileError" class="hidden text-red-500 text-xs mt-1">Valid 10-digit mobile number is required</p>
+            <p id="directMobileError" class="hidden text-red-500 text-xs mt-0.5">Valid 10-digit mobile is required</p>
           </div>
         </div>
 
         <!-- Course -->
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5">
-            Course Name <span class="text-red-500">*</span>
+        <div class="relative">
+          <input type="text" id="courseInput" required
+            class="peer w-full px-4 py-2.5 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all text-sm"
+            placeholder="Course Name">
+          <label for="courseInput" class="absolute left-4 -top-2 bg-white px-1 text-xs text-gray-500">
+            Course <span class="text-red-500">*</span>
           </label>
-          <input type="text" id="courseInput" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" placeholder="e.g. BCA, DCA, Tally Prime, Python" />
-          <p id="courseError" class="hidden text-red-500 text-xs mt-1">Course is required</p>
+          <p id="courseError" class="hidden text-red-500 text-xs mt-0.5">Course is required</p>
         </div>
 
-        <!-- Total Fees & Down Payment Grid -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-              Total Fees (₹) <span class="text-red-500">*</span>
-            </label>
-            <input type="number" id="totalFeesInput" min="0" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" placeholder="15000" />
-            <p id="totalFeesError" class="hidden text-red-500 text-xs mt-1">Enter valid total fees</p>
+        <!-- Payment Type Selection -->
+        <div class="relative">
+          <select id="paymentTypeSelect" onchange="onAdmissionPaymentTypeChange(this.value)"
+            class="peer w-full px-4 py-2.5 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all appearance-none bg-white text-sm">
+            <option value="ONE_TIME">Full Payment</option>
+            <option value="INSTALLMENT">Installment Payment</option>
+          </select>
+          <i data-lucide="chevron-down" class="absolute right-4 top-2.5 text-gray-400 pointer-events-none w-5 h-5"></i>
+          <label class="absolute left-4 -top-2 bg-white px-1 text-xs text-gray-500">
+            Payment Type <span class="text-red-500">*</span>
+          </label>
+        </div>
+
+        <!-- Total Fees -->
+        <div class="relative">
+          <input type="number" id="totalFeesInput" required min="0" step="1"
+            class="peer w-full px-4 py-2.5 h-[40px] rounded-lg border-2 border-gray-200 text-gray-800 focus:outline-none focus:border-purple-500 focus:ring-2 focus:ring-purple-100 transition-all text-sm"
+            placeholder="Total Fees" oninput="calcRemainingAdmissionAmount()">
+          <label for="totalFeesInput" class="absolute left-4 -top-2 bg-white px-1 text-xs text-gray-500">
+            Total Fees (Rs.) <span class="text-red-500">*</span>
+          </label>
+          <p id="totalFeesError" class="hidden text-red-500 text-xs mt-0.5">Enter valid total fees</p>
+        </div>
+
+        <!-- Initial Payment Section (Required) -->
+        <div id="initialPaymentSection" class="bg-blue-50/70 rounded-xl p-3 space-y-3 border border-blue-100">
+          <label class="text-sm font-medium text-blue-800 flex items-center gap-2">
+            <i data-lucide="wallet" class="w-4 h-4"></i>
+            Initial Payment <span class="text-xs font-normal text-blue-600">(Required)</span>
+          </label>
+
+          <!-- Single Row: Amount + Date + Payment Mode -->
+          <div class="grid grid-cols-3 gap-2">
+            <div class="relative">
+              <input type="number" id="registrationAmountInput" min="0" step="1" required
+                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500 bg-white"
+                placeholder="Amount" oninput="calcRemainingAdmissionAmount()">
+              <p id="registrationAmountError" class="hidden text-red-500 text-xs mt-0.5">Invalid amount</p>
+            </div>
+            <div class="relative">
+              <input type="date" id="paymentDateInput" required
+                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500 bg-white">
+            </div>
+            <div class="relative">
+              <select id="paymentModeInput" required
+                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-blue-200 text-gray-800 text-sm focus:outline-none focus:border-blue-500 bg-white">
+                <option value="CASH">💵 Cash</option>
+                <option value="UPI">📱 UPI</option>
+                <option value="CARD">💳 Card</option>
+                <option value="ONLINE">🏦 Online</option>
+              </select>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">
-              Down Payment (₹)
-            </label>
-            <input type="number" id="registrationAmountInput" min="0" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" placeholder="5000" />
-            <p id="registrationAmountError" class="hidden text-red-500 text-xs mt-1">Enter valid initial payment</p>
+          <!-- Remaining Amount Display -->
+          <div class="flex justify-between items-center pt-2 border-t border-blue-200">
+            <span class="text-sm text-blue-700">Remaining Amount:</span>
+            <span id="remainingAmountDisplay" class="font-bold text-blue-900 text-base">₹0</span>
           </div>
         </div>
 
-        <!-- Payment Date & Mode -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Admission Date</label>
-            <input type="date" id="paymentDateInput" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm" />
-          </div>
-
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5">Payment Mode</label>
-            <select id="paymentModeInput" class="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 transition-all text-sm bg-white cursor-pointer">
-              <option value="CASH">💵 Cash</option>
-              <option value="UPI">📱 UPI</option>
-              <option value="CARD">💳 Card</option>
-              <option value="ONLINE">🏦 Online</option>
-            </select>
+        <!-- Pending Amount Section (Shown for ONE_TIME when remaining > 0) -->
+        <div id="pendingAmountSection" class="hidden bg-amber-50/70 rounded-xl p-3 space-y-3 border border-amber-100">
+          <label class="text-sm font-medium text-amber-800 flex items-center gap-2">
+            <i data-lucide="clock" class="w-4 h-4"></i>
+            Pending Amount
+          </label>
+          <div class="grid grid-cols-2 gap-2">
+            <div class="relative">
+              <input type="number" id="pendingAmount" min="0" step="1" readonly
+                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-amber-200 text-gray-800 text-sm bg-gray-100"
+                placeholder="Pending">
+            </div>
+            <div class="relative">
+              <input type="date" id="pendingDueDate"
+                class="w-full px-3 py-2 h-[40px] rounded-lg border-2 border-amber-200 text-gray-800 text-sm focus:outline-none focus:border-amber-500 bg-white">
+              <label class="absolute left-3 -top-2 bg-amber-50 px-1 text-xs text-amber-700 font-medium">Due Date</label>
+            </div>
           </div>
         </div>
 
-        <!-- Payment Type Radios -->
-        <div class="hidden">
-          <input type="radio" name="paymentType" value="ONE_TIME" checked />
-          <input type="radio" name="paymentType" value="INSTALLMENT" />
-          <input type="number" id="initialPaymentInput" value="0" />
+        <!-- Installments Section (Hidden for ONE_TIME) -->
+        <div id="installmentsSection" class="space-y-3 hidden">
+          <div class="flex justify-between items-center">
+            <label class="text-sm font-medium text-gray-700">Future Installments</label>
+            <button type="button" onclick="addAdmissionInstallmentRow()" class="text-sm text-purple-600 hover:text-purple-800 font-bold">+ Add</button>
+          </div>
+          <div id="admissionInstallmentRows" class="space-y-2"></div>
+          <p id="installmentsError" class="hidden text-red-500 text-xs">Add at least one installment</p>
+          <p id="installmentsTotalError" class="hidden text-red-500 text-sm font-medium"></p>
         </div>
-
-        <div id="installmentsSection" class="hidden"></div>
 
       </div>
 
-      <!-- Footer -->
-      <div class="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-2xl flex-shrink-0">
-        <button onclick="closeAddModal()" class="px-5 py-2.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-xl transition-colors font-medium text-sm">
+      <!-- Actions -->
+      <div class="flex justify-end gap-3 pt-4 mt-4 border-t border-gray-100">
+        <button onclick="closeAddModal()" class="px-4 py-2 text-gray-600 hover:text-gray-800 hover:bg-gray-100 rounded-lg transition-colors font-medium text-sm">
           Cancel
         </button>
-        <button id="submitAddBtn" onclick="submitAddAdmission()" class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-lg shadow-emerald-600/25 transition-all font-medium text-sm flex items-center gap-2">
+        <button id="submitAddBtn" onclick="submitAddAdmission()" class="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg shadow-lg shadow-purple-600/30 transition-all font-medium flex items-center gap-2 text-sm">
           <i data-lucide="check" class="w-4 h-4"></i>
           Save Admission
         </button>
