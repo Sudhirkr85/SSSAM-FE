@@ -133,7 +133,6 @@
           <button class="quick-chip" onclick="window.chatSendQuick('Interested leads')">⭐ Interested Leads</button>
           <button class="quick-chip" onclick="window.chatSendQuick('New enquiries')">🆕 New Enquiries</button>
           <button class="quick-chip" onclick="window.chatSendQuick('Draft message')">✍️ Draft Message</button>
-          ${admin ? `<button class="quick-chip" onclick="window.chatSendQuick('Staff attendance')">📋 Staff Attendance</button>` : ''}
         </div>
 
         <!-- Messages -->
