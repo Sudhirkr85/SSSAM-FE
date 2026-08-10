@@ -673,42 +673,61 @@ function goToLastPage() {
 
 // ==================== ADD ADMISSION MODAL ====================
 function openAddModal() {
-  // Reset form
-  document.getElementById('selectedEnquiryId').value = '';
-  document.getElementById('enquirySelectText').textContent = 'Select an enquiry...';
-  document.getElementById('enquirySelectText').classList.add('text-gray-500');
-  document.getElementById('courseInput').value = '';
-  document.getElementById('totalFeesInput').value = '';
-  document.getElementById('registrationAmountInput').value = '';
-  document.querySelector('input[name="paymentType"][value="ONE_TIME"]').checked = true;
+  const getEl = (id) => document.getElementById(id);
+  const safeSetVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+
+  // Reset form safely
+  safeSetVal('selectedEnquiryId', '');
+  const selectText = getEl('enquirySelectText');
+  if (selectText) {
+    selectText.textContent = 'Select an enquiry...';
+    selectText.classList.add('text-gray-500');
+  }
+  safeSetVal('courseInput', '');
+  safeSetVal('totalFeesInput', '');
+  safeSetVal('registrationAmountInput', '');
+
+  const oneTimeRadio = document.querySelector('input[name="paymentType"][value="ONE_TIME"]');
+  if (oneTimeRadio) oneTimeRadio.checked = true;
 
   // Set default payment date to today
-  document.getElementById('paymentDateInput').value = new Date().toISOString().split('T')[0];
-  document.getElementById('initialPaymentInput').value = '';
-  document.getElementById('paymentModeInput').value = 'CASH';
+  safeSetVal('paymentDateInput', new Date().toISOString().split('T')[0]);
+  safeSetVal('initialPaymentInput', '');
+  safeSetVal('paymentModeInput', 'CASH');
 
   // Reset installments
   admissionInstallmentRows = [{ amount: '', dueDate: '' }];
-  renderAdmissionInstallmentRows();
-  document.getElementById('installmentsSection').classList.add('hidden');
+  if (typeof renderAdmissionInstallmentRows === 'function') {
+    try { renderAdmissionInstallmentRows(); } catch (_) {}
+  }
+  getEl('installmentsSection')?.classList.add('hidden');
 
   // Clear errors
   clearAddErrors();
 
-  // Show modal
-  const modal = document.getElementById('addModal');
-  const content = document.getElementById('addModalContent');
+  // Show modal safely
+  const modal = getEl('addModal');
+  const content = getEl('addModalContent');
 
-  modal.classList.remove('hidden');
-  modal.classList.add('flex');
-  setTimeout(() => {
-    modal.classList.remove('opacity-0');
-    content.classList.remove('scale-95');
-    content.classList.add('scale-100');
-  }, 10);
+  if (modal) {
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    setTimeout(() => {
+      modal.classList.remove('opacity-0');
+      if (content) {
+        content.classList.remove('scale-95');
+        content.classList.add('scale-100');
+      }
+    }, 10);
+  }
 
-  lucide.createIcons();
+  if (window.lucide && typeof window.lucide.createIcons === 'function') {
+    window.lucide.createIcons();
+  }
 }
+
+window.openAddModal = openAddModal;
+window.openAdmissionModal = openAddModal;
 
 function closeAddModal() {
   const modal = document.getElementById('addModal');

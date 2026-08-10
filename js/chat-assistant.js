@@ -128,14 +128,14 @@
         <!-- Quick Action Chips -->
         <div class="chat-quick-actions">
           <button class="quick-chip chip-overview" onclick="window.chatSendQuick('CRM Overview')">📊 Overview</button>
-          <button class="quick-chip" onclick="window.location.href='enquiries.html?new=true'">➕ New Enquiry</button>
-          <button class="quick-chip" onclick="window.location.href='admissions.html?new=true'">🎓 Direct Admission</button>
           <button class="quick-chip chip-followup" onclick="window.chatSendQuick('Today followups')">📅 Today Follow-ups</button>
           <button class="quick-chip chip-fee" onclick="window.chatSendQuick('Pending fees')">💰 Pending Fees</button>
           <button class="quick-chip" onclick="window.chatSendQuick('Interested leads')">⭐ Interested Leads</button>
           <button class="quick-chip" onclick="window.chatSendQuick('New enquiries')">🆕 New Enquiries</button>
           <button class="quick-chip" onclick="window.chatSendQuick('Draft message')">✍️ Draft Message</button>
           ${admin ? `<button class="quick-chip" onclick="window.chatSendQuick('Staff attendance')">📋 Staff Attendance</button>` : ''}
+          <button class="quick-chip" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;font-weight:700;" onclick="window.chatSendQuick('Nayi enquiry add karo')">➕ New Enquiry</button>
+          <button class="quick-chip" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:700;" onclick="window.chatSendQuick('Direct admission karna hai')">🎓 Direct Admission</button>
         </div>
 
         <!-- Messages -->
@@ -178,6 +178,14 @@
                 <span class="starter-text">Staff Attendance</span>
               </button>
               ` : ''}
+              <button class="starter-card" onclick="window.chatSendQuick('Nayi enquiry add karo')">
+                <span class="starter-icon">➕</span>
+                <span class="starter-text">New Enquiry</span>
+              </button>
+              <button class="starter-card" onclick="window.chatSendQuick('Direct admission karna hai')">
+                <span class="starter-icon">🎓</span>
+                <span class="starter-text">Direct Admission</span>
+              </button>
             </div>
           </div>
         </div>
@@ -1450,7 +1458,7 @@
             </div>
             <button onclick="document.getElementById('wa-notes-popup').remove()" style="background:rgba(255,255,255,0.15);border:none;color:#fff;border-radius:50%;width:26px;height:26px;font-size:14px;cursor:pointer;line-height:1;">&times;</button>
           </div>
-          <input id="wa-note-search" placeholder="\u{1F50D} Search notes..." style="margin-top:8px;width:100%;box-sizing:border-box;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:6px 10px;color:#fff;font-size:12px;outline:none;" />
+          <input id="wa-note-search" autofocus placeholder="🔍 Search saved notes/templates..." style="margin-top:8px;width:100%;box-sizing:border-box;background:rgba(255,255,255,0.12);border:1px solid rgba(255,255,255,0.2);border-radius:8px;padding:7px 10px;color:#fff;font-size:12px;outline:none;" />
         </div>
         <!-- Notes List -->
         <div id="wa-notes-list" style="max-height:240px;overflow-y:auto;padding:8px 10px;display:flex;flex-direction:column;gap:6px;">
