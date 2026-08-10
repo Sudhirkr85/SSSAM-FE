@@ -134,8 +134,6 @@
           <button class="quick-chip" onclick="window.chatSendQuick('New enquiries')">🆕 New Enquiries</button>
           <button class="quick-chip" onclick="window.chatSendQuick('Draft message')">✍️ Draft Message</button>
           ${admin ? `<button class="quick-chip" onclick="window.chatSendQuick('Staff attendance')">📋 Staff Attendance</button>` : ''}
-          <button class="quick-chip" style="background:linear-gradient(135deg,#8b5cf6,#6366f1);color:#fff;font-weight:700;" onclick="window.chatSendQuick('Nayi enquiry add karo')">➕ New Enquiry</button>
-          <button class="quick-chip" style="background:linear-gradient(135deg,#059669,#10b981);color:#fff;font-weight:700;" onclick="window.chatSendQuick('Direct admission karna hai')">🎓 Direct Admission</button>
         </div>
 
         <!-- Messages -->
