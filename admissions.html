@@ -172,22 +172,45 @@
       <!-- CONTENT -->
       <div class="flex-1 overflow-y-auto p-6 space-y-6">
         
-        <!-- DATE FILTER TABS -->
-        <div class="bg-white rounded-xl shadow-sm p-4">
+        <!-- DATE & STATUS FILTER TABS -->
+        <div class="bg-white rounded-xl shadow-sm p-4 space-y-3">
+          <!-- Date Range -->
           <div class="flex flex-wrap items-center gap-2">
-            <div class="flex items-center gap-2 mr-4">
-              <i data-lucide="calendar" class="w-5 h-5 text-gray-400"></i>
-              <span class="text-sm font-medium text-gray-700">Date Range:</span>
+            <div class="flex items-center gap-2 mr-2 min-w-[90px]">
+              <i data-lucide="calendar" class="w-4 h-4 text-gray-400"></i>
+              <span class="text-sm font-medium text-gray-700">Date:</span>
             </div>
             <div class="flex flex-wrap gap-2">
-              <button onclick="setAdmissionDateFilter('thisMonth')" data-filter="thisMonth" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
+              <button onclick="setAdmissionDateFilter('thisMonth')" data-filter="thisMonth" class="admission-filter-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-blue-600 text-white">
                 This Month
               </button>
-              <button onclick="setAdmissionDateFilter('thisYear')" data-filter="thisYear" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+              <button onclick="setAdmissionDateFilter('thisYear')" data-filter="thisYear" class="admission-filter-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
                 This Year
               </button>
-              <button onclick="setAdmissionDateFilter('allTime')" data-filter="allTime" class="admission-filter-tab px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
+              <button onclick="setAdmissionDateFilter('allTime')" data-filter="allTime" class="admission-filter-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200">
                 All Time
+              </button>
+            </div>
+          </div>
+
+          <!-- Status Filter -->
+          <div class="flex flex-wrap items-center gap-2 pt-2 border-t border-gray-100">
+            <div class="flex items-center gap-2 mr-2 min-w-[90px]">
+              <i data-lucide="user-check" class="w-4 h-4 text-gray-400"></i>
+              <span class="text-sm font-medium text-gray-700">Status:</span>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              <button onclick="setAdmissionStatusFilter('ALL')" data-status="ALL" class="admission-status-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-blue-600 text-white flex items-center gap-1.5">
+                <i data-lucide="list" class="w-3.5 h-3.5"></i> All
+              </button>
+              <button onclick="setAdmissionStatusFilter('active')" data-status="active" class="admission-status-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1.5">
+                <i data-lucide="check-circle" class="w-3.5 h-3.5 text-teal-600"></i> Active
+              </button>
+              <button onclick="setAdmissionStatusFilter('dropped')" data-status="dropped" class="admission-status-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1.5">
+                <i data-lucide="user-x" class="w-3.5 h-3.5 text-red-600"></i> Dropped
+              </button>
+              <button onclick="setAdmissionStatusFilter('cancelled')" data-status="cancelled" class="admission-status-tab px-3.5 py-1.5 rounded-lg text-xs sm:text-sm font-medium transition-colors bg-gray-100 text-gray-700 hover:bg-gray-200 flex items-center gap-1.5">
+                <i data-lucide="x-circle" class="w-3.5 h-3.5 text-gray-500"></i> Cancelled
               </button>
             </div>
           </div>
@@ -231,6 +254,7 @@
                     <i data-lucide="chevrons-up-down" class="w-4 h-4 text-gray-400"></i>
                   </div>
                 </th>
+                <th class="px-4 py-3 text-center">Status</th>
                 <th class="px-6 py-3 text-right cursor-pointer hover:bg-gray-100 transition-colors" onclick="sortTable('totalFees')">
                   <div class="flex items-center justify-end gap-1">
                     Total Fees
@@ -267,7 +291,7 @@
             <tbody id="admissionTable" class="divide-y divide-gray-100">
               <!-- Loading state -->
               <tr>
-                <td colspan="7" class="text-center py-12">
+                <td colspan="8" class="text-center py-12">
                   <div class="flex flex-col items-center gap-3">
                     <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
                       <i data-lucide="loader-2" class="w-6 h-6 text-gray-400 animate-spin"></i>

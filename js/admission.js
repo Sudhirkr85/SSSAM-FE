@@ -21,6 +21,7 @@ let sortDirection = 'asc'; // 'asc' or 'desc'
 
 // Date filter state
 let currentAdmissionFilter = 'thisMonth';
+let currentStatusFilter = 'ALL';
 let currentAdmission = null;
 let duesFilterActive = false;
 
@@ -78,7 +79,7 @@ function initEventListeners() {
 
   }
 
-// ==================== DATE FILTER LOGIC ====================
+// ==================== DATE & STATUS FILTER LOGIC ====================
 function getDateRangeForFilter(filterType) {
   const today = new Date();
   const startDate = new Date();
@@ -137,8 +138,29 @@ function setAdmissionDateFilter(filterType) {
   // Reload admissions with new filter
   currentPage = 1;
   const filters = getActiveFilters();
-  loadAdmissions('', filters);
+  loadAdmissions(document.getElementById('searchInput')?.value || '', filters);
 }
+
+function setAdmissionStatusFilter(status) {
+  currentStatusFilter = status;
+
+  // Update status tab styles
+  document.querySelectorAll('.admission-status-tab').forEach(tab => {
+    if ((tab.dataset.status || '').toLowerCase() === (status || '').toLowerCase()) {
+      tab.classList.remove('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+      tab.classList.add('bg-blue-600', 'text-white');
+    } else {
+      tab.classList.remove('bg-blue-600', 'text-white');
+      tab.classList.add('bg-gray-100', 'text-gray-700', 'hover:bg-gray-200');
+    }
+  });
+
+  // Reload admissions with new status filter
+  currentPage = 1;
+  const filters = getActiveFilters();
+  loadAdmissions(document.getElementById('searchInput')?.value || '', filters);
+}
+window.setAdmissionStatusFilter = setAdmissionStatusFilter;
 
 function getActiveFilters() {
   const filters = {};
@@ -148,10 +170,9 @@ function getActiveFilters() {
   filters.dateFrom = dateRange.dateFrom;
   filters.dateTo = dateRange.dateTo;
   
-  // Add other filters
-  const statusFilter = document.getElementById('statusFilter')?.value;
-  if (statusFilter) {
-    filters.status = statusFilter;
+  // Add status filter
+  if (currentStatusFilter && currentStatusFilter.toUpperCase() !== 'ALL') {
+    filters.status = currentStatusFilter.toLowerCase();
   }
   
   const courseFilter = document.getElementById('courseFilter')?.value?.trim();
@@ -321,39 +342,51 @@ function renderTable() {
   }
 
   table.innerHTML = sortedAdmissions.map(admission => {
-    console.log('=== DEBUG: Processing admission:', admission);
     const name = admission.name || 'Unknown';
     const mobile = admission.mobile || '';
     const course = admission.course || '-';
-    const status = admission.status || 'ACTIVE';
-    console.log('=== DEBUG: Extracted data - Name:', name, 'Mobile:', mobile, 'Course:', course);
+    const statusLower = (admission.status || 'active').toLowerCase();
+    const isDropped = statusLower === 'dropped';
+    const isCancelled = statusLower === 'cancelled';
     const totalFees = admission.totalFees || 0;
     // Backend sends remainingAmount, calculate paid from it
-    const remaining = admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0));
-    const paidAmount = totalFees - remaining;
+    const remaining = isDropped ? 0 : (admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0)));
+    const paidAmount = totalFees - (admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0)));
     const paymentType = admission.paymentType || 'ONE_TIME';
     const nextDue = calculateNextDue(admission);
 
+    // Status Badge HTML
+    let statusBadgeHtml = '';
+    if (isDropped) {
+      statusBadgeHtml = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-red-100 text-red-700 border border-red-200"><i data-lucide="user-x" class="w-3.5 h-3.5"></i> Dropped</span>';
+    } else if (isCancelled) {
+      statusBadgeHtml = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700 border border-gray-200"><i data-lucide="x-circle" class="w-3.5 h-3.5"></i> Cancelled</span>';
+    } else {
+      statusBadgeHtml = '<span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-semibold bg-teal-50 text-teal-700 border border-teal-200"><i data-lucide="check-circle" class="w-3.5 h-3.5 text-teal-600"></i> Active</span>';
+    }
+
     return `
-      <tr class="finance-row border-b border-gray-50 last:border-0 cursor-pointer hover:bg-indigo-50/50 transition-colors" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
+      <tr class="finance-row border-b border-gray-50 last:border-0 cursor-pointer hover:bg-indigo-50/50 transition-colors ${isDropped ? 'bg-red-50/20' : ''}" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
         <td class="px-6 py-4">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-              <i data-lucide="user" class="w-5 h-5 text-blue-600"></i>
+            <div class="w-10 h-10 ${isDropped ? 'bg-red-100' : 'bg-blue-100'} rounded-xl flex items-center justify-center flex-shrink-0">
+              <i data-lucide="${isDropped ? 'user-x' : 'user'}" class="w-5 h-5 ${isDropped ? 'text-red-600' : 'text-blue-600'}"></i>
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-800">${escapeHtml(name)}</span>
-                ${status === 'DROPPED' ? '<span class="px-1.5 py-0.5 text-[9px] bg-red-100 text-red-700 rounded-md font-semibold">Dropped</span>' : ''}
+                <span class="font-medium text-gray-800 ${isDropped ? 'line-through text-gray-500' : ''}">${escapeHtml(name)}</span>
               </div>
               <div class="text-xs text-gray-500">${mobile}</div>
               <div class="text-xs text-blue-600">${escapeHtml(course)}</div>
             </div>
           </div>
         </td>
+        <td class="px-4 py-4 text-center">
+          ${statusBadgeHtml}
+        </td>
         <td class="px-6 py-4 text-right font-medium text-gray-800">${formatCurrency(totalFees)}</td>
         <td class="px-6 py-4 text-right font-medium text-green-600">${formatCurrency(paidAmount)}</td>
-        <td class="px-6 py-4 text-right font-medium ${remaining > 0 ? 'text-red-600' : 'text-gray-400'}">${remaining > 0 ? formatCurrency(remaining) : 'Paid'}</td>
+        <td class="px-6 py-4 text-right font-medium ${isDropped ? 'text-gray-400' : remaining > 0 ? 'text-red-600' : 'text-gray-400'}">${isDropped ? '<span class="text-xs italic text-gray-400">Dropped</span>' : remaining > 0 ? formatCurrency(remaining) : 'Paid'}</td>
         <td class="px-6 py-4 text-center">
           <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium ${getPaymentTypeBadgeClass(paymentType)}">
             ${getPaymentTypeIcon(paymentType)}
@@ -361,7 +394,7 @@ function renderTable() {
           </span>
         </td>
         <td class="px-6 py-4 text-center">
-          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${nextDue.isOverdue ? 'bg-red-100 text-red-700' : nextDue.isUpcoming ? 'bg-amber-100 text-amber-700' : nextDue.text === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-600'}">
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium ${nextDue.isOverdue ? 'bg-red-100 text-red-700' : nextDue.isUpcoming ? 'bg-amber-100 text-amber-700' : nextDue.text === 'Paid' ? 'bg-green-100 text-green-700' : nextDue.text === 'Dropped' ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-600'}">
             ${nextDue.isOverdue ? '<i data-lucide="alert-circle" class="w-3 h-3"></i>' : nextDue.isUpcoming ? '<i data-lucide="clock" class="w-3 h-3"></i>' : ''}
             ${nextDue.text}
           </span>
@@ -371,12 +404,14 @@ function renderTable() {
             <a href="admission-detail.html?id=${admission._id}" onclick="event.stopPropagation();" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Detail">
               <i data-lucide="eye" class="w-4 h-4"></i>
             </a>
+            ${!isDropped ? `
             <button onclick="event.stopPropagation(); openPaymentPlanModal('${admission._id}')" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Installment Plan">
               <i data-lucide="calendar" class="w-4 h-4"></i>
             </button>
             <button onclick="event.stopPropagation(); openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Add Payment">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
             </button>
+            ` : ''}
             <button onclick="event.stopPropagation(); openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payments">
               <i data-lucide="receipt" class="w-4 h-4"></i>
             </button>
@@ -402,31 +437,31 @@ function renderMobileCards() {
     const mobile = admission.mobile || '';
     const course = admission.course || '-';
     const totalFees = admission.totalFees || 0;
-    const isDropped = (admission.status || '').toLowerCase() === 'dropped';
+    const statusLower = (admission.status || 'active').toLowerCase();
+    const isDropped = statusLower === 'dropped';
+    const isCancelled = statusLower === 'cancelled';
     const remaining = isDropped ? 0 : (admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0)));
-    const paidAmount = totalFees - remaining;
+    const paidAmount = totalFees - (admission.remainingAmount ?? (totalFees - (admission.paidAmount || 0)));
     const paymentType = admission.paymentType || 'ONE_TIME';
     const nextDue = calculateNextDue(admission);
 
-    const status = admission.status || 'ACTIVE';
-
     return `
-      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 cursor-pointer hover:shadow-md transition-all" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
+      <div class="bg-white rounded-xl shadow-sm p-4 space-y-3 cursor-pointer hover:shadow-md transition-all ${isDropped ? 'border-l-4 border-red-500 bg-red-50/10' : ''}" onclick="window.location.href='admission-detail.html?id=${admission._id}'">
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
-            <div class="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-              <i data-lucide="user" class="w-5 h-5 text-blue-600"></i>
+            <div class="w-10 h-10 ${isDropped ? 'bg-red-100' : 'bg-blue-100'} rounded-xl flex items-center justify-center">
+              <i data-lucide="${isDropped ? 'user-x' : 'user'}" class="w-5 h-5 ${isDropped ? 'text-red-600' : 'text-blue-600'}"></i>
             </div>
             <div>
               <div class="flex items-center gap-2">
-                <span class="font-medium text-gray-800">${escapeHtml(name)}</span>
-                ${status === 'DROPPED' ? '<span class="px-1.5 py-0.5 text-[9px] bg-red-100 text-red-700 rounded-md font-semibold">Dropped</span>' : ''}
+                <span class="font-medium text-gray-800 ${isDropped ? 'line-through text-gray-500' : ''}">${escapeHtml(name)}</span>
+                ${isDropped ? '<span class="px-1.5 py-0.5 text-[10px] bg-red-100 text-red-700 border border-red-200 rounded font-bold">Dropped</span>' : isCancelled ? '<span class="px-1.5 py-0.5 text-[10px] bg-gray-100 text-gray-700 rounded font-bold">Cancelled</span>' : '<span class="px-1.5 py-0.5 text-[10px] bg-teal-50 text-teal-700 border border-teal-200 rounded font-bold">Active</span>'}
               </div>
               <div class="text-xs text-gray-500">${mobile}</div>
             </div>
           </div>
           <span class="inline-flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-medium ${getPaymentTypeBadgeClass(paymentType)}">
-            ${paymentType === 'ONE Time' ? 'One Time' : 'Installment'}
+            ${paymentType === 'ONE_TIME' ? 'One Time' : 'Installment'}
           </span>
         </div>
 
@@ -441,7 +476,7 @@ function renderMobileCards() {
           </div>
           <div class="bg-blue-50 rounded-lg p-2">
             <div class="text-xs text-blue-600">Remaining</div>
-            <div class="font-medium text-sm text-blue-700">${remaining > 0 ? formatCurrency(remaining) : 'Paid'}</div>
+            <div class="font-medium text-sm text-blue-700">${isDropped ? '<span class="text-xs italic text-gray-400">Dropped</span>' : remaining > 0 ? formatCurrency(remaining) : 'Paid'}</div>
           </div>
         </div>
 
@@ -449,7 +484,7 @@ function renderMobileCards() {
           <span class="text-gray-500 font-medium flex items-center gap-1">
             <i data-lucide="calendar" class="w-3.5 h-3.5 text-amber-600"></i> Next Due Date:
           </span>
-          <span class="font-semibold ${nextDue.isOverdue ? 'bg-red-100 text-red-700 px-2 py-0.5 rounded-md border border-red-200' : nextDue.isUpcoming ? 'bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md border border-amber-200' : nextDue.text === 'Paid' ? 'bg-green-100 text-green-700 px-2 py-0.5 rounded-md' : 'bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md'}">
+          <span class="font-semibold ${nextDue.isOverdue ? 'bg-red-100 text-red-700 px-2 py-0.5 rounded-md border border-red-200' : nextDue.isUpcoming ? 'bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md border border-amber-200' : nextDue.text === 'Paid' ? 'bg-green-100 text-green-700 px-2 py-0.5 rounded-md' : nextDue.text === 'Dropped' ? 'bg-red-50 text-red-600 px-2 py-0.5 rounded-md' : 'bg-gray-100 text-gray-700 px-2 py-0.5 rounded-md'}">
             ${nextDue.isOverdue ? '<i data-lucide="alert-circle" class="w-3 h-3 inline mr-1"></i>' : ''}${nextDue.text}
           </span>
         </div>
@@ -460,12 +495,14 @@ function renderMobileCards() {
             <a href="admission-detail.html?id=${admission._id}" onclick="event.stopPropagation();" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors" title="View Detail">
               <i data-lucide="eye" class="w-4 h-4"></i>
             </a>
+            ${!isDropped ? `
             <button onclick="event.stopPropagation(); openPaymentPlanModal('${admission._id}')" class="p-2 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors" title="Edit Installment Plan">
               <i data-lucide="calendar" class="w-4 h-4"></i>
             </button>
             <button onclick="event.stopPropagation(); openPaymentModal('${admission._id}')" class="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors" title="Add Payment">
               <i data-lucide="plus-circle" class="w-4 h-4"></i>
             </button>
+            ` : ''}
             <button onclick="event.stopPropagation(); openViewPaymentsModal('${admission._id}')" class="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="View Payments">
               <i data-lucide="receipt" class="w-4 h-4"></i>
             </button>
@@ -519,7 +556,7 @@ function updateSortIcons() {
 function renderEmptyState() {
   document.getElementById('admissionTable').innerHTML = `
     <tr>
-      <td colspan="7" class="text-center py-12">
+      <td colspan="8" class="text-center py-12">
         <div class="flex flex-col items-center gap-3">
           <div class="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
             <i data-lucide="inbox" class="w-6 h-6 text-gray-400"></i>
@@ -594,7 +631,8 @@ function formatDateDisplay(dateString) {
 }
 
 function calculateNextDue(admission) {
-  if (admission.status === 'DROPPED') {
+  const statusLower = (admission.status || '').toLowerCase();
+  if (statusLower === 'dropped') {
     return { text: 'Dropped', date: null, isOverdue: false, isUpcoming: false, amount: 0 };
   }
 
